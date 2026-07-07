@@ -1,0 +1,16 @@
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# E,F: 기본 / I: import 정렬 / B: 버그유발 / UP: 최신문법
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E501"]  # 줄 길이는 black이 관리
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI 표준 패턴 — Depends()/Header() 등을 인자 기본값에 쓰는 건 정상(B008 오탐 방지)
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Header", "fastapi.Query", "fastapi.Path", "fastapi.Body"]

@@ -1,0 +1,11 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+sqlalchemy>=2.0
+alembic>=1.13
+psycopg[binary]>=3.2
+pydantic-settings>=2.5
+python-dotenv>=1.0
+
+# dev (포매터/린터)
+black>=24.0
+ruff>=0.6

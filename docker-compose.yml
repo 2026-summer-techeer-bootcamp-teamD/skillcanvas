@@ -1,0 +1,42 @@
+# 로컬 개발용.
+#  기본:        docker compose up        → Postgres만 뜸 (백엔드는 venv로 실행 권장)
+#  전체 Docker: docker compose --profile full up  → 백엔드까지 컨테이너로
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: skillcanvas-postgres
+    environment:
+      POSTGRES_DB: skillcanvas
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # (선택) 백엔드도 Docker로 돌리고 싶을 때만. 평소 개발은 venv 권장.
+  backend:
+    build: ./backend
+    container_name: skillcanvas-backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./backend:/app # 코드 실시간 반영 (재빌드 X)
+    environment:
+      - DATABASE_URL=postgresql+psycopg://postgres:postgres@postgres:5432/skillcanvas
+      - CORS_ORIGINS=http://localhost:5173
+      - WATCHFILES_FORCE_POLLING=true # Windows에서 --reload 파일감지 보정
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["full"]
+
+volumes:
+  pgdata:

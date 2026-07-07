@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# env (비밀값 — 절대 커밋 금지)
+.env
+backend/.env
+frontend/.env
+local-runner/.env
+
+# Node
+node_modules/
+dist/
+frontend/dist/
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# DB / 로컬
+*.sqlite3
