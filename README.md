@@ -37,17 +37,7 @@ cd frontend && npm install && npm run dev     # 프론트 → localhost:5173
 |------|------|
 | `docs/SkillCanvas_팀브리핑.md` | 프로젝트 전체 온보딩 |
 | `docs/SkillCanvas_API명세서.md` | API 엔드포인트 상세 |
-| `docs/SkillCanvas_ERD.md` | DB 설계 (✅ 확정 — 모델·마이그레이션 반영됨) |
+| `docs/SkillCanvas_ERD.md` | DB 설계 |
 | `docs/SkillCanvas_기능명세서_상세.md` | 화면·기능 명세 |
 | `docs/SkillCanvas_컨벤션.md` | 코드·API 규칙 (**필독**) |
 | `docs/SkillCanvas_빌드플랜.md` | 일정·태스크 |
-
-## 진행 상태
-
-- ✅ 인프라 스캐폴드 (구조·docker·health check·CI)
-- ✅ **DB 모델 7개 + 마이그레이션 + tool_catalog 시드** (`backend/app/models/`, `app/seed_tools.py`)
-- ✅ **예시 엔드포인트** — `app/routers/workflows.py` (6개, 팀원 복제용 템플릿)
-- ⬜ 나머지 API (users·skills·tags·tool_catalog·assemble) — workflows 복제해서
-- ⬜ Clerk 인증 실연동 (`app/core/deps.py`의 STUB → 실제 JWT 검증)
-- ⬜ 프론트 캔버스·갤러리 UI
-- ⬜ 로컬 실행기 (팀장)
