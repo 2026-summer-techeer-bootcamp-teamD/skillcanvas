@@ -35,6 +35,7 @@ cd frontend && npm install && npm run dev     # 프론트 → localhost:5173
 
 | 문서 | 내용 |
 |------|------|
+| `docs/레포구조.md` | **레포 구조 · API 개발 어디서 하는지 (API 개발자 필독)** |
 | `docs/SkillCanvas_팀브리핑.md` | 프로젝트 전체 온보딩 |
 | `docs/SkillCanvas_API명세서.md` | API 엔드포인트 상세 |
 | `docs/SkillCanvas_ERD.md` | DB 설계 |
