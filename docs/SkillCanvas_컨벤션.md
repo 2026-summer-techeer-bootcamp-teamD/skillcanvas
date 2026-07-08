@@ -56,6 +56,13 @@
   count += 1  # 가져가기 수 증가
   ```
 
+**라우터 / Swagger**
+- **엔드포인트마다 한글 `summary` 필수** — 안 달면 Swagger에 함수명(영어, 예: "Create Workflow")이 떠서 지저분하다.
+  ```python
+  @router.post("", response_model=WorkflowSummary, status_code=201, summary="워크플로우 발행")
+  ```
+- **태그(`tags`)도 한글** — `APIRouter(prefix="/skills", tags=["스킬"])`
+
 ---
 
 ## 2. 프론트 (React / TypeScript)
