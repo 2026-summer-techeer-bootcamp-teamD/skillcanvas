@@ -28,3 +28,10 @@ Thumbs.db
 
 # DB / 로컬
 *.sqlite3
+
+# 로컬 전용 문서 (GitHub엔 안 올림 — 팀장 로컬에만)
+docs/SkillCanvas_PRD_상세.md
+docs/SkillCanvas_빌드플랜.md
+docs/SkillCanvas_시스템정리.md
+docs/SkillCanvas_팀브리핑.md
+docs/발표_예상질문_대비.md

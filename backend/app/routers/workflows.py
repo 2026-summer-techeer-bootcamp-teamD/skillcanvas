@@ -31,7 +31,7 @@ from app.schemas.workflow import (
     WorkflowUpdate,
 )
 
-router = APIRouter(prefix="/workflows", tags=["workflows"])
+router = APIRouter(prefix="/workflows", tags=["워크플로우"])
 
 
 # ── 헬퍼: 태그 ────────────────────────────────────────
@@ -98,7 +98,7 @@ def _detail(db: Session, wf: Workflow) -> dict:
 
 
 # ── 4-1. 목록 조회 ────────────────────────────────────
-@router.get("", response_model=WorkflowPage)
+@router.get("", response_model=WorkflowPage, summary="워크플로우 목록 조회")
 def list_workflows(
     tag: str | None = None,
     sort: str = "recent",
@@ -140,7 +140,7 @@ def list_workflows(
 
 
 # ── 4-2. 상세 조회 ────────────────────────────────────
-@router.get("/{workflow_id}", response_model=WorkflowDetail)
+@router.get("/{workflow_id}", response_model=WorkflowDetail, summary="워크플로우 상세 조회")
 def get_workflow(
     workflow_id: int,
     db: Session = Depends(get_db),
@@ -156,7 +156,7 @@ def get_workflow(
 
 
 # ── 4-3. 발행 ────────────────────────────────────────
-@router.post("", response_model=WorkflowSummary, status_code=201)
+@router.post("", response_model=WorkflowSummary, status_code=201, summary="워크플로우 발행")
 def create_workflow(
     payload: WorkflowCreate,
     db: Session = Depends(get_db),
@@ -178,7 +178,9 @@ def create_workflow(
 
 
 # ── 4-4. 수정 (is_public 토글 = 나만보기) ─────────────
-@router.patch("/{workflow_id}", response_model=WorkflowSummary)
+@router.patch(
+    "/{workflow_id}", response_model=WorkflowSummary, summary="워크플로우 수정 (나만보기 토글)"
+)
 def update_workflow(
     workflow_id: int,
     payload: WorkflowUpdate,
@@ -209,7 +211,7 @@ def update_workflow(
 
 
 # ── 4-5. 삭제 ────────────────────────────────────────
-@router.delete("/{workflow_id}", status_code=204)
+@router.delete("/{workflow_id}", status_code=204, summary="워크플로우 삭제")
 def delete_workflow(
     workflow_id: int,
     db: Session = Depends(get_db),
@@ -229,7 +231,7 @@ def delete_workflow(
 
 
 # ── 4-6. 가져오기 ─────────────────────────────────────
-@router.post("/{workflow_id}/import", response_model=WorkflowImportOut)
+@router.post("/{workflow_id}/import", response_model=WorkflowImportOut, summary="워크플로우 가져오기")
 def import_workflow(
     workflow_id: int,
     db: Session = Depends(get_db),
