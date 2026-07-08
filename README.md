@@ -11,7 +11,7 @@ skillcanvas/
 ├── frontend/       React + TypeScript + React Flow (→ Vercel)
 ├── backend/        FastAPI 갤러리 API (→ EC2 Docker)
 ├── local-runner/   로컬 실행기 (팀장 · 나중에)
-├── docs/           기획·설계 문서 (PRD·ERD·API명세서·컨벤션 등)
+├── docs/           설계 문서 (컨벤션·API명세서·기능명세·레포구조)
 └── docker-compose.yml   로컬 Postgres
 ```
 
@@ -36,9 +36,7 @@ cd frontend && npm install && npm run dev     # 프론트 → localhost:5173
 | 문서 | 내용 |
 |------|------|
 | `docs/레포구조.md` | **레포 구조 · API 개발 어디서 하는지 (API 개발자 필독)** |
-| `docs/SkillCanvas_팀브리핑.md` | 프로젝트 전체 온보딩 |
-| `docs/SkillCanvas_API명세서.md` | API 엔드포인트 상세 |
-| `docs/SkillCanvas_ERD.md` | DB 설계 |
-| `docs/SkillCanvas_기능명세서_상세.md` | 화면·기능 명세 |
 | `docs/SkillCanvas_컨벤션.md` | 코드·API 규칙 (**필독**) |
-| `docs/SkillCanvas_빌드플랜.md` | 일정·태스크 |
+| `docs/SkillCanvas_API명세서.md` | API 엔드포인트 상세 |
+| `docs/SkillCanvas_기능명세서.md` | 기능 명세 (데이터·API 관점) |
+| `docs/SkillCanvas_기능명세서_상세.md` | 기능 명세 (화면 관점) |
