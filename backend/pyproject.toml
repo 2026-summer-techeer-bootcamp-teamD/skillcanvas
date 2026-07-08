@@ -1,15 +1,23 @@
 [tool.black]
 line-length = 100
 target-version = ["py312"]
+# alembic이 자동 생성하는 마이그레이션은 포맷 검사 제외 (직접 안 고침)
+extend-exclude = "alembic/versions/"
 
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+# 자동 생성 마이그레이션은 lint 제외
+extend-exclude = ["alembic/versions"]
 
 [tool.ruff.lint]
 # E,F: 기본 / I: import 정렬 / B: 버그유발 / UP: 최신문법
 select = ["E", "F", "I", "B", "UP"]
 ignore = ["E501"]  # 줄 길이는 black이 관리
+
+[tool.ruff.lint.isort]
+# 로컬 alembic/ 폴더 때문에 alembic 패키지를 로컬로 오인 → 서드파티로 명시
+known-third-party = ["alembic"]
 
 [tool.ruff.lint.flake8-bugbear]
 # FastAPI 표준 패턴 — Depends()/Header() 등을 인자 기본값에 쓰는 건 정상(B008 오탐 방지)
