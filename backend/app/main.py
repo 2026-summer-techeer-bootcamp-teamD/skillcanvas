@@ -4,7 +4,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.routers import health, workflows
 
-app = FastAPI(title="SkillCanvas API", version="0.1.0")
+app = FastAPI(
+    title="SkillCanvas API",
+    description="스킬 부품을 워크플로우로 조립하고 갤러리로 공유하는 플랫폼의 서버 API",
+    version="0.1.0",
+)
 
 app.add_middleware(
     CORSMiddleware,

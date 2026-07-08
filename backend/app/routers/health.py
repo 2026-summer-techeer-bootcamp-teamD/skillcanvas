@@ -3,10 +3,10 @@ from sqlalchemy import text
 
 from app.core.db import engine
 
-router = APIRouter(tags=["health"])
+router = APIRouter(tags=["상태 확인"])
 
 
-@router.get("/health")
+@router.get("/health", summary="서버·DB 상태 확인")
 def health() -> dict:
     """서버·DB 연결 상태 확인 (환경 세팅이 됐는지 테스트용).
 
