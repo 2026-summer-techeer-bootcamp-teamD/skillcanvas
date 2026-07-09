@@ -1,0 +1,8 @@
+.venv/
+__pycache__/
+*.pyc
+
+# 실행 중 생성되는 로컬 상태 (A-3 이후) — git 추적 X
+*.db
+sandbox/runtime_memory.json
+sandbox/workflows/
