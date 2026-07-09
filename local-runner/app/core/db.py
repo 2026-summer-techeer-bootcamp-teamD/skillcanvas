@@ -14,6 +14,10 @@ CREATE TABLE IF NOT EXISTS processed (
     item_key     TEXT PRIMARY KEY,
     processed_at TEXT
 );
+CREATE TABLE IF NOT EXISTS credentials (
+    tool_key TEXT PRIMARY KEY,
+    secret   TEXT
+);
 """
 
 
@@ -54,5 +58,41 @@ def clear_processed() -> int:
         n = conn.execute("DELETE FROM processed").rowcount
         conn.commit()
         return n
+    finally:
+        conn.close()
+
+
+def _norm_key(tool_key: str) -> str:
+    """tool_key 정규화 — 카탈로그 키(예: 'notion')와 대소문자·공백 무관하게 매칭."""
+    return tool_key.strip().lower()
+
+
+def set_credential(tool_key: str, secret: str) -> None:
+    """도구 키를 로컬에 저장(upsert). 같은 tool_key면 덮어씀.
+
+    ⚠️ secret은 현재 **평문 저장**(로컬 데모 전용). runner.db는 gitignore(*.db)라
+    커밋되지 않지만, DB 파일 접근 가능한 사용자/백업동기화 폴더엔 그대로 노출됨.
+    → 암호화·파일권한(0600)은 후속 티켓(#35)에서.
+    """
+    conn = _connect()
+    try:
+        conn.execute(
+            "INSERT INTO credentials(tool_key, secret) VALUES (?, ?) "
+            "ON CONFLICT(tool_key) DO UPDATE SET secret = excluded.secret",
+            (_norm_key(tool_key), secret),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_credential(tool_key: str) -> str | None:
+    """저장된 도구 키 조회(실행 시 MCP 주입용). 없으면 None."""
+    conn = _connect()
+    try:
+        row = conn.execute(
+            "SELECT secret FROM credentials WHERE tool_key = ?", (_norm_key(tool_key),)
+        ).fetchone()
+        return row[0] if row else None
     finally:
         conn.close()

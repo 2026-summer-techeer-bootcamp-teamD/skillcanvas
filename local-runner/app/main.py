@@ -8,7 +8,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import graph, health, run, save
+from app.routers import credential, graph, health, run, save
 
 app = FastAPI(
     title="SkillCanvas Local Runner",
@@ -29,3 +29,4 @@ app.include_router(health.router)
 app.include_router(graph.router)
 app.include_router(save.router)
 app.include_router(run.router)
+app.include_router(credential.router)
