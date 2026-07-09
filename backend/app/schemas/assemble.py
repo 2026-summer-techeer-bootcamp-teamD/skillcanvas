@@ -1,4 +1,4 @@
-"""자연어 조립 API 스키마. (API 명세서 3-1)"""
+"""자연어 조립/추천/매핑 API 스키마. (API 명세서 3장: 3-1 assemble / 3-3 map-node)"""
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -30,3 +30,20 @@ class AssembleResponse(BaseModel):
     nodes: list[AssembleNode]
     edges: list[AssembleEdge]
     used_mcps: list[str] = Field(default_factory=list)
+
+
+# ── 3-3. 노드 자연어 편집/매핑 ────────────────────────
+class MapNodeNode(BaseModel):
+    type: str
+    label: str
+    detail: str | None = None
+
+
+class MapNodeRequest(BaseModel):
+    node: MapNodeNode
+    instruction: str
+
+
+class MapNodeResponse(BaseModel):
+    node: MapNodeNode
+    mcp_added: str | None = None
