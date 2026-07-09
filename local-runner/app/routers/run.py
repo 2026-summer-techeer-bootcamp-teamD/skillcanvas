@@ -3,9 +3,12 @@ A-4: GET /run/{id}/status — 실행 상태 조회.
 A-5: POST /run/{id}/approve — 승인 대기 실행을 이어서 재개.
 """
 
+from uuid import uuid4
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from app.core import db
 from app.engine.runner import get_run, resume_run, start_run
 
 router = APIRouter(tags=["실행"])
@@ -14,7 +17,9 @@ router = APIRouter(tags=["실행"])
 class RunIn(BaseModel):
     nodes: list[dict] = Field(default_factory=list)
     edges: list[dict] = Field(default_factory=list)
-    item_key: str = "demo-001"  # 중복체크용 식별자
+    # 중복체크용 식별자. 기본은 런마다 유니크 → 안 넘기면 항상 '신규'(사고 방지).
+    # dedup을 시연/사용하려면 같은 값을 의도적으로 넘긴다.
+    item_key: str = Field(default_factory=lambda: f"auto-{uuid4().hex[:8]}")
 
 
 def _run_or_404(out: dict | None) -> dict:
@@ -39,3 +44,8 @@ def run_status(run_id: str) -> dict:
 @router.post("/run/{run_id}/approve", summary="승인 게이트 재개 (이어서 실행)")
 def run_approve(run_id: str) -> dict:
     return _run_or_404(resume_run(run_id))
+
+
+@router.post("/processed/reset", summary="중복체크 기록 초기화 (데모 리허설용)")
+def processed_reset() -> dict:
+    return {"ok": True, "deleted": db.clear_processed()}

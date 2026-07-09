@@ -45,3 +45,14 @@ def mark_processed(item_key: str) -> None:
         conn.commit()
     finally:
         conn.close()
+
+
+def clear_processed() -> int:
+    """중복체크 기록 전체 삭제(데모 리허설용). 삭제된 행 수 반환."""
+    conn = _connect()
+    try:
+        n = conn.execute("DELETE FROM processed").rowcount
+        conn.commit()
+        return n
+    finally:
+        conn.close()
