@@ -711,24 +711,222 @@
 
 # 부록. 로컬 실행기 API (localhost · 팀장 담당)
 
-> 호스팅 서버 API 아님. 사용자 PC의 로컬 실행기(FastAPI)가 `http://localhost:{port}`로 제공. 프론트가 파일·실행을 위해 호출. 같은 응답/에러 규약(직접반환).
+> 호스팅 서버 API 아님. 사용자 PC의 로컬 실행기(FastAPI)가 `http://localhost:{port}`(기본 4737)로 제공. 프론트가 파일·실행을 위해 호출.
+> **인증 없음**(로컬 전용). 성공은 **직접 반환**, 에러는 `detail: { code, message }` — 서버 API와 동일 규약.
 
 | 번호 | 기능 | Method · URL | 설명 |
 | --- | --- | --- | --- |
 | A-1 | 부품 시각화 | `GET /graph` | `.claude` 파싱 → 노드 그래프 |
-| A-2 | 저장(동기화) | `POST /save` | 그래프 → `.claude` (본문 보존) |
-| A-3 | 실행 시작 | `POST /run` | `{ run_id, results, status }` (승인게이트서 `awaiting_approval`) |
-| A-4 | 실행 상태 | `GET /run/{run_id}/status` | 노드별 진행·승인 대기 |
-| A-5 | 승인 재개 | `POST /run/{run_id}/approve` | 저장 지점부터 재개 |
-| A-6 | 키 저장 | `POST /credential` | `{ tool_key, secret }` 로컬 저장 |
-
-**A-3 실행 응답 예시**
-```json
-{ "run_id": "run1", "status": "awaiting_approval",
-  "pending": { "id": "n4", "message": "사과+쿠폰 발송할까요?" },
-  "results": [ { "id": "n1", "type": "trigger", "result": "..." } ] }
-```
+| A-2 | 저장(동기화) | `POST /save` | 스킬 구조 → `SKILL.md` (본문 보존) |
+| A-3 | 실행 시작 | `POST /run` | 그래프 실행, 승인게이트서 `awaiting_approval` |
+| A-4 | 실행 상태 | `GET /run/{run_id}/status` | run 현재 상태·결과 |
+| A-5 | 승인 재개 | `POST /run/{run_id}/approve` | 저장 지점부터 이어서 실행 |
+| A-6 | 키 저장 | `POST /credential` | 도구 키 로컬 저장 |
+| A-7 | 중복체크 초기화 | `POST /processed/reset` | 데모 리허설용 |
 
 ---
 
-*필드·엔티티는 ERD(`SkillCanvas_기능명세서.md`)와 일치. 형식: 직접반환 · 순수 REST · errorCode.*
+## A-1. 부품 시각화
+로컬 `.claude`(스킬·MCP·룰)를 파싱해 노드 그래프로 반환한다.
+
+| 항목 | 내용 |
+| --- | --- |
+| **Method** | `GET` |
+| **URL** | `/graph` |
+| **인증** | 없음 |
+
+**Response Body (200 OK)**
+```json
+{
+  "nodes": [
+    { "id": "mcp:notion", "type": "mcp", "label": "notion" },
+    { "id": "rule:settings", "type": "rule", "label": "권한 룰", "detail": "settings.json" },
+    { "id": "skill:meeting-notes", "type": "skill", "label": "meeting-notes", "detail": "회의록 요약해 저장" }
+  ],
+  "edges": [
+    { "from": "skill:meeting-notes", "to": "mcp:notion", "kind": "uses" },
+    { "from": "skill:meeting-notes", "to": "rule:settings", "kind": "rule" }
+  ]
+}
+```
+
+| 필드 | 타입 | 설명 |
+| --- | --- | --- |
+| `nodes[].id` | String | `{type}:{name}` 형식 |
+| `nodes[].type` | String | `mcp` / `rule` / `skill` |
+| `nodes[].label` | String | 표시명 |
+| `nodes[].detail` | String | 설명(스킬=description, 룰=파일명). SKILL.md 형식 오류 시 `⚠️ SKILL.md 형식 오류` |
+| `edges[].from` / `to` | String | 노드 id |
+| `edges[].kind` | String | `uses`(스킬→도구) / `rule`(스킬→룰) |
+
+---
+
+## A-2. 저장(동기화)
+스킬 구조를 `SKILL.md`로 저장한다. **본문(사용자 지시문)은 보존**하고 frontmatter만 갱신. 없는 스킬은 신규 생성.
+
+| 항목 | 내용 |
+| --- | --- |
+| **Method** | `POST` |
+| **URL** | `/save` |
+| **인증** | 없음 |
+
+**Request Body**
+```json
+{ "skill": "meeting-notes", "name": "meeting-notes",
+  "description": "회의록을 요약해 Notion에 저장", "allowed_tools": ["notion", "slack"] }
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+| --- | --- | --- | --- |
+| `skill` | String | Y | 스킬 폴더명(식별자). 단일 폴더명만(`/`·`.`·`..` 불가) |
+| `name` | String | Y | 스킬 이름(frontmatter) |
+| `description` | String | N | 설명 |
+| `allowed_tools` | String[] | N | 사용할 도구 key 목록 |
+
+**Response Body (200 OK)**: 저장 반영된 최신 그래프(A-1과 동일 형식 `{ nodes, edges }`)
+
+**Error Codes**
+
+| HTTP 상태 | errorCode | 설명 |
+| --- | --- | --- |
+| 400 | `SAVE_INVALID_INPUT` | 잘못된 스킬 이름 / 기존 파일 형식 오류 |
+
+---
+
+## A-3. 실행 시작
+그래프(노드+엣지)를 위상정렬해 순서대로 실행한다. 승인 게이트를 만나면 멈춘다.
+
+| 항목 | 내용 |
+| --- | --- |
+| **Method** | `POST` |
+| **URL** | `/run` |
+| **인증** | 없음 |
+
+**Request Body**
+```json
+{ "nodes": [ { "id": "n1", "type": "trigger", "label": "시작" } ],
+  "edges": [ { "from": "n1", "to": "n2" } ],
+  "item_key": "cs-2026-001" }
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+| --- | --- | --- | --- |
+| `nodes` | Object[] | Y | 노드(각 `id` 필수). type: trigger/agent/tool/dedup/verify/approve/output |
+| `edges` | Object[] | N | 연결(`from`·`to`) |
+| `item_key` | String | N | 중복체크 식별자. 미지정 시 런마다 유니크(항상 신규). dedup 시연 시 명시 |
+
+**Response Body (200 OK)**
+```json
+{ "run_id": "run1", "status": "awaiting_approval",
+  "pending": { "id": "n4", "message": "사과+쿠폰 발송할까요?" },
+  "results": [ { "id": "n1", "label": "시작", "type": "trigger", "result": "⏱ 트리거 발동" } ] }
+```
+
+| 필드 | 타입 | 설명 |
+| --- | --- | --- |
+| `run_id` | String | 실행 세션 id (재개·조회용) |
+| `status` | String | `done` / `awaiting_approval`(승인 대기) / `stopped`(중복 등 중단) |
+| `results[]` | Object[] | 실행된 노드별 결과(`id`·`label`·`type`·`result`) |
+| `pending` | Object | 승인 대기 노드(`id`·`message`). `awaiting_approval`일 때만 |
+
+**Error Codes**
+
+| HTTP 상태 | errorCode | 설명 |
+| --- | --- | --- |
+| 400 | `RUN_INVALID_INPUT` | `id` 없는 노드 등 잘못된 그래프 |
+
+---
+
+## A-4. 실행 상태
+run의 현재 상태와 **전체 결과(누적)**를 조회한다.
+
+| 항목 | 내용 |
+| --- | --- |
+| **Method** | `GET` |
+| **URL** | `/run/{run_id}/status` |
+| **인증** | 없음 |
+
+**Response Body (200 OK)**: A-3와 동일 형식(`run_id`·`status`·`results`(전체)·`pending?`)
+
+**Error Codes**
+
+| HTTP 상태 | errorCode | 설명 |
+| --- | --- | --- |
+| 404 | `RUN_NOT_FOUND` | 해당 run 없음(만료·미존재) |
+
+---
+
+## A-5. 승인 재개
+승인 대기 중인 run을 저장된 지점부터 이어서 실행한다. 다음 승인/중단/끝에서 다시 멈춘다.
+
+| 항목 | 내용 |
+| --- | --- |
+| **Method** | `POST` |
+| **URL** | `/run/{run_id}/approve` |
+| **인증** | 없음 |
+
+**Response Body (200 OK)**: A-3와 동일 형식. 단 `results`는 **이번에 새로 실행된 델타만**(전체 아님).
+> 프론트 계약: `approve` 응답은 append, `status`(A-4) 응답은 전체로 갈아끼운다. 승인 대기 아닌 run이면 `results: []`.
+
+**Error Codes**
+
+| HTTP 상태 | errorCode | 설명 |
+| --- | --- | --- |
+| 404 | `RUN_NOT_FOUND` | 해당 run 없음 |
+
+---
+
+## A-6. 키 저장
+도구 API 키를 **로컬 SQLite에만** 저장한다(서버 전송 X). 같은 `tool_key`면 덮어씀(upsert).
+
+| 항목 | 내용 |
+| --- | --- |
+| **Method** | `POST` |
+| **URL** | `/credential` |
+| **인증** | 없음 |
+
+**Request Body**
+```json
+{ "tool_key": "notion", "secret": "sk-ant-..." }
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+| --- | --- | --- | --- |
+| `tool_key` | String | Y | 도구 key(카탈로그 key). 저장 시 `strip().lower()` 정규화 |
+| `secret` | String | Y | 키 값(원문 저장). 공백-only 불가 |
+
+**Response Body (200 OK)**
+```json
+{ "ok": true, "tool_key": "notion" }
+```
+> ⚠️ `secret`은 응답에 노출하지 않는다. (현재 평문 저장 — 암호화는 후속)
+
+**Error Codes**
+
+| HTTP 상태 | errorCode | 설명 |
+| --- | --- | --- |
+| 400 | `CREDENTIAL_INVALID_INPUT` | `tool_key`/`secret` 누락·공백 |
+
+---
+
+## A-7. 중복체크 초기화 *(데모 리허설용)*
+저장된 처리이력(processed)을 전부 지워, 같은 `item_key`로 다시 "신규" 실행을 시연할 수 있게 한다.
+
+| 항목 | 내용 |
+| --- | --- |
+| **Method** | `POST` |
+| **URL** | `/processed/reset` |
+| **인증** | 없음 |
+
+**Response Body (200 OK)**
+```json
+{ "ok": true, "deleted": 3 }
+```
+
+| 필드 | 타입 | 설명 |
+| --- | --- | --- |
+| `deleted` | Integer | 삭제된 처리이력 행 수 |
+
+---
+
+*형식: 직접반환 · 순수 REST · `{code, message}` errorCode. 로컬 SQLite(processed·credentials)는 ERD 아님(로컬 상태 저장).*
