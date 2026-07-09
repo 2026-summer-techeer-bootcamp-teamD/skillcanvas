@@ -1,0 +1,7 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+python-frontmatter>=1.1   # SKILL.md의 YAML frontmatter 파싱
+
+# dev (백엔드와 동일한 포매터/린터)
+black>=24.0
+ruff>=0.6
