@@ -27,4 +27,5 @@ def write_skill(skill_md_path: Path, metadata: dict, body: str) -> None:
     post = frontmatter.Post(body)
     post.metadata = metadata
     skill_md_path.parent.mkdir(parents=True, exist_ok=True)
-    skill_md_path.write_text(frontmatter.dumps(post), encoding="utf-8")
+    # sort_keys=False: 넣은 순서(name→description→allowed-tools) 유지 → diff 최소화
+    skill_md_path.write_text(frontmatter.dumps(post, sort_keys=False), encoding="utf-8")
