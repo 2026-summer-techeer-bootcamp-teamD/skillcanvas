@@ -83,7 +83,9 @@ def ask_claude(
             messages=[{"role": "user", "content": user}],
         )
         return resp.content[0].text
-    except AnthropicError as e:
+    # AnthropicError=API/네트워크 실패, IndexError/AttributeError=빈/비-텍스트 응답.
+    # 모두 Claude 쪽 문제이므로 명세서대로 502로 일관 처리한다.
+    except (AnthropicError, IndexError, AttributeError) as e:
         raise HTTPException(
             502, {"code": "CLAUDE_UNAVAILABLE", "message": "Claude 호출에 실패했습니다"}
         ) from e
