@@ -2,11 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-
-from app.routers import health, users, workflows, skills
-
-
-
+from app.routers import health, skills, users, workflows
 
 app = FastAPI(
     title="SkillCanvas API",

@@ -149,9 +149,7 @@ def get_skill(
     sk = db.get(Skill, skill_id)
     # 없거나, 비공개인데 소유자가 아니면 → 404(존재 숨김)
     if sk is None or (not sk.is_public and (user is None or sk.users_id != user.id)):
-        raise HTTPException(
-            404, {"code": "SKILL_NOT_FOUND", "message": "스킬을 찾을 수 없습니다"}
-        )
+        raise HTTPException(404, {"code": "SKILL_NOT_FOUND", "message": "스킬을 찾을 수 없습니다"})
     return _detail(db, sk)
 
 
@@ -178,9 +176,7 @@ def create_skill(
 
 
 # ── 5-4. 수정 (is_public 토글 = 나만보기) ─────────────
-@router.patch(
-    "/{skill_id}", response_model=SkillSummary, summary="스킬 수정 (나만보기 토글)"
-)
+@router.patch("/{skill_id}", response_model=SkillSummary, summary="스킬 수정 (나만보기 토글)")
 def update_skill(
     skill_id: int,
     payload: SkillUpdate,
@@ -189,9 +185,7 @@ def update_skill(
 ):
     sk = db.get(Skill, skill_id)
     if sk is None:
-        raise HTTPException(
-            404, {"code": "SKILL_NOT_FOUND", "message": "스킬을 찾을 수 없습니다"}
-        )
+        raise HTTPException(404, {"code": "SKILL_NOT_FOUND", "message": "스킬을 찾을 수 없습니다"})
     if sk.users_id != user.id:
         raise HTTPException(403, {"code": "SKILL_FORBIDDEN", "message": "소유자가 아닙니다"})
 
@@ -219,9 +213,7 @@ def delete_skill(
 ):
     sk = db.get(Skill, skill_id)
     if sk is None:
-        raise HTTPException(
-            404, {"code": "SKILL_NOT_FOUND", "message": "스킬을 찾을 수 없습니다"}
-        )
+        raise HTTPException(404, {"code": "SKILL_NOT_FOUND", "message": "스킬을 찾을 수 없습니다"})
     if sk.users_id != user.id:
         raise HTTPException(403, {"code": "SKILL_FORBIDDEN", "message": "소유자가 아닙니다"})
     # 연결(정션) 먼저 삭제 후 본체 삭제 (FK 제약)
@@ -240,9 +232,7 @@ def import_skill(
     sk = db.get(Skill, skill_id)
     # 비공개+남의 것이면 가져올 수 없음 → 404(숨김)
     if sk is None or (not sk.is_public and sk.users_id != user.id):
-        raise HTTPException(
-            404, {"code": "SKILL_NOT_FOUND", "message": "스킬을 찾을 수 없습니다"}
-        )
+        raise HTTPException(404, {"code": "SKILL_NOT_FOUND", "message": "스킬을 찾을 수 없습니다"})
     sk.import_count += 1
     db.commit()
     db.refresh(sk)
