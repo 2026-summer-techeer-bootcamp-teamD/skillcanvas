@@ -5,6 +5,7 @@ alembic>=1.13
 psycopg[binary]>=3.2
 pydantic-settings>=2.5
 python-dotenv>=1.0
+anthropic>=0.40   # Claude API SDK (백엔드 AI 기능 3장)
 
 # dev (포매터/린터)
 black>=24.0
