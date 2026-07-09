@@ -15,11 +15,12 @@ class CredentialIn(BaseModel):
 
 @router.post("/credential", summary="도구 키 저장 (로컬 전용)")
 def save_credential(payload: CredentialIn) -> dict:
-    tool_key = payload.tool_key.strip()
-    if not tool_key or not payload.secret:
+    # pydantic 기본 422 대신 명세 규약의 400을 내려고 수동 검증
+    tool_key = payload.tool_key.strip().lower()  # db 저장 형태와 일치(정규화)
+    if not tool_key or not payload.secret.strip():  # 공백-only도 거부
         raise HTTPException(
             400,
             {"code": "CREDENTIAL_INVALID_INPUT", "message": "tool_key와 secret이 필요합니다"},
         )
-    db.set_credential(tool_key, payload.secret)
+    db.set_credential(tool_key, payload.secret)  # secret은 원문 그대로 저장
     return {"ok": True, "tool_key": tool_key}  # secret은 응답에 노출하지 않음

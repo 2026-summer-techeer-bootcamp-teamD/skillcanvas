@@ -62,6 +62,11 @@ def clear_processed() -> int:
         conn.close()
 
 
+def _norm_key(tool_key: str) -> str:
+    """tool_key 정규화 — 카탈로그 키(예: 'notion')와 대소문자·공백 무관하게 매칭."""
+    return tool_key.strip().lower()
+
+
 def set_credential(tool_key: str, secret: str) -> None:
     """도구 키를 로컬에 저장(upsert). 같은 tool_key면 덮어씀."""
     conn = _connect()
@@ -69,7 +74,7 @@ def set_credential(tool_key: str, secret: str) -> None:
         conn.execute(
             "INSERT INTO credentials(tool_key, secret) VALUES (?, ?) "
             "ON CONFLICT(tool_key) DO UPDATE SET secret = excluded.secret",
-            (tool_key, secret),
+            (_norm_key(tool_key), secret),
         )
         conn.commit()
     finally:
@@ -81,7 +86,7 @@ def get_credential(tool_key: str) -> str | None:
     conn = _connect()
     try:
         row = conn.execute(
-            "SELECT secret FROM credentials WHERE tool_key = ?", (tool_key,)
+            "SELECT secret FROM credentials WHERE tool_key = ?", (_norm_key(tool_key),)
         ).fetchone()
         return row[0] if row else None
     finally:
