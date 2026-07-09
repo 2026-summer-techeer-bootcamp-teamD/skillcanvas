@@ -4,13 +4,11 @@
   - pause: 승인 게이트 → 실행 멈춤(awaiting_approval)
   - stop: 중복 등으로 실행 중단(stopped)
 
-processed(중복체크)는 A-3에선 **in-memory**(재시작 시 리셋). durable이 필요한
-중복발송 방지는 후속 SQLite 인프라 이슈에서 승격.
+중복체크(processed)는 SQLite(core/db.py)에 저장 → 서버 재시작에도 유지.
 """
 
+from app.core import db
 from app.core.claude import claude_call
-
-_PROCESSED: set[str] = set()  # 이미 처리 완료한 item_key (in-memory)
 
 
 def _first_line(text: str) -> str:
@@ -37,9 +35,9 @@ def exec_node(node: dict, ctx: dict) -> dict:
             return {"result": "🧠 ⚠ " + r["error"]}  # 실패해도 런은 계속
         return {"result": "🧠 " + _first_line(r["text"])}
 
-    if t == "dedup":  # 하네스: 이미 처리한 건이면 중단
+    if t == "dedup":  # 하네스: 이미 처리한 건이면 중단 (SQLite 조회)
         key = ctx.get("item_key")
-        if key in _PROCESSED:
+        if key and db.is_processed(key):
             return {"result": f"🔁 중복체크: 이미 처리한 건({key}) → 실행 중단", "stop": True}
         return {"result": f"🔁 중복체크: 신규 건({key}) → 통과"}
 
@@ -52,10 +50,10 @@ def exec_node(node: dict, ctx: dict) -> dict:
     if t == "tool":  # MCP (데모는 모의)
         return {"result": "🔌 도구 실행: " + label + (f" — {detail}" if detail else "")}
 
-    if t == "output":  # 처리 완료 기록 → 중복체크 메모리 갱신
+    if t == "output":  # 처리 완료 기록 → SQLite processed에 저장
         key = ctx.get("item_key")
         if key:
-            _PROCESSED.add(key)
+            db.mark_processed(key)
         return {"result": "📤 출력/기록 완료: " + label + " (처리이력 저장)"}
 
     return {"result": "완료: " + label}

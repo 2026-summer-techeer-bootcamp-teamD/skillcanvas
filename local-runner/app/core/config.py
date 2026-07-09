@@ -16,3 +16,6 @@ CLAUDE_DIR = BASE_DIR / ".claude"
 SKILLS_DIR = CLAUDE_DIR / "skills"
 SETTINGS_FILE = CLAUDE_DIR / "settings.json"
 MCP_FILE = BASE_DIR / ".mcp.json"
+
+# 로컬 실행기 상태 저장용 SQLite (재시작에도 남아야 하는 것 — 중복체크 등). gitignore됨(*.db)
+DB_FILE = BASE_DIR / "runner.db"
