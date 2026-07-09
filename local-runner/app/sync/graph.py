@@ -9,6 +9,8 @@ PoC server.mjs의 buildGraph 이식.
 
 import json
 
+import yaml
+
 from app.core import config
 from app.sync.skillfile import read_skill
 
@@ -45,8 +47,20 @@ def build_graph() -> dict:
             skill_md = skill_dir / "SKILL.md"
             if not skill_md.exists():
                 continue
-            meta, _body = read_skill(skill_md)
             name = skill_dir.name
+            try:
+                meta, _body = read_skill(skill_md)
+            except yaml.YAMLError:
+                # 깨진 SKILL.md: 전체 500 대신 이 스킬만 오류 표시(엣지 생략)
+                nodes.append(
+                    {
+                        "id": f"skill:{name}",
+                        "type": "skill",
+                        "label": name,
+                        "detail": "⚠️ SKILL.md 형식 오류",
+                    }
+                )
+                continue
             nodes.append(
                 {
                     "id": f"skill:{name}",
