@@ -68,7 +68,12 @@ def _norm_key(tool_key: str) -> str:
 
 
 def set_credential(tool_key: str, secret: str) -> None:
-    """도구 키를 로컬에 저장(upsert). 같은 tool_key면 덮어씀."""
+    """도구 키를 로컬에 저장(upsert). 같은 tool_key면 덮어씀.
+
+    ⚠️ secret은 현재 **평문 저장**(로컬 데모 전용). runner.db는 gitignore(*.db)라
+    커밋되지 않지만, DB 파일 접근 가능한 사용자/백업동기화 폴더엔 그대로 노출됨.
+    → 암호화·파일권한(0600)은 후속 티켓(#35)에서.
+    """
     conn = _connect()
     try:
         conn.execute(
