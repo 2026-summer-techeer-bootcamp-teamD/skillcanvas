@@ -1,6 +1,10 @@
 """자연어 조립/추천/매핑 API 스키마. (API 명세서 3장: 3-1 assemble / 3-3 map-node)"""
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
+
+NodeType = Literal["trigger", "tool", "agent", "approve"]
 
 
 # ── 요청 ──────────────────────────────────────────────
@@ -13,7 +17,7 @@ class AssembleRequest(BaseModel):
 # ── 응답 ──────────────────────────────────────────────
 class AssembleNode(BaseModel):
     id: str
-    type: str
+    type: NodeType
     label: str
     detail: str | None = None
 
@@ -34,7 +38,7 @@ class AssembleResponse(BaseModel):
 
 # ── 3-3. 노드 자연어 편집/매핑 ────────────────────────
 class MapNodeNode(BaseModel):
-    type: str
+    type: NodeType
     label: str
     detail: str | None = None
 
