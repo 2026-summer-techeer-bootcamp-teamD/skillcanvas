@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.routers import health, users, workflows
+from app.routers import health, skills, users, workflows
 
 app = FastAPI(
     title="SkillCanvas API",
@@ -23,6 +23,7 @@ app.include_router(health.router, prefix="/api/v1")
 
 # 도메인 라우터. workflows = 팀원 복제용 예시 템플릿.
 app.include_router(workflows.router, prefix="/api/v1")
+app.include_router(skills.router, prefix="/api/v1")
 
 
 app.include_router(users.router, prefix="/api/v1")
