@@ -42,6 +42,11 @@ def step_run(run: dict) -> dict:
 
 
 def start_run(nodes: list[dict], edges: list[dict], item_key: str) -> dict:
+    # 입력 방어: id 없는 노드가 오면 아래 dict 컴프리헨션에서 KeyError(500) → 미리 400 처리
+    for n in nodes:
+        if not isinstance(n, dict) or not n.get("id"):
+            raise ValueError("각 노드에는 id가 필요합니다")
+
     _seq["n"] += 1
     run_id = f"run{_seq['n']}"
     run = {
