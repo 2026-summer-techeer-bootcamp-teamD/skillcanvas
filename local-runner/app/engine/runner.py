@@ -29,16 +29,11 @@ def step_run(run: dict) -> dict:
             }
         )
         if out.get("pause"):
-            return {
-                "status": "awaiting_approval",
-                "pending": {
-                    "id": node["id"],
-                    "message": node.get("detail") or node.get("label", ""),
-                },
-            }
+            pending = {"id": node["id"], "message": node.get("detail") or node.get("label", "")}
+            return _stash(run, "awaiting_approval", pending)
         if out.get("stop"):
-            return {"status": "stopped"}
-    return {"status": "done"}
+            return _stash(run, "stopped")
+    return _stash(run, "done")
 
 
 def start_run(nodes: list[dict], edges: list[dict], item_key: str) -> dict:
@@ -59,3 +54,48 @@ def start_run(nodes: list[dict], edges: list[dict], item_key: str) -> dict:
     RUNS[run_id] = run
     status = step_run(run)
     return {"run_id": run_id, "results": run["results"], **status}
+
+
+def _stash(run: dict, status: str, pending: dict | None = None) -> dict:
+    """마지막 상태를 run에 저장(A-4 조회용) + 반환 dict 생성."""
+    run["status"] = status
+    run["pending"] = pending
+    out = {"status": status}
+    if pending is not None:
+        out["pending"] = pending
+    return out
+
+
+def get_run(run_id: str) -> dict | None:
+    """A-4: run의 현재 상태·결과 조회. 없으면 None.
+
+    results = **전체 스냅샷(누적)**. cf. resume_run(A-5)은 델타만 반환 →
+    프론트 계약: approve 응답은 append, status 응답은 전체로 갈아끼워야 중복표시 없음.
+    """
+    run = RUNS.get(run_id)
+    if run is None:
+        return None
+    # status 미설정(등록 직후 등) 방어 → GET /status가 항상 200
+    out = {"run_id": run_id, "status": run.get("status", "running"), "results": run["results"]}
+    if run.get("pending"):
+        out["pending"] = run["pending"]
+    return out
+
+
+def resume_run(run_id: str) -> dict | None:
+    """A-5: 승인 대기 중인 run을 이어서 재개(step_run 한 번 더). 없으면 None.
+
+    results = **이번에 새로 실행된 델타만**(전체 아님). cf. get_run(A-4)은 전체.
+    승인 대기(awaiting_approval)가 아니면 재개할 것 없음 → 현재 상태만, 새 실행 0.
+    (stopped된 run을 이어 돌려 중단을 우회하는 것 방지)
+    """
+    run = RUNS.get(run_id)
+    if run is None:
+        return None
+    if run.get("status") != "awaiting_approval":
+        snapshot = get_run(run_id)  # run 존재 확정 → None 아님
+        snapshot["results"] = []  # 재개할 것 없음 → 새 실행 0
+        return snapshot
+    before = len(run["results"])
+    s = step_run(run)
+    return {"run_id": run_id, "results": run["results"][before:], **s}
