@@ -20,11 +20,12 @@ from app.sync.skillfile import read_skill, write_skill
 def _skill_md_path(skill: str) -> Path:
     """skills 폴더 안의 SKILL.md 경로. 잘못된 이름이면 ValueError.
 
-    - 단일 폴더명만 허용(슬래시·'.'·'..' 등 거부) → 중첩/엉뚱한 위치 생성 방지
-    - resolve 후 skills 폴더 하위인지 확인 → 경로 조작(밖으로 탈출) 방어(심화)
+    - 1차(이름 검사): 단일 폴더명만 허용 — 슬래시('/'), '.', '..' 를 이름 단계에서 거부.
+      ('.'은 name이 ''라 자동 거부, '..'은 name이 '..'라 명시적으로 거부)
+    - 2차(경로 검사): resolve 후 skills 폴더 하위인지 재확인 — 예기치 못한 경로 탈출 방어(보루).
     """
-    if skill != Path(skill).name:
-        raise ValueError("스킬 이름에는 폴더 구분자('/')나 '.'만으로 된 이름을 쓸 수 없습니다")
+    if skill in (".", "..") or skill != Path(skill).name:
+        raise ValueError("스킬 이름은 폴더 구분자('/')나 '.'/'..' 없이 단일 폴더명이어야 합니다")
     base = config.SKILLS_DIR.resolve()
     target = (config.SKILLS_DIR / skill / "SKILL.md").resolve()
     if not target.is_relative_to(base):
