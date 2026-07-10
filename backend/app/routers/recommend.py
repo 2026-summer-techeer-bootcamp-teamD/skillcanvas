@@ -42,7 +42,12 @@ def recommend(
     data = ask_claude_json(system, payload.text, fail_code="RECOMMEND_FAILED")
 
     # Claude가 필수 필드를 빠뜨렸으면 파싱 실패로 간주 → 422 (명세 3-2)
-    if "skill" not in data or "description" not in data:
+    if (
+        not isinstance(data.get("skill"), str)
+        or not data.get("skill")
+        or not isinstance(data.get("description"), str)
+        or not data.get("description")
+    ):
         raise HTTPException(
             422, {"code": "RECOMMEND_FAILED", "message": "AI 응답을 해석하지 못했습니다"}
         )
