@@ -48,6 +48,8 @@ def recommend(
         )
 
     # ④ 안전장치: Claude가 카탈로그에 없는 key를 냈으면 걸러낸다
-    data["mcps"] = [m for m in data.get("mcps", []) if m in catalog]
+    raw = data.get("mcps")
+    items = raw if isinstance(raw, list) else []
+    data["mcps"] = [m for m in items if m in catalog]
 
     return data
