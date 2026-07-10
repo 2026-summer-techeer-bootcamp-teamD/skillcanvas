@@ -8,6 +8,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.core import config
 from app.routers import credential, graph, health, run, save
 
 app = FastAPI(
@@ -16,10 +17,11 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# 프론트(브라우저)가 localhost로 이 실행기를 호출하므로 CORS 허용
+# 프론트(브라우저)가 localhost로 이 실행기를 호출하므로 CORS 허용.
+# 허용 오리진은 config.CORS_ORIGINS (env RUNNER_CORS_ORIGINS로 배포 도메인 추가)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=config.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
