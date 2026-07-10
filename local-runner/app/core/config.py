@@ -1,7 +1,7 @@
-"""로컬 실행기 경로 설정.
+"""로컬 실행기 경로·CORS 설정.
 
-개발 중엔 sandbox/(연습용 가짜 .claude)를 본다. 나중에 실제 사용자
-홈의 ~/.claude 로 바꾸려면 BASE_DIR 한 곳만 고치면 된다.
+기본은 sandbox/(연습용 가짜 .claude) — 안전. 실제 사용자 ~/.claude 를 다루려면
+환경변수 RUNNER_BASE_DIR="~" 로 지정(명시적 opt-in). CORS 도메인도 env로 확장.
 """
 
 import os
@@ -21,8 +21,12 @@ CORS_ORIGINS = [
     if o.strip()
 ]
 
-# 개발용 작업 폴더. (실서비스에선 Path.home() 로 교체)
-BASE_DIR = RUNNER_ROOT / "sandbox"
+# 로컬 실행기가 다룰 작업 폴더(그 안의 .claude/.mcp.json을 읽고 쓴다).
+# 기본은 sandbox(안전한 연습용) — 안 그러면 개발 중 실수로 진짜 .claude를 수정할 수 있음.
+# 실제 내 스킬을 다루려면 RUNNER_BASE_DIR에 .claude가 있는 폴더(보통 홈)를 지정:
+#   실사용:  RUNNER_BASE_DIR="~"  → ~/.claude 를 다룸
+_base = os.getenv("RUNNER_BASE_DIR")
+BASE_DIR = Path(_base).expanduser().resolve() if _base else RUNNER_ROOT / "sandbox"
 
 CLAUDE_DIR = BASE_DIR / ".claude"
 SKILLS_DIR = CLAUDE_DIR / "skills"
