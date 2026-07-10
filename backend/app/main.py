@@ -31,9 +31,4 @@ app.include_router(tags.router, prefix="/api/v1")
 app.include_router(tool_catalog.router, prefix="/api/v1")
 app.include_router(recommend.router, prefix="/api/v1")
 app.include_router(assemble.router, prefix="/api/v1")
-# TODO: 아래 도메인도 workflows.py를 참고해 추가하세요. (API 명세서 기준)
-#   from app.routers import users, skills, tags, tool_catalog, assemble
-#   app.include_router(users.router, prefix="/api/v1")
-#   app.include_router(skills.router, prefix="/api/v1")
-#   ...
 # ─────────────────────────────────────────────
