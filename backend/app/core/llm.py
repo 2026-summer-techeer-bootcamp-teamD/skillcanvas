@@ -108,8 +108,13 @@ def ask_claude_json(
     """
     text = ask_claude(system, user, model=model, max_tokens=max_tokens)
     try:
-        return json.loads(_strip_fence(text))
+        data = json.loads(_strip_fence(text))
     except (json.JSONDecodeError, ValueError) as e:
         raise HTTPException(
             422, {"code": fail_code, "message": "AI 응답을 해석하지 못했습니다"}
         ) from e
+    # 유효한 JSON이라도 객체가 아니면(list/str/int/bool) 라우터가 dict로 다루다
+    # AttributeError→500이 난다. 파싱 실패로 간주해 명세대로 422로 막는다.
+    if not isinstance(data, dict):
+        raise HTTPException(422, {"code": fail_code, "message": "AI 응답을 해석하지 못했습니다"})
+    return data
