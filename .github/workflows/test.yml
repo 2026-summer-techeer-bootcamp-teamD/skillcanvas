@@ -1,0 +1,42 @@
+name: test
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  backend-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    # CI 전용 일회용 Postgres. 로컬 도커/배포 DB와 무관하며 잡이 끝나면 사라진다.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: skillcanvas
+        ports:
+          - 5432:5432
+        # DB가 준비될 때까지 기다렸다가 다음 스텝 진행(안 그러면 연결 실패로 깨짐)
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # 위 service 컨테이너를 가리킨다. conftest가 create_all로 테이블을 만들어
+      # alembic 없이도 동작한다. AI 호출은 mock_claude 픽스처가 가로채 실제 키 불필요.
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/skillcanvas
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: pytest -q
