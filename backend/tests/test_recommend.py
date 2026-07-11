@@ -23,9 +23,7 @@ def test_requires_auth_401(client):
 
 # ── ② 정상 응답(200) ─────────────────────────────────
 def test_recommend_ok(client, auth, mock_claude):
-    mock_claude(
-        return_value={"skill": "meeting-notes", "description": "회의록 정리", "mcps": []}
-    )
+    mock_claude(return_value={"skill": "meeting-notes", "description": "회의록 정리", "mcps": []})
     r = client.post(BASE, json={"text": "회의록 정리해줘"}, headers=auth("alice"))
     assert r.status_code == 200
     body = r.json()
