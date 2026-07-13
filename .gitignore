@@ -9,6 +9,8 @@ venv/
 
 # env (비밀값 — 절대 커밋 금지)
 .env
+.env.*
+!.env.example
 backend/.env
 frontend/.env
 local-runner/.env
