@@ -1,6 +1,23 @@
+import { Routes, Route, useNavigate } from "react-router-dom";
 import { Splash } from "./pages/Splash";
+import { Onboarding } from "./pages/Onboarding";
 
-// 라우팅은 페이지가 늘어나면 react-router로 붙일 예정. 지금은 스플래시만 렌더.
+function SplashRoute() {
+  const navigate = useNavigate();
+  return <Splash onStart={() => navigate("/onboarding")} onSkip={() => navigate("/onboarding")} />;
+}
+
+function OnboardingRoute() {
+  const navigate = useNavigate();
+  // 로그인 페이지 퍼블리싱 후 "/login" 으로 연결 예정.
+  return <Onboarding onDone={() => navigate("/")} />;
+}
+
 export default function App() {
-  return <Splash />;
+  return (
+    <Routes>
+      <Route path="/" element={<SplashRoute />} />
+      <Route path="/onboarding" element={<OnboardingRoute />} />
+    </Routes>
+  );
 }
