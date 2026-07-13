@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useClerk } from "@clerk/clerk-react";
 import { PixelArt } from "./PixelArt";
 import { BLOCK_MARK, ROBOT_MUTED } from "../lib/pixelMaps";
 import "./TopNav.css";
@@ -23,6 +24,7 @@ interface TopNavProps {
 }
 
 export function TopNav({ active, onNavigate }: TopNavProps) {
+  const { signOut } = useClerk();
   const [nickname, setNickname] = useState(loadNickname);
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(nickname);
@@ -128,7 +130,11 @@ export function TopNav({ active, onNavigate }: TopNavProps) {
             >
               저장
             </button>
-            <button className="nav__popLogout" type="button">
+            <button
+              className="nav__popLogout"
+              type="button"
+              onClick={() => signOut({ redirectUrl: "/" })}
+            >
               로그아웃
             </button>
           </div>

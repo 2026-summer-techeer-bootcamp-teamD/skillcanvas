@@ -27,6 +27,14 @@ function RequireAuth({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+/** 로그인/회원가입 페이지 가드. 이미 로그인했으면 앱으로 보냄(이중 로그인 방지). */
+function RedirectIfSignedIn({ children }: { children: ReactNode }) {
+  const { isLoaded, isSignedIn } = useAuth();
+  if (!isLoaded) return null;
+  if (isSignedIn) return <Navigate to="/skill" replace />;
+  return <>{children}</>;
+}
+
 function SplashRoute() {
   const navigate = useNavigate();
   return <Splash onStart={() => navigate("/onboarding")} onSkip={() => navigate("/onboarding")} />;
@@ -85,8 +93,22 @@ export default function App() {
     <Routes>
       <Route path="/" element={<SplashRoute />} />
       <Route path="/onboarding" element={<OnboardingRoute />} />
-      <Route path="/login" element={<LoginRoute />} />
-      <Route path="/signup" element={<SignupRoute />} />
+      <Route
+        path="/login"
+        element={
+          <RedirectIfSignedIn>
+            <LoginRoute />
+          </RedirectIfSignedIn>
+        }
+      />
+      <Route
+        path="/signup"
+        element={
+          <RedirectIfSignedIn>
+            <SignupRoute />
+          </RedirectIfSignedIn>
+        }
+      />
       <Route
         path="/skill"
         element={
