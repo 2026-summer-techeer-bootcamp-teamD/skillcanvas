@@ -1,0 +1,103 @@
+/* React Flow 커스텀 노드 (AUTO-FLOW) */
+
+.afn {
+  width: 12.5rem;
+  background: var(--sc-card);
+  border: 1px solid var(--sc-line);
+  border-radius: 0.75rem;
+  box-shadow: 0 0.375rem 1rem -0.5rem rgba(60, 45, 20, 0.22);
+  overflow: hidden;
+}
+.afn--selected {
+  border-color: var(--sc-black);
+  box-shadow:
+    0 0 0 1px var(--sc-black),
+    0 0.5rem 1.25rem -0.5rem rgba(60, 45, 20, 0.3);
+}
+
+.afn__head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.6875rem;
+}
+.afn__icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: 0.75rem;
+  background: #f4f2ec;
+  border-radius: 0.4375rem;
+}
+.afn__text {
+  flex: 1;
+  min-width: 0;
+}
+.afn__title {
+  margin: 0;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--sc-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.afn__op {
+  margin: 0.0625rem 0 0;
+  font-family: var(--sc-font-mono);
+  font-size: 0.7rem;
+  color: var(--sc-muted);
+}
+.afn__del {
+  flex-shrink: 0;
+  width: 1.125rem;
+  height: 1.125rem;
+  font-size: 0.9rem;
+  line-height: 1;
+  color: var(--sc-muted);
+  background: none;
+  border: none;
+  border-radius: 0.25rem;
+  cursor: pointer;
+}
+.afn__del:hover {
+  background: #f0ede6;
+  color: var(--sc-ink);
+}
+
+.afn__edit {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.4375rem 0.6875rem;
+  font-size: 0.72rem;
+  color: var(--sc-muted);
+  border-top: 1px solid var(--sc-line);
+  background: #fbfaf7;
+}
+.afn__editInput {
+  flex: 1;
+  min-width: 0;
+  font-family: inherit;
+  font-size: 0.72rem;
+  color: var(--sc-ink);
+  background: none;
+  border: none;
+}
+.afn__editInput:focus {
+  outline: none;
+}
+.afn__editInput::placeholder {
+  color: #b3a998;
+}
+
+/* 커넥터 핸들 */
+.afn__handle {
+  width: 0.5rem;
+  height: 0.5rem;
+  background: var(--sc-accent);
+  border: 2px solid var(--sc-card);
+}
