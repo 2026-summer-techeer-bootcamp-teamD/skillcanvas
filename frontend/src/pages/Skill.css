@@ -169,9 +169,16 @@
   letter-spacing: -0.02em;
   color: var(--sc-ink);
 }
-.skill__resultSub {
-  margin: 0.375rem 0 1.5rem;
+.skill__resultSummary {
+  margin: 0.5rem 0 0;
+  max-width: 34rem;
   font-size: 0.9375rem;
+  line-height: 1.55;
+  color: var(--sc-ink);
+}
+.skill__resultHint {
+  margin: 0.375rem 0 1.5rem;
+  font-size: 0.8125rem;
   color: var(--sc-muted);
 }
 
@@ -194,10 +201,17 @@
   box-shadow: 0 0.25rem 0.75rem -0.5rem rgba(60, 45, 20, 0.18);
   animation: skill-rise 0.4s cubic-bezier(0.22, 0.61, 0.36, 1) both;
 }
+.skill__node {
+  cursor: pointer;
+}
 .skill__node--dragging {
   opacity: 0.45;
   cursor: grabbing;
   box-shadow: 0 0.75rem 1.5rem -0.5rem rgba(60, 45, 20, 0.35);
+}
+.skill__node--selected {
+  border-color: var(--sc-accent);
+  box-shadow: 0 0 0 1px var(--sc-accent);
 }
 .skill__nodeBar {
   position: absolute;
@@ -225,6 +239,25 @@
 .skill__nodeTool {
   font-family: var(--sc-font-mono);
   font-size: 0.78rem;
+}
+.skill__nodeDesc {
+  margin: 0.5rem 0 0;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--sc-line);
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: var(--sc-muted);
+  animation: skill-desc 0.22s ease both;
+}
+@keyframes skill-desc {
+  from {
+    opacity: 0;
+    transform: translateY(-0.2rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 .skill__nodeHandle {
   flex-shrink: 0;

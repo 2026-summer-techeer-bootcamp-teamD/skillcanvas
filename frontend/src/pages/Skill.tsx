@@ -43,16 +43,35 @@ interface SkillProps {
 interface SkillNodeProps {
   block: SkillBlock;
   dragging: boolean;
+  selected: boolean;
+  onSelect: () => void;
   onDragStart: () => void;
   onDragEnter: () => void;
   onDragEnd: () => void;
 }
 
-function SkillNode({ block, dragging, onDragStart, onDragEnter, onDragEnd }: SkillNodeProps) {
+function SkillNode({
+  block,
+  dragging,
+  selected,
+  onSelect,
+  onDragStart,
+  onDragEnter,
+  onDragEnd,
+}: SkillNodeProps) {
+  const className = [
+    "skill__node",
+    dragging ? "skill__node--dragging" : "",
+    selected ? "skill__node--selected" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <div
-      className={dragging ? "skill__node skill__node--dragging" : "skill__node"}
+      className={className}
       draggable
+      onClick={onSelect}
       onDragStart={onDragStart}
       onDragEnter={onDragEnter}
       onDragEnd={onDragEnd}
@@ -64,6 +83,7 @@ function SkillNode({ block, dragging, onDragStart, onDragEnter, onDragEnd }: Ski
         <p className="skill__nodeMeta">
           {block.typeLabel} · <span className="skill__nodeTool">{block.meta}</span>
         </p>
+        {selected && <p className="skill__nodeDesc">{block.desc}</p>}
       </div>
       <span className="skill__nodeHandle" aria-hidden="true">
         ⠿
@@ -80,6 +100,8 @@ export function Skill({ onNavigate }: SkillProps) {
   const [chatInput, setChatInput] = useState("");
   // 드래그 중인 블록의 현재 위치 (끌면서 실시간으로 순서 재배치)
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  // 설명이 펼쳐진 블록 (클릭 토글)
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const reorder = (from: number, to: number) => {
     setDraft((prev) => {
@@ -178,7 +200,8 @@ export function Skill({ onNavigate }: SkillProps) {
           <main className="skill__canvas">
             <span className="skill__resultBadge">✦ SKILL</span>
             <h1 className="skill__resultTitle">{draft?.name}</h1>
-            <p className="skill__resultSub">블록을 위에서 아래로 쌓으면 순서대로 실행돼요.</p>
+            <p className="skill__resultSummary">{draft?.summary}</p>
+            <p className="skill__resultHint">블록을 클릭하면 설명이 열려요 · 끌어서 순서 변경</p>
 
             <div className="skill__stack">
               {draft?.blocks.map((block, i) => (
@@ -186,6 +209,8 @@ export function Skill({ onNavigate }: SkillProps) {
                   key={block.id}
                   block={block}
                   dragging={dragIndex === i}
+                  selected={selectedId === block.id}
+                  onSelect={() => setSelectedId((prev) => (prev === block.id ? null : block.id))}
                   onDragStart={() => setDragIndex(i)}
                   onDragEnter={() => handleDragEnter(i)}
                   onDragEnd={() => setDragIndex(null)}
