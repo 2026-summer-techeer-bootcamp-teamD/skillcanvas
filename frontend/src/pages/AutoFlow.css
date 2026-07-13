@@ -1,0 +1,454 @@
+/* AUTO-FLOW — 엔트리 히어로 / 빌더(3단) */
+
+.af {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--sc-bg);
+}
+
+/* ---------- 엔트리 히어로 ---------- */
+.af__hero {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 1.5rem 4rem;
+  text-align: center;
+  overflow: auto;
+}
+.af__mascots {
+  display: flex;
+  gap: 0.875rem;
+  margin-bottom: 1.625rem;
+}
+.af__mascot {
+  width: 2.875rem;
+  height: 2.875rem;
+  animation: af-float 3.2s ease-in-out infinite;
+}
+.af__mascot--2 {
+  animation-delay: 0.25s;
+}
+.af__mascot--3 {
+  animation-delay: 0.5s;
+}
+@keyframes af-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-0.4rem);
+  }
+}
+.af__badge {
+  padding: 0.375rem 0.8125rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--sc-accent-dark);
+  background: var(--sc-badge-bg);
+  border: 1px solid var(--sc-badge-border);
+  border-radius: 999px;
+}
+.af__title {
+  margin: 1.125rem 0 0;
+  font-size: clamp(1.75rem, 4vw, 2.375rem);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: var(--sc-ink);
+}
+.af__subtitle {
+  margin: 0.625rem 0 1.75rem;
+  font-size: 1rem;
+  color: var(--sc-muted);
+}
+.af__inputRow {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  width: 100%;
+  max-width: 42.5rem;
+  padding: 0.5rem 0.5rem 0.5rem 1.25rem;
+  background: var(--sc-card);
+  border: 1.5px solid var(--sc-line);
+  border-radius: 1rem;
+  box-shadow: 0 0.375rem 1.375rem rgba(0, 0, 0, 0.06);
+}
+.af__input {
+  flex: 1;
+  min-width: 0;
+  font-family: inherit;
+  font-size: 0.97rem;
+  color: var(--sc-ink);
+  background: none;
+  border: none;
+}
+.af__input:focus {
+  outline: none;
+}
+.af__input::placeholder {
+  color: var(--sc-muted);
+}
+.af__go {
+  flex-shrink: 0;
+  padding: 0.75rem 1.5rem;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #ffffff;
+  background: var(--sc-accent);
+  border: none;
+  border-radius: 0.6875rem;
+  box-shadow: 0 2px 0 var(--sc-accent-dark);
+  cursor: pointer;
+}
+.af__go:hover {
+  filter: brightness(1.05);
+}
+.af__examples {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5625rem;
+  margin-top: 1.25rem;
+}
+.af__example {
+  padding: 0.5625rem 0.9375rem;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  color: var(--sc-ink);
+  background: var(--sc-input);
+  border: 1px solid var(--sc-line);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.af__example:hover {
+  background: #f3efe7;
+}
+
+/* ---------- 빌더 3단 레이아웃 ---------- */
+.af__work {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+/* 왼쪽 패널 */
+.af__side {
+  width: 18.75rem;
+  flex-shrink: 0;
+  padding: 1.25rem;
+  overflow-y: auto;
+  border-right: 1px solid var(--sc-line);
+}
+.af__sideBadge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--sc-accent-dark);
+}
+.af__flowName {
+  margin: 0.375rem 0 0;
+  font-family: var(--sc-font-mono);
+  font-size: 0.8rem;
+  color: var(--sc-muted);
+}
+.af__sideTitle {
+  margin: 0.75rem 0 0.625rem;
+  font-size: 1.0625rem;
+  font-weight: 800;
+  color: var(--sc-ink);
+}
+.af__sideInput {
+  width: 100%;
+  min-height: 4.5rem;
+  padding: 0.75rem 0.875rem;
+  font-family: inherit;
+  font-size: 0.84rem;
+  color: var(--sc-ink);
+  background: var(--sc-card);
+  border: 1.5px solid var(--sc-line);
+  border-radius: 0.75rem;
+  resize: vertical;
+}
+.af__sideInput:focus {
+  outline: none;
+  border-color: var(--sc-accent);
+}
+.af__recommend {
+  width: 100%;
+  margin-top: 0.625rem;
+  padding: 0.8125rem;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--sc-cream);
+  background: var(--sc-ink);
+  border: none;
+  border-radius: 0.75rem;
+  cursor: pointer;
+}
+.af__recommend:hover {
+  filter: brightness(1.15);
+}
+
+.af__group {
+  margin: 1.375rem 0 0.625rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--sc-muted);
+}
+.af__rec,
+.af__mine {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.625rem 0.75rem;
+  margin-bottom: 0.5rem;
+  background: var(--sc-card);
+  border: 1px solid var(--sc-line);
+  border-radius: 0.625rem;
+}
+.af__recBar {
+  position: absolute;
+  left: 0;
+  top: 20%;
+  width: 0.1875rem;
+  height: 60%;
+  border-radius: 0 0.1875rem 0.1875rem 0;
+}
+.af__recIcon {
+  flex-shrink: 0;
+  width: 1.375rem;
+  height: 1.375rem;
+  border-radius: 0.375rem;
+}
+.af__recText {
+  flex: 1;
+  min-width: 0;
+}
+.af__recTitle {
+  margin: 0;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--sc-ink);
+}
+.af__recMeta {
+  margin: 0.125rem 0 0;
+  font-size: 0.75rem;
+  color: var(--sc-muted);
+}
+.af__recAdd {
+  flex-shrink: 0;
+  padding: 0.3125rem 0.625rem;
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--sc-accent-dark);
+  background: var(--sc-badge-bg);
+  border: 1px solid var(--sc-badge-border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.af__recAdd--icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  font-size: 1rem;
+  border-radius: 0.4375rem;
+}
+.af__mineHandle {
+  flex-shrink: 0;
+  color: #c7bdae;
+  cursor: grab;
+}
+
+/* 가운데 캔버스 */
+.af__canvas {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.af__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--sc-line);
+}
+.af__flowChip {
+  padding: 0.375rem 0.75rem;
+  font-family: var(--sc-font-mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--sc-ink);
+  background: var(--sc-card);
+  border: 1px solid var(--sc-line);
+  border-radius: 0.5rem;
+}
+.af__conn {
+  padding: 0.375rem 0.625rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--sc-node-tool);
+  background: var(--sc-card);
+  border: 1px solid var(--sc-line);
+  border-radius: 0.5rem;
+}
+.af__toolbarRight {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+.af__run {
+  padding: 0.4375rem 1rem;
+  font-family: inherit;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--sc-ink);
+  background: var(--sc-card);
+  border: 1px solid var(--sc-line);
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+.af__publish {
+  padding: 0.4375rem 1rem;
+  font-family: inherit;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--sc-cream);
+  background: var(--sc-ink);
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+.af__publish:hover {
+  filter: brightness(1.15);
+}
+.af__flow {
+  flex: 1;
+  min-height: 0;
+}
+
+/* 오른쪽 인스펙터 */
+.af__inspect {
+  width: 18.75rem;
+  flex-shrink: 0;
+  padding: 1.25rem;
+  overflow-y: auto;
+  border-left: 1px solid var(--sc-line);
+}
+.af__inspectHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.9375rem;
+  color: var(--sc-ink);
+}
+.af__inspectClose {
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: 1.1rem;
+  color: var(--sc-muted);
+  background: none;
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+}
+.af__inspectClose:hover {
+  background: #f0ede6;
+}
+.af__typePill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4375rem;
+  margin-top: 1rem;
+  padding: 0.3125rem 0.6875rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--sc-ink);
+  background: var(--sc-input);
+  border: 1px solid var(--sc-line);
+  border-radius: 999px;
+}
+.af__typeDot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+}
+.af__field {
+  display: block;
+  margin-top: 1rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--sc-muted);
+}
+.af__fieldInput {
+  width: 100%;
+  margin-top: 0.4375rem;
+  padding: 0.6875rem 0.75rem;
+  font-family: inherit;
+  font-size: 0.875rem;
+  color: var(--sc-ink);
+  background: var(--sc-card);
+  border: 1.5px solid var(--sc-line);
+  border-radius: 0.625rem;
+}
+.af__fieldInput:focus {
+  outline: none;
+  border-color: var(--sc-accent);
+}
+.af__keyWarn {
+  margin-top: 1.25rem;
+  padding: 0.875rem;
+  background: var(--sc-badge-bg);
+  border: 1px solid var(--sc-badge-border);
+  border-radius: 0.75rem;
+}
+.af__keyWarnTitle {
+  margin: 0;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--sc-accent-dark);
+}
+.af__keyWarnBody {
+  margin: 0.3125rem 0 0.75rem;
+  font-size: 0.8rem;
+  color: #8a6b3f;
+}
+.af__keyBtn {
+  width: 100%;
+  padding: 0.625rem;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #ffffff;
+  background: var(--sc-accent);
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+.af__keyBtn:hover {
+  filter: brightness(1.05);
+}
+
+/* React Flow 컨트롤을 컨셉 톤으로 */
+.af__flow .react-flow__controls {
+  box-shadow: 0 0.25rem 0.75rem -0.25rem rgba(60, 45, 20, 0.2);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+.af__flow .react-flow__controls-button {
+  background: var(--sc-card);
+  border-bottom: 1px solid var(--sc-line);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .af__mascot {
+    animation: none;
+  }
+}
