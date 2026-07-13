@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.core.config import settings
 from app.routers import assemble, health, recommend, skills, tags, tool_catalog, users, workflows
@@ -17,6 +18,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Prometheus가 스크랩할 /metrics 노출 (Swagger 목록에는 안 뜨게 숨김)
+Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
 
 # 뼈대 확인용 (환경 세팅 됐는지 테스트)
 app.include_router(health.router, prefix="/api/v1")

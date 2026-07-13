@@ -1,6 +1,7 @@
 # 로컬 개발용.
 #  기본:        docker compose up        → Postgres만 뜸 (백엔드는 venv로 실행 권장)
 #  전체 Docker: docker compose --profile full up  → 백엔드까지 컨테이너로
+#  모니터링:    docker compose --profile monitoring up  → Prometheus + Grafana
 
 services:
   postgres:
@@ -38,5 +39,29 @@ services:
         condition: service_healthy
     profiles: ["full"]
 
+  # 모니터링 (선택). docker compose --profile monitoring up 으로 실행.
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: skillcanvas-prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    profiles: ["monitoring"]
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: skillcanvas-grafana
+    volumes:
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    profiles: ["monitoring"]
+
 volumes:
   pgdata:
+  prometheus-data:
+  grafana-data:
