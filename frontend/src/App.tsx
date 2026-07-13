@@ -3,6 +3,16 @@ import { Splash } from "./pages/Splash";
 import { Onboarding } from "./pages/Onboarding";
 import { Login } from "./pages/Login";
 import { Signup } from "./pages/Signup";
+import { Skill } from "./pages/Skill";
+import type { NavTab } from "./components/TopNav";
+
+const TAB_ROUTES: Record<NavTab, string> = {
+  START: "/",
+  SKILL: "/skill",
+  "AUTO-FLOW": "/auto-flow",
+  "MY WORLD": "/my-world",
+  SHARE: "/share",
+};
 
 function SplashRoute() {
   const navigate = useNavigate();
@@ -18,9 +28,8 @@ function LoginRoute() {
   const navigate = useNavigate();
   return (
     <Login
-      onSkip={() => navigate("/login")}
-      // 권한 모달 "허용하고 설치" → 앱 화면 퍼블리싱 후 "/skill" 등으로 연결 예정.
-      onEnter={() => navigate("/login")}
+      onSkip={() => navigate("/skill")}
+      onEnter={() => navigate("/skill")}
       onSignup={() => navigate("/signup")}
     />
   );
@@ -37,6 +46,11 @@ function SignupRoute() {
   );
 }
 
+function SkillRoute() {
+  const navigate = useNavigate();
+  return <Skill onNavigate={(tab) => navigate(TAB_ROUTES[tab])} />;
+}
+
 export default function App() {
   return (
     <Routes>
@@ -44,6 +58,7 @@ export default function App() {
       <Route path="/onboarding" element={<OnboardingRoute />} />
       <Route path="/login" element={<LoginRoute />} />
       <Route path="/signup" element={<SignupRoute />} />
+      <Route path="/skill" element={<SkillRoute />} />
     </Routes>
   );
 }
