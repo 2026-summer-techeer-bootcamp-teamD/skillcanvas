@@ -40,9 +40,24 @@ interface SkillProps {
   onNavigate?: (tab: NavTab) => void;
 }
 
-function SkillNode({ block }: { block: SkillBlock }) {
+interface SkillNodeProps {
+  block: SkillBlock;
+  dragging: boolean;
+  onDragStart: () => void;
+  onDragEnter: () => void;
+  onDragEnd: () => void;
+}
+
+function SkillNode({ block, dragging, onDragStart, onDragEnter, onDragEnd }: SkillNodeProps) {
   return (
-    <div className="skill__node">
+    <div
+      className={dragging ? "skill__node skill__node--dragging" : "skill__node"}
+      draggable
+      onDragStart={onDragStart}
+      onDragEnter={onDragEnter}
+      onDragEnd={onDragEnd}
+      onDragOver={(e) => e.preventDefault()}
+    >
       <span className="skill__nodeBar" style={{ background: NODE_COLOR[block.type] }} />
       <div className="skill__nodeText">
         <p className="skill__nodeTitle">{block.title}</p>
@@ -63,6 +78,24 @@ export function Skill({ onNavigate }: SkillProps) {
   const [draft, setDraft] = useState<SkillDraft | null>(null);
   const [chat, setChat] = useState<ChatMessage[]>(SEED_CHAT);
   const [chatInput, setChatInput] = useState("");
+  // 드래그 중인 블록의 현재 위치 (끌면서 실시간으로 순서 재배치)
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+
+  const reorder = (from: number, to: number) => {
+    setDraft((prev) => {
+      if (!prev) return prev;
+      const blocks = [...prev.blocks];
+      const [moved] = blocks.splice(from, 1);
+      blocks.splice(to, 0, moved);
+      return { ...prev, blocks };
+    });
+  };
+
+  const handleDragEnter = (index: number) => {
+    if (dragIndex === null || dragIndex === index) return;
+    reorder(dragIndex, index);
+    setDragIndex(index);
+  };
 
   const generate = async (prompt: string) => {
     if (!prompt.trim()) return;
@@ -148,8 +181,15 @@ export function Skill({ onNavigate }: SkillProps) {
             <p className="skill__resultSub">블록을 위에서 아래로 쌓으면 순서대로 실행돼요.</p>
 
             <div className="skill__stack">
-              {draft?.blocks.map((block) => (
-                <SkillNode key={block.id} block={block} />
+              {draft?.blocks.map((block, i) => (
+                <SkillNode
+                  key={block.id}
+                  block={block}
+                  dragging={dragIndex === i}
+                  onDragStart={() => setDragIndex(i)}
+                  onDragEnter={() => handleDragEnter(i)}
+                  onDragEnd={() => setDragIndex(null)}
+                />
               ))}
               <button className="skill__addBlock" type="button">
                 + 블록 추가
@@ -177,10 +217,10 @@ export function Skill({ onNavigate }: SkillProps) {
                 + 블록 추가
               </button>
               <button type="button" className="skill__chip">
-                조건 분기
+                더 짧게 요약
               </button>
               <button type="button" className="skill__chip">
-                승인 게이트
+                블록 삭제
               </button>
             </div>
 
