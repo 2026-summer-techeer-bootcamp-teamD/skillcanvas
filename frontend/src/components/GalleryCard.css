@@ -1,0 +1,105 @@
+/* 갤러리/공유 카드 */
+.gcard {
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem;
+  background: var(--sc-card);
+  border: 1px solid var(--sc-line);
+  border-radius: 1rem;
+  box-shadow: 0 0.5rem 1.25rem -0.75rem rgba(60, 45, 20, 0.18);
+  cursor: pointer;
+  transition:
+    transform 0.14s ease,
+    box-shadow 0.14s ease;
+}
+.gcard:hover {
+  transform: translateY(-0.1875rem);
+  box-shadow: 0 0.875rem 1.75rem -0.75rem rgba(60, 45, 20, 0.28);
+}
+
+.gcard__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+.gcard__kind {
+  padding: 0.25rem 0.625rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: 999px;
+}
+.gcard__kind--workflow {
+  color: #2a5db0;
+  background: #e9f0fb;
+}
+.gcard__kind--skill {
+  color: var(--sc-accent-dark);
+  background: var(--sc-badge-bg);
+}
+.gcard__mascot {
+  width: 1.5rem;
+  height: 1.5rem;
+  opacity: 0.85;
+}
+
+.gcard__title {
+  margin: 0.875rem 0 0;
+  font-size: 1.0625rem;
+  font-weight: 800;
+  color: var(--sc-ink);
+}
+.gcard__desc {
+  margin: 0.375rem 0 0;
+  font-size: 0.84rem;
+  color: var(--sc-muted);
+}
+
+.gcard__trail {
+  margin: 1rem 0;
+}
+
+.gcard__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+.gcard__tag {
+  padding: 0.1875rem 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--sc-muted);
+  background: #f1ede5;
+  border-radius: 999px;
+}
+
+.gcard__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 1rem;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--sc-line);
+}
+.gcard__meta {
+  font-size: 0.8125rem;
+  color: var(--sc-muted);
+}
+.gcard__imports {
+  font-family: var(--sc-font-mono);
+  font-size: 0.75rem;
+}
+.gcard__import {
+  padding: 0.4375rem 0.75rem;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--sc-accent-dark);
+  background: var(--sc-card);
+  border: 1.5px solid var(--sc-badge-border);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: background 0.14s ease;
+}
+.gcard__import:hover {
+  background: var(--sc-badge-bg);
+}

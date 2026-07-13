@@ -1,23 +1,146 @@
-import { Background, Controls, ReactFlow, type Edge, type Node } from "reactflow";
-import "reactflow/dist/style.css";
+import type { ReactNode } from "react";
+import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { useAuth } from "@clerk/clerk-react";
+import { Splash } from "./pages/Splash";
+import { Onboarding } from "./pages/Onboarding";
+import { Login } from "./pages/Login";
+import { Signup } from "./pages/Signup";
+import { Skill } from "./pages/Skill";
+import { AutoFlow } from "./pages/AutoFlow";
+import { Share } from "./pages/Share";
+import { MyWorld } from "./pages/MyWorld";
+import type { NavTab } from "./components/TopNav";
 
-// 뼈대 확인용 노드 1개. 실제 캔버스(부품/워크플로우)는 여기부터 구현.
-const nodes: Node[] = [
-  {
-    id: "1",
-    position: { x: 120, y: 120 },
-    data: { label: "SkillCanvas 캔버스 뼈대 ✅" },
-  },
-];
-const edges: Edge[] = [];
+const TAB_ROUTES: Record<NavTab, string> = {
+  START: "/",
+  SKILL: "/skill",
+  "AUTO-FLOW": "/auto-flow",
+  "MY WORLD": "/my-world",
+  SHARE: "/share",
+};
+
+/** 로그인해야 볼 수 있는 앱 화면 가드. 미로그인 시 /login 으로 보냄. */
+function RequireAuth({ children }: { children: ReactNode }) {
+  const { isLoaded, isSignedIn } = useAuth();
+  if (!isLoaded) return null; // Clerk 세션 확인 중
+  if (!isSignedIn) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+}
+
+/** 로그인/회원가입 페이지 가드. 이미 로그인했으면 앱으로 보냄(이중 로그인 방지). */
+function RedirectIfSignedIn({ children }: { children: ReactNode }) {
+  const { isLoaded, isSignedIn } = useAuth();
+  if (!isLoaded) return null;
+  if (isSignedIn) return <Navigate to="/skill" replace />;
+  return <>{children}</>;
+}
+
+function SplashRoute() {
+  const navigate = useNavigate();
+  return <Splash onStart={() => navigate("/onboarding")} onSkip={() => navigate("/onboarding")} />;
+}
+
+function OnboardingRoute() {
+  const navigate = useNavigate();
+  return <Onboarding onDone={() => navigate("/login")} />;
+}
+
+function LoginRoute() {
+  const navigate = useNavigate();
+  return (
+    <Login
+      onSkip={() => navigate("/skill")}
+      onEnter={() => navigate("/skill")}
+      onSignup={() => navigate("/signup")}
+    />
+  );
+}
+
+function SignupRoute() {
+  const navigate = useNavigate();
+  return (
+    <Signup
+      onSkip={() => navigate("/login")}
+      // 회원가입+이메일 인증 완료 → 로그인된 상태로 앱 진입
+      onSignup={() => navigate("/skill")}
+      onLogin={() => navigate("/login")}
+    />
+  );
+}
+
+function SkillRoute() {
+  const navigate = useNavigate();
+  return <Skill onNavigate={(tab) => navigate(TAB_ROUTES[tab])} />;
+}
+
+function AutoFlowRoute() {
+  const navigate = useNavigate();
+  return <AutoFlow onNavigate={(tab) => navigate(TAB_ROUTES[tab])} />;
+}
+
+function ShareRoute() {
+  const navigate = useNavigate();
+  return <Share onNavigate={(tab) => navigate(TAB_ROUTES[tab])} />;
+}
+
+function MyWorldRoute() {
+  const navigate = useNavigate();
+  return <MyWorld onNavigate={(tab) => navigate(TAB_ROUTES[tab])} />;
+}
 
 export default function App() {
   return (
-    <div style={{ width: "100vw", height: "100vh" }}>
-      <ReactFlow nodes={nodes} edges={edges} fitView>
-        <Background />
-        <Controls />
-      </ReactFlow>
-    </div>
+    <Routes>
+      <Route path="/" element={<SplashRoute />} />
+      <Route path="/onboarding" element={<OnboardingRoute />} />
+      <Route
+        path="/login"
+        element={
+          <RedirectIfSignedIn>
+            <LoginRoute />
+          </RedirectIfSignedIn>
+        }
+      />
+      <Route
+        path="/signup"
+        element={
+          <RedirectIfSignedIn>
+            <SignupRoute />
+          </RedirectIfSignedIn>
+        }
+      />
+      <Route
+        path="/skill"
+        element={
+          <RequireAuth>
+            <SkillRoute />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/auto-flow"
+        element={
+          <RequireAuth>
+            <AutoFlowRoute />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/share"
+        element={
+          <RequireAuth>
+            <ShareRoute />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/my-world"
+        element={
+          <RequireAuth>
+            <MyWorldRoute />
+          </RequireAuth>
+        }
+      />
+    </Routes>
   );
 }

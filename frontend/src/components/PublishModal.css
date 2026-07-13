@@ -1,0 +1,279 @@
+/* 발행/저장 다이얼로그 (SKILL·AUTO-FLOW 공용) */
+
+.pub__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(35, 29, 22, 0.45);
+  animation: pub-fade 0.18s ease both;
+}
+
+.pub__card {
+  width: 27rem;
+  max-width: 100%;
+  padding: 1.5rem 1.625rem 1.625rem;
+  background: #ffffff;
+  border-radius: 1.125rem;
+  box-shadow: 0 1.375rem 3.375rem rgba(26, 20, 13, 0.34);
+  animation: pub-pop 0.22s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.pub__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+.pub__title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: var(--sc-ink);
+}
+.pub__close {
+  width: 1.75rem;
+  height: 1.75rem;
+  font-size: 1.2rem;
+  color: var(--sc-muted);
+  background: none;
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+}
+.pub__close:hover {
+  background: #f0ede6;
+}
+
+.pub__field {
+  display: block;
+  margin-bottom: 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--sc-muted);
+}
+.pub__optional {
+  font-weight: 400;
+}
+.pub__input,
+.pub__textarea {
+  display: block;
+  width: 100%;
+  margin-top: 0.4375rem;
+  padding: 0.6875rem 0.75rem;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  color: var(--sc-ink);
+  background: var(--sc-input);
+  border: 1.5px solid var(--sc-line);
+  border-radius: 0.625rem;
+}
+.pub__textarea {
+  min-height: 4rem;
+  font-size: 0.875rem;
+  resize: vertical;
+}
+.pub__input:focus,
+.pub__textarea:focus {
+  outline: none;
+  border-color: var(--sc-accent);
+}
+
+/* 태그 */
+.pub__tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  margin-top: 0.4375rem;
+  padding: 0.4375rem 0.5rem;
+  background: var(--sc-input);
+  border: 1.5px solid var(--sc-line);
+  border-radius: 0.625rem;
+}
+.pub__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--sc-accent-dark);
+  background: var(--sc-badge-bg);
+  border: 1px solid var(--sc-badge-border);
+  border-radius: 999px;
+}
+.pub__tag button {
+  font-size: 0.85rem;
+  line-height: 1;
+  color: var(--sc-accent-dark);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.pub__tagInput {
+  flex: 1;
+  min-width: 6rem;
+  font-family: inherit;
+  font-size: 0.84rem;
+  color: var(--sc-ink);
+  background: none;
+  border: none;
+}
+.pub__tagInput:focus {
+  outline: none;
+}
+
+/* 공개 토글 */
+.pub__toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  margin: 0.25rem 0 1.25rem;
+  padding: 0.75rem;
+  text-align: left;
+  background: var(--sc-input);
+  border: 1px solid var(--sc-line);
+  border-radius: 0.75rem;
+  cursor: pointer;
+}
+.pub__switch {
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 1.375rem;
+  padding: 0.1875rem;
+  background: #d9d0c1;
+  border-radius: 999px;
+  transition: background 0.16s ease;
+}
+.pub__switch--on {
+  background: var(--sc-accent);
+}
+.pub__knob {
+  display: block;
+  width: 1rem;
+  height: 1rem;
+  background: #ffffff;
+  border-radius: 50%;
+  transition: transform 0.16s ease;
+}
+.pub__switch--on .pub__knob {
+  transform: translateX(0.875rem);
+}
+.pub__toggleText {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.875rem;
+  color: var(--sc-ink);
+}
+.pub__toggleHint {
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--sc-muted);
+}
+
+.pub__actions {
+  display: flex;
+  gap: 0.625rem;
+}
+.pub__ghost {
+  flex-shrink: 0;
+  padding: 0.8125rem 1.375rem;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #4a4238;
+  background: #ffffff;
+  border: 1.5px solid var(--sc-line);
+  border-radius: 0.75rem;
+  cursor: pointer;
+}
+.pub__ghost:hover {
+  background: var(--sc-input);
+}
+.pub__primary {
+  flex: 1;
+  padding: 0.8125rem;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--sc-cream);
+  background: var(--sc-ink);
+  border: none;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: filter 0.16s ease;
+}
+.pub__primary:hover {
+  filter: brightness(1.15);
+}
+.pub__primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* 완료 화면 */
+.pub__done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 0.75rem 0 0.25rem;
+}
+.pub__doneMark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  margin: 0 0 0.875rem;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #ffffff;
+  background: var(--sc-accent);
+  border-radius: 50%;
+}
+.pub__doneTitle {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 800;
+  color: var(--sc-ink);
+}
+.pub__doneName {
+  margin: 0.375rem 0 1.25rem;
+  font-size: 0.9375rem;
+  color: var(--sc-muted);
+}
+.pub__done .pub__primary {
+  width: 100%;
+  flex: none;
+}
+
+@keyframes pub-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes pub-pop {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pub__scrim,
+  .pub__card {
+    animation: none;
+  }
+}

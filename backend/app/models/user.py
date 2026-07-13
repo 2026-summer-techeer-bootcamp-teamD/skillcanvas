@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, String
+from sqlalchemy import BigInteger, Boolean, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base
@@ -24,6 +24,8 @@ class User(TimestampMixin, Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     clerk_user_id: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
     nickname: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    # ADMIN_EMAILS 에 등록된 이메일로 첫 로그인 시 True. 관리자 전용 기능 게이트용.
+    is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
 
     workflows: Mapped[list[Workflow]] = relationship(back_populates="owner")
     skills: Mapped[list[Skill]] = relationship(back_populates="owner")

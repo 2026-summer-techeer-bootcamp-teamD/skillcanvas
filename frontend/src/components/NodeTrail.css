@@ -1,0 +1,25 @@
+/* 노드 흐름 모티프 (점 4개 + 잇는 선) */
+.trail {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0.25rem;
+}
+.trail::before {
+  content: "";
+  position: absolute;
+  left: 0.375rem;
+  right: 0.375rem;
+  top: 50%;
+  height: 2px;
+  transform: translateY(-50%);
+  background: var(--sc-line);
+}
+.trail__dot {
+  position: relative;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  box-shadow: 0 0 0 0.2rem var(--sc-card);
+}
