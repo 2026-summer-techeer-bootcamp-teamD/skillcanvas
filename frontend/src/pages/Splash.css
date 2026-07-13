@@ -1,79 +1,5 @@
-.splash {
-  position: relative;
-  min-height: 100vh;
-  overflow: hidden;
-  background-color: var(--sc-bg);
-  background-image: radial-gradient(var(--sc-dot) 0.1rem, transparent 0.1rem);
-  background-size: 3.25rem 3.25rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
+/* 스플래시 전용 (공용 씬/네비/모티프는 scene.css) */
 
-/* 노드 모티프 (SVG) */
-.splash__motif {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-.splash__motifLine {
-  stroke: #ded3c3;
-  stroke-width: 1.5;
-}
-.splash__motifDash {
-  stroke: var(--sc-accent);
-  stroke-width: 2.5;
-  stroke-dasharray: 0.5 9;
-  stroke-linecap: round;
-}
-
-/* 상단 바 */
-.splash__nav {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4rem;
-  padding: 0 2.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  z-index: 2;
-}
-.splash__logo {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  color: var(--sc-ink);
-  text-decoration: none;
-}
-.splash__mark {
-  width: 1.75rem;
-  height: 1.75rem;
-}
-.splash__brandSmall {
-  font-weight: 800;
-  font-size: 1.0625rem;
-  letter-spacing: -0.01em;
-}
-.splash__skip {
-  border: 1px solid var(--sc-line);
-  background: transparent;
-  color: var(--sc-muted);
-  font-size: 0.875rem;
-  font-weight: 600;
-  padding: 0.5rem 1.125rem;
-  border-radius: 0.5625rem;
-  transition: border-color 0.16s ease;
-}
-.splash__skip:hover {
-  border-color: #d8ccbb;
-}
-
-/* 히어로 */
 .splash__hero {
   position: relative;
   z-index: 1;
@@ -83,6 +9,7 @@
   text-align: center;
   padding: 0 1.5rem;
 }
+
 .splash__badge {
   display: inline-flex;
   align-items: center;
@@ -112,7 +39,7 @@
   line-height: 1;
   color: var(--sc-ink);
 }
-/* 워드마크 오른쪽 끝("s") 아래쪽에 걸터앉은 주황 마스코트 (Figma 32px @ 88px = 0.36em) */
+/* 워드마크 오른쪽 끝("s") 옆에 걸터앉은 주황 마스코트 */
 .splash__rider {
   position: absolute;
   right: -0.28em;
@@ -166,13 +93,4 @@
   height: 0.3125rem;
   border-radius: 50%;
   background: #e3d6c4;
-}
-
-@media (max-width: 40rem) {
-  .splash__motif {
-    display: none;
-  }
-  .splash__nav {
-    padding: 0 1.25rem;
-  }
 }
