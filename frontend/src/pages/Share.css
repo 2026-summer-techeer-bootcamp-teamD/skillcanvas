@@ -1,0 +1,149 @@
+/* SHARE / 갤러리 */
+.share {
+  min-height: 100vh;
+  background: var(--sc-bg);
+}
+.share__main {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 2.25rem clamp(1.25rem, 4vw, 2.5rem) 4rem;
+}
+
+.share__head {
+  margin-bottom: 1.75rem;
+}
+.share__title {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--sc-ink);
+}
+.share__titleMascot {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+.share__sub {
+  margin: 0.5rem 0 0;
+  font-size: 0.9375rem;
+  color: var(--sc-muted);
+}
+
+/* 피처드 */
+.share__featured {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.75rem 2rem;
+  margin-bottom: 1.75rem;
+  background: var(--sc-card);
+  border: 1px solid var(--sc-line);
+  border-radius: 1.25rem;
+  box-shadow: 0 0.75rem 2rem -0.875rem rgba(60, 45, 20, 0.2);
+}
+.share__featuredBody {
+  min-width: 0;
+}
+.share__featuredTitle {
+  margin: 0.75rem 0 0;
+  font-size: 1.625rem;
+  font-weight: 800;
+  color: var(--sc-ink);
+}
+.share__featuredDesc {
+  margin: 0.5rem 0 0;
+  max-width: 34rem;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: var(--sc-muted);
+}
+.share__featuredStats {
+  margin: 0.75rem 0 0;
+  font-size: 0.84rem;
+  color: var(--sc-muted);
+}
+.share__stars {
+  color: var(--sc-accent);
+  letter-spacing: 0.05em;
+}
+.share__stack {
+  margin-top: 1.25rem;
+  padding: 0.8125rem 1.5rem;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #ffffff;
+  background: var(--sc-accent);
+  border: none;
+  border-radius: 0.75rem;
+  box-shadow: 0 2px 0 var(--sc-accent-dark);
+  cursor: pointer;
+  transition: filter 0.14s ease;
+}
+.share__stack:hover {
+  filter: brightness(1.05);
+}
+.share__featuredArt {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  width: 9rem;
+}
+.share__featuredMascot {
+  width: 5rem;
+  height: 5rem;
+}
+.share__featuredTrail {
+  width: 100%;
+}
+
+/* 필터 */
+.share__filters {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+.share__filter {
+  padding: 0.5rem 1rem;
+  font-family: inherit;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--sc-ink);
+  background: var(--sc-card);
+  border: 1px solid var(--sc-line);
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background 0.14s ease,
+    color 0.14s ease;
+}
+.share__filter--on {
+  color: var(--sc-cream);
+  background: var(--sc-ink);
+  border-color: var(--sc-ink);
+}
+
+/* 그리드 */
+.share__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: 1.25rem;
+}
+
+@media (max-width: 44rem) {
+  .share__featured {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .share__featuredArt {
+    width: 100%;
+    flex-direction: row;
+    justify-content: center;
+  }
+}
