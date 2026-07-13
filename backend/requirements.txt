@@ -6,7 +6,7 @@ psycopg[binary]>=3.2
 pydantic-settings>=2.5
 python-dotenv>=1.0
 anthropic>=0.40   # Claude API SDK (백엔드 AI 기능 3장)
-clerk-backend-api>=1.8   # Clerk 세션 JWT 검증 + 유저 조회(이메일/메타데이터)
+clerk-backend-api>=6,<7   # Clerk 세션 JWT 검증 + 유저 조회. 코드가 6.x API에 의존하므로 메이저 고정
 prometheus-fastapi-instrumentator>=7.0   # /metrics 노출 (Prometheus 연동)
 
 # dev (포매터/린터/테스트)
