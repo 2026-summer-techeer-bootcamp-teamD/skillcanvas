@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { PixelArt } from "../components/PixelArt";
 import { TopNav, type NavTab } from "../components/TopNav";
+import { PublishModal, type PublishPayload } from "../components/PublishModal";
 import { ROBOT_BLACK, ROBOT_ORANGE } from "../lib/pixelMaps";
 import {
   recommendSkill,
@@ -102,6 +103,13 @@ export function Skill({ onNavigate }: SkillProps) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   // 설명이 펼쳐진 블록 (클릭 토글)
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [publishOpen, setPublishOpen] = useState(false);
+
+  // 저장 = content_md(SKILL.md)에 폼 값을 합쳐 POST /skills 로 보낼 자리.
+  const handlePublish = (payload: PublishPayload) => {
+    // TODO: 백엔드 연결 시 블록 → SKILL.md 변환 후 POST /skills { ...payload, content_md }
+    console.log("[저장] POST /skills", { ...payload, blocks: draft?.blocks });
+  };
 
   const reorder = (from: number, to: number) => {
     setDraft((prev) => {
@@ -261,12 +269,20 @@ export function Skill({ onNavigate }: SkillProps) {
               </button>
             </form>
 
-            <button className="skill__run" type="button">
-              ▶ 실행 / 임시저장
+            <button className="skill__run" type="button" onClick={() => setPublishOpen(true)}>
+              ▶ 실행 / 저장
             </button>
           </aside>
         </div>
       )}
+
+      <PublishModal
+        open={publishOpen}
+        kind="skill"
+        defaultName={draft?.name ?? "새 스킬"}
+        onClose={() => setPublishOpen(false)}
+        onPublish={handlePublish}
+      />
     </div>
   );
 }

@@ -14,6 +14,7 @@ import ReactFlow, {
 import "reactflow/dist/style.css";
 import { PixelArt } from "../components/PixelArt";
 import { TopNav, type NavTab } from "../components/TopNav";
+import { PublishModal, type PublishPayload } from "../components/PublishModal";
 import { FlowNode } from "../components/flow/FlowNode";
 import { ROBOT_BLACK, ROBOT_ORANGE } from "../lib/pixelMaps";
 import {
@@ -101,6 +102,14 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
   const idRef = useRef(100);
   const flowWrapper = useRef<HTMLDivElement>(null);
   const [rfInstance, setRfInstance] = useState<ReactFlowInstance | null>(null);
+  const [publishOpen, setPublishOpen] = useState(false);
+
+  // 발행 = graph_json(노드+엣지+뷰포트)에 폼 값을 합쳐 POST /workflows 로 보낼 자리.
+  const handlePublish = (payload: PublishPayload) => {
+    const graph_json = rfInstance?.toObject() ?? { nodes, edges };
+    // TODO: 백엔드 연결 시 POST /workflows { ...payload, graph_json }
+    console.log("[발행] POST /workflows", { ...payload, graph_json });
+  };
 
   const deleteNode = useCallback(
     (id: string) => {
@@ -318,7 +327,7 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
               <button className="af__run" type="button">
                 실행
               </button>
-              <button className="af__publish" type="button">
+              <button className="af__publish" type="button" onClick={() => setPublishOpen(true)}>
                 갤러리에 발행
               </button>
             </div>
@@ -432,6 +441,14 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
           ))}
         </aside>
       </div>
+
+      <PublishModal
+        open={publishOpen}
+        kind="workflow"
+        defaultName="cs-complaint-handler"
+        onClose={() => setPublishOpen(false)}
+        onPublish={handlePublish}
+      />
     </div>
   );
 }
