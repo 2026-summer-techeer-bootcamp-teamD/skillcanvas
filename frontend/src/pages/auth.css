@@ -1,6 +1,6 @@
-/* 로그인 전용 (공용 씬/네비/모티프는 scene.css) */
+/* 로그인·회원가입 공용 카드 씬 (공용 씬/네비/모티프는 scene.css) */
 
-.lg__center {
+.auth__center {
   position: relative;
   z-index: 1;
   display: flex;
@@ -10,22 +10,22 @@
   padding: 0 1.5rem;
 }
 
-.lg__title {
+.auth__title {
   margin: 0;
   font-size: 1.875rem;
   font-weight: 800;
   letter-spacing: -0.02em;
   color: var(--sc-ink);
 }
-.lg__subtitle {
+.auth__subtitle {
   margin: 0.5rem 0 1.625rem;
   font-size: 0.9375rem;
   font-weight: 400;
   color: var(--sc-muted);
 }
 
-/* 로그인 카드 */
-.lg__card {
+/* 인증 카드 */
+.auth__card {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -38,18 +38,18 @@
   box-shadow: 0 0.875rem 2.25rem -0.5rem rgba(120, 79, 20, 0.12);
 }
 
-.lg__cardMascot {
+.auth__cardMascot {
   width: 2.625rem;
   height: 2.625rem;
 }
-.lg__cardTitle {
+.auth__cardTitle {
   margin: 0.25rem 0 1rem;
   font-size: 1.25rem;
   font-weight: 800;
   color: var(--sc-ink);
 }
 
-.lg__input {
+.auth__input {
   width: 100%;
   padding: 0.8125rem 0.875rem;
   margin-bottom: 0.625rem;
@@ -61,18 +61,18 @@
   border-radius: 0.6875rem;
   transition: border-color 0.14s ease;
 }
-.lg__input:last-of-type {
+.auth__input:last-of-type {
   margin-bottom: 1.125rem;
 }
-.lg__input::placeholder {
+.auth__input::placeholder {
   color: #a89a86;
 }
-.lg__input:focus {
+.auth__input:focus {
   outline: none;
   border-color: var(--sc-accent);
 }
 
-.lg__submit {
+.auth__submit {
   width: 100%;
   padding: 0.9375rem;
   font-size: 0.9375rem;
@@ -83,11 +83,11 @@
   border-radius: 0.875rem;
   transition: filter 0.16s ease;
 }
-.lg__submit:hover {
+.auth__submit:hover {
   filter: brightness(1.05);
 }
 
-.lg__signup {
+.auth__alt {
   margin-top: 1rem;
   padding: 0;
   font-family: inherit;
@@ -97,12 +97,12 @@
   background: none;
   border: none;
 }
-.lg__signupAccent {
+.auth__altAccent {
   font-weight: 700;
 }
 
 /* 우측에 서 있는 검은 로봇 */
-.lg__buddy {
+.auth__buddy {
   position: absolute;
   right: 8vw;
   top: 56%;
@@ -112,23 +112,23 @@
   flex-direction: column;
   align-items: center;
 }
-.lg__buddyArt {
+.auth__buddyArt {
   width: 7.5rem;
   height: 7.5rem;
-  animation: lg-float 3.4s ease-in-out infinite;
+  animation: auth-float 3.4s ease-in-out infinite;
   will-change: transform;
 }
-.lg__buddyShadow {
+.auth__buddyShadow {
   margin-top: 0.4rem;
   width: 5.25rem;
   height: 0.95rem;
   border-radius: 50%;
   background: rgba(42, 38, 32, 0.1);
   filter: blur(0.25rem);
-  animation: lg-shadow 3.4s ease-in-out infinite;
+  animation: auth-shadow 3.4s ease-in-out infinite;
   will-change: transform, opacity;
 }
-@keyframes lg-float {
+@keyframes auth-float {
   0%,
   100% {
     transform: translateY(0);
@@ -137,7 +137,7 @@
     transform: translateY(-0.55rem);
   }
 }
-@keyframes lg-shadow {
+@keyframes auth-shadow {
   0%,
   100% {
     transform: scale(1);
@@ -150,7 +150,7 @@
 }
 
 /* 진입 시 순차 등장 */
-@keyframes lg-enter {
+@keyframes auth-enter {
   from {
     opacity: 0;
     transform: translateY(0.9rem);
@@ -160,29 +160,29 @@
     transform: translateY(0);
   }
 }
-.lg__enter {
-  animation: lg-enter 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+.auth__enter {
+  animation: auth-enter 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) both;
 }
-.lg__enter--1 {
+.auth__enter--1 {
   animation-delay: 0.05s;
 }
-.lg__enter--2 {
+.auth__enter--2 {
   animation-delay: 0.14s;
 }
-.lg__enter--3 {
+.auth__enter--3 {
   animation-delay: 0.24s;
 }
 
 @media (max-width: 60rem) {
-  .lg__buddy {
+  .auth__buddy {
     display: none;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .lg__enter,
-  .lg__buddyArt,
-  .lg__buddyShadow {
+  .auth__enter,
+  .auth__buddyArt,
+  .auth__buddyShadow {
     animation: none;
   }
 }
