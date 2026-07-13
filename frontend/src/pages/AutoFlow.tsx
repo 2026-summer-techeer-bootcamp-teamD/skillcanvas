@@ -180,23 +180,10 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
     [],
   );
 
-  // 연결선을 클릭하면 활성/비활성 토글 (비활성은 회색 점선, 애니메이션 off)
+  // 연결선을 클릭하면 그 연결을 삭제 (노드는 핸들을 드래그해 다시 이을 수 있다)
   const onEdgeClick = useCallback(
     (_: unknown, clicked: Edge) => {
-      setEdges((eds) =>
-        eds.map((e) => {
-          if (e.id !== clicked.id) return e;
-          const disabled = !e.data?.disabled;
-          return {
-            ...e,
-            data: { ...e.data, disabled },
-            animated: !disabled,
-            style: disabled
-              ? { stroke: "#c9c2b4", strokeWidth: 1.4, strokeDasharray: "2 5" }
-              : { stroke: "#e8843c", strokeWidth: 1.6, strokeDasharray: "5 5" },
-          };
-        }),
-      );
+      setEdges((eds) => eds.filter((e) => e.id !== clicked.id));
     },
     [setEdges],
   );
@@ -316,7 +303,7 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
             <p className="af__inspectEmpty">
               노드를 클릭하면 여기서 편집해요.
               <br />
-              연결선을 클릭하면 켜고 끌 수 있어요.
+              노드 옆 점을 끌어 서로 연결하고, 연결선을 클릭하면 지워요.
             </p>
           )}
         </aside>
@@ -348,6 +335,7 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
               onConnect={onConnect}
               onSelectionChange={onSelectionChange}
               onEdgeClick={onEdgeClick}
+              connectionLineStyle={{ stroke: "#e8843c", strokeWidth: 1.8 }}
               fitView
               proOptions={{ hideAttribution: true }}
             >

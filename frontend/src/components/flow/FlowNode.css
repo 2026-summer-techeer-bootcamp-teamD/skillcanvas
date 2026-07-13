@@ -94,10 +94,17 @@
   color: #b3a998;
 }
 
-/* 커넥터 핸들 */
+/* 커넥터 핸들 — 끌어서 노드끼리 연결 */
 .afn__handle {
-  width: 0.5rem;
-  height: 0.5rem;
+  width: 0.7rem;
+  height: 0.7rem;
   background: var(--sc-accent);
   border: 2px solid var(--sc-card);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
+}
+.afn__handle:hover {
+  transform: scale(1.3);
+  box-shadow: 0 0 0 0.2rem rgba(232, 132, 60, 0.2);
 }
