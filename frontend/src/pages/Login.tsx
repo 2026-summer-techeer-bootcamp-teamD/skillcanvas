@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { useSignIn } from "@clerk/clerk-react";
 import { PixelArt } from "../components/PixelArt";
 import { BrandNav } from "../components/BrandNav";
 import { NodeMotif } from "../components/NodeMotif";
 import { PermissionModal } from "../components/PermissionModal";
+import { clerkErrorMessage } from "../lib/clerkError";
 import { ROBOT_BLACK, ROBOT_ORANGE } from "../lib/pixelMaps";
 import "../styles/scene.css";
 import "./auth.css";
@@ -14,14 +16,33 @@ interface LoginProps {
 }
 
 export function Login({ onSkip, onEnter, onSignup }: LoginProps) {
+  const { isLoaded, signIn, setActive } = useSignIn();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  // 로그인 직후 로컬 실행기 권한 모달을 띄운다.
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  // 로그인 성공 직후 로컬 실행기 권한 모달을 띄운다.
   const [permissionOpen, setPermissionOpen] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setPermissionOpen(true);
+    if (!isLoaded || busy) return;
+    setError("");
+    setBusy(true);
+    try {
+      // 인증·세션·토큰(JWT)은 Clerk가 처리한다. 우리는 결과 상태만 본다.
+      const res = await signIn.create({ identifier: email, password });
+      if (res.status === "complete") {
+        await setActive({ session: res.createdSessionId });
+        setPermissionOpen(true);
+      } else {
+        setError("추가 인증이 필요한 계정이에요.");
+      }
+    } catch (err) {
+      setError(clerkErrorMessage(err, "이메일 또는 비밀번호를 확인해 주세요."));
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -64,8 +85,10 @@ export function Login({ onSkip, onEnter, onSignup }: LoginProps) {
             autoComplete="current-password"
           />
 
-          <button className="auth__submit" type="submit">
-            로그인
+          {error && <p className="auth__error">{error}</p>}
+
+          <button className="auth__submit" type="submit" disabled={busy || !isLoaded}>
+            {busy ? "확인 중…" : "로그인"}
           </button>
 
           <button className="auth__alt" type="button" onClick={onSignup}>

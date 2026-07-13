@@ -1,4 +1,6 @@
-import { Routes, Route, useNavigate } from "react-router-dom";
+import type { ReactNode } from "react";
+import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { useAuth } from "@clerk/clerk-react";
 import { Splash } from "./pages/Splash";
 import { Onboarding } from "./pages/Onboarding";
 import { Login } from "./pages/Login";
@@ -16,6 +18,14 @@ const TAB_ROUTES: Record<NavTab, string> = {
   "MY WORLD": "/my-world",
   SHARE: "/share",
 };
+
+/** 로그인해야 볼 수 있는 앱 화면 가드. 미로그인 시 /login 으로 보냄. */
+function RequireAuth({ children }: { children: ReactNode }) {
+  const { isLoaded, isSignedIn } = useAuth();
+  if (!isLoaded) return null; // Clerk 세션 확인 중
+  if (!isSignedIn) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+}
 
 function SplashRoute() {
   const navigate = useNavigate();
@@ -43,7 +53,8 @@ function SignupRoute() {
   return (
     <Signup
       onSkip={() => navigate("/login")}
-      onSignup={() => navigate("/login")}
+      // 회원가입+이메일 인증 완료 → 로그인된 상태로 앱 진입
+      onSignup={() => navigate("/skill")}
       onLogin={() => navigate("/login")}
     />
   );
@@ -76,10 +87,38 @@ export default function App() {
       <Route path="/onboarding" element={<OnboardingRoute />} />
       <Route path="/login" element={<LoginRoute />} />
       <Route path="/signup" element={<SignupRoute />} />
-      <Route path="/skill" element={<SkillRoute />} />
-      <Route path="/auto-flow" element={<AutoFlowRoute />} />
-      <Route path="/share" element={<ShareRoute />} />
-      <Route path="/my-world" element={<MyWorldRoute />} />
+      <Route
+        path="/skill"
+        element={
+          <RequireAuth>
+            <SkillRoute />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/auto-flow"
+        element={
+          <RequireAuth>
+            <AutoFlowRoute />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/share"
+        element={
+          <RequireAuth>
+            <ShareRoute />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/my-world"
+        element={
+          <RequireAuth>
+            <MyWorldRoute />
+          </RequireAuth>
+        }
+      />
     </Routes>
   );
 }

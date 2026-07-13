@@ -72,6 +72,15 @@
   border-color: var(--sc-accent);
 }
 
+.auth__error {
+  width: 100%;
+  margin: 0 0 0.75rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: #c0392b;
+  text-align: left;
+}
+
 .auth__submit {
   width: 100%;
   padding: 0.9375rem;
@@ -85,6 +94,10 @@
 }
 .auth__submit:hover {
   filter: brightness(1.05);
+}
+.auth__submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .auth__alt {
