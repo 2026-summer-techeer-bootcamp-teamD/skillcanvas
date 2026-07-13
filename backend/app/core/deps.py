@@ -126,8 +126,8 @@ def get_optional_user(
         if payload is None or not payload.get("sub"):
             return None
         clerk_user_id = payload["sub"]
-    elif settings.auth_dev_mode:
-        clerk_user_id = token  # 개발 STUB (토큰 = 식별자)
+    elif settings.auth_dev_mode_effective:
+        clerk_user_id = token  # 개발 STUB (토큰 = 식별자, local 환경에서만 허용)
     else:
         return None
 
