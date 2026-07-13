@@ -68,17 +68,19 @@
   justify-content: center;
   width: 2rem;
   height: 2rem;
-  font-size: 0.8125rem;
-  font-weight: 700;
-  color: #ffffff;
-  background: var(--sc-node-agent);
-  border: 2px solid #ffffff;
+  padding: 0.3125rem;
+  background: #ffffff;
+  border: 1px solid var(--sc-line);
   border-radius: 50%;
   cursor: pointer;
-  box-shadow: 0 0 0 1px var(--sc-line);
+  transition: border-color 0.14s ease;
 }
 .nav__avatar:hover {
-  filter: brightness(1.08);
+  border-color: var(--sc-ink);
+}
+.nav__avatarArt {
+  width: 100%;
+  height: 100%;
 }
 
 /* 프로필 팝오버 */
@@ -119,10 +121,9 @@
   justify-content: center;
   width: 1.75rem;
   height: 1.75rem;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #ffffff;
-  background: var(--sc-node-agent);
+  padding: 0.25rem;
+  background: #ffffff;
+  border: 1px solid var(--sc-line);
   border-radius: 50%;
 }
 .nav__popNick {

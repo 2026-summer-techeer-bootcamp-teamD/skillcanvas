@@ -33,3 +33,9 @@ export const ROBOT_ORANGE: PixelSprite = {
   map: ROBOT_MAP,
   palette: { A: "#2a2620", B: "#e8843c", E: "#faf8f4", M: "#2a2620" },
 };
+
+// 뮤트 테라코타 로봇 (단색 몸통 · 크림 눈) — 아바타처럼 은은하게 쓸 때
+export const ROBOT_MUTED: PixelSprite = {
+  map: ROBOT_MAP,
+  palette: { A: "#c47a4e", B: "#c47a4e", E: "#faf8f4", M: "#c47a4e" },
+};

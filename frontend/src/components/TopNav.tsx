@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { PixelArt } from "./PixelArt";
-import { BLOCK_MARK } from "../lib/pixelMaps";
+import { BLOCK_MARK, ROBOT_MUTED } from "../lib/pixelMaps";
 import "./TopNav.css";
 
 export type NavTab = "START" | "SKILL" | "AUTO-FLOW" | "MY WORLD" | "SHARE";
@@ -93,13 +93,15 @@ export function TopNav({ active, onNavigate }: TopNavProps) {
           aria-label="내 프로필"
           onClick={toggle}
         >
-          {nickname.charAt(0).toUpperCase()}
+          <PixelArt sprite={ROBOT_MUTED} className="nav__avatarArt" />
         </button>
 
         {open && (
           <div className="nav__pop" role="dialog" aria-label="프로필">
             <div className="nav__popHead">
-              <span className="nav__popAvatar">{nickname.charAt(0).toUpperCase()}</span>
+              <span className="nav__popAvatar">
+                <PixelArt sprite={ROBOT_MUTED} className="nav__avatarArt" />
+              </span>
               <span className="nav__popNick">@{nickname}</span>
             </div>
 
