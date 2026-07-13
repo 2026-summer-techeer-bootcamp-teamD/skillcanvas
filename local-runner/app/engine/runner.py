@@ -19,7 +19,8 @@ def step_run(run: dict) -> dict:
         run["idx"] += 1
         if node is None:
             continue
-        out = exec_node(node, run["ctx"])
+        # run["results"] = 지금까지 실행된 이전 단계들 → agent가 맥락으로 참고
+        out = exec_node(node, run["ctx"], run["results"])
         run["results"].append(
             {
                 "id": node["id"],

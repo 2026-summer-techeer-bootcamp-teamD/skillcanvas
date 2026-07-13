@@ -10,15 +10,42 @@
 from app.core import db
 from app.core.claude import claude_call
 
+# claude가 가끔 붙이는 메타 서두(결과 아님) — 이런 줄은 건너뛴다
+_META_HINTS = (
+    "출력합니다",
+    "출력하겠습니다",
+    "결과물만",
+    "결과만 출력",
+    "단계군요",
+    "단계의 결과물",
+)
 
-def _first_line(text: str) -> str:
-    for line in text.splitlines():
-        if line.strip():
-            return line.strip()[:120]
-    return ""
+
+def _clean(text: str) -> str:
+    """claude 응답에서 메타 서두 줄을 걸러 실제 결과 줄만 뽑는다."""
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    for ln in lines:
+        if not any(h in ln for h in _META_HINTS):
+            return ln[:200]
+    return lines[-1][:200] if lines else ""
 
 
-def exec_node(node: dict, ctx: dict) -> dict:
+def _agent_prompt(label: str, detail: str, history: list[dict] | None) -> str:
+    """이전 단계 결과를 맥락으로 넣어, agent가 흐름을 반영해 판단/생성하게 한다."""
+    steps = "\n".join(f"- {h['label']}: {h['result']}" for h in history) if history else ""
+    return (
+        "너는 업무 자동화 워크플로우의 한 단계를 수행하는 에이전트다.\n"
+        f"[지금까지 진행된 단계와 결과]\n{steps or '(이전 단계 없음)'}\n\n"
+        f"[이번 단계] {label} ({detail})\n\n"
+        "규칙:\n"
+        "- 위 맥락을 반영해 '이번 단계의 최종 결과물' 자체만 출력한다.\n"
+        "- 인사말·상황설명·'~단계군요'·'~하겠습니다' 같은 메타 발언 절대 금지.\n"
+        "- 예를 들어 '사과문 생성'이면 사과문 문장 자체를, '긴급도 판단'이면 판단 결과를 바로 쓴다.\n"
+        "- 한국어 1~2문장, 결과 텍스트만."
+    )
+
+
+def exec_node(node: dict, ctx: dict, history: list[dict] | None = None) -> dict:
     t = node.get("type")
     label = node.get("label", "")
     detail = node.get("detail", "")
@@ -26,14 +53,11 @@ def exec_node(node: dict, ctx: dict) -> dict:
     if t == "trigger":
         return {"result": "⏱ 트리거 발동 — 실행 시작"}
 
-    if t in ("agent", "ai"):  # 에이전트 = Claude 두뇌 (실제 claude 호출)
-        r = claude_call(
-            f'너는 워크플로우의 에이전트 단계다. 단계: "{label}" ({detail}). '
-            "수행 결과를 한국어 한 줄로만. 서론 없이 결과만."
-        )
+    if t in ("agent", "ai"):  # 에이전트 = Claude 두뇌 (이전 단계 맥락 반영해 실제 호출)
+        r = claude_call(_agent_prompt(label, detail, history))
         if "error" in r:
             return {"result": "🧠 ⚠ " + r["error"]}  # 실패해도 런은 계속
-        return {"result": "🧠 " + _first_line(r["text"])}
+        return {"result": "🧠 " + _clean(r["text"])}
 
     if t == "dedup":  # 하네스: 이미 처리한 건이면 중단 (SQLite 조회)
         key = ctx.get("item_key")
