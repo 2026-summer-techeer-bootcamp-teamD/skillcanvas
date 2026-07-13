@@ -79,9 +79,12 @@ export function Onboarding({ onDone }: OnboardingProps) {
       />
 
       <main className="ob__hero">
-        <span className="ob__eyebrow">{current.eyebrow}</span>
+        {/* key={step} 로 스텝이 바뀔 때마다 등장 애니메이션을 다시 재생 */}
+        <span key={`eb-${step}`} className="ob__eyebrow ob__reveal">
+          {current.eyebrow}
+        </span>
 
-        <p className="ob__message">
+        <p key={`msg-${step}`} className="ob__message ob__reveal ob__reveal--delay">
           <HighlightedMessage text={current.message} highlight={current.highlight} />
         </p>
 

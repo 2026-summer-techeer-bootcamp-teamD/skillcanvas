@@ -30,6 +30,24 @@
   color: var(--sc-ink);
   line-height: 1.7;
 }
+
+/* 스텝 전환 시 글씨가 아래에서 살짝 떠오르며 나타남 */
+@keyframes ob-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.ob__reveal {
+  animation: ob-reveal 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+.ob__reveal--delay {
+  animation-delay: 0.09s;
+}
 .ob__hl {
   color: var(--sc-accent);
   font-weight: 600;
@@ -81,6 +99,8 @@
 .ob__characterArt {
   width: 7rem;
   height: 7rem;
+  animation: ob-float 3.4s ease-in-out infinite;
+  will-change: transform;
 }
 .ob__characterShadow {
   margin-top: 0.375rem;
@@ -89,10 +109,43 @@
   border-radius: 50%;
   background: rgba(42, 38, 32, 0.1);
   filter: blur(0.25rem);
+  animation: ob-shadow 3.4s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+/* 캐릭터가 둥둥 뜨고, 그림자는 반대로 옅어짐 */
+@keyframes ob-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-0.55rem);
+  }
+}
+@keyframes ob-shadow {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.86);
+    opacity: 0.6;
+  }
 }
 
 @media (max-width: 60rem) {
   .ob__character {
     display: none;
+  }
+}
+
+/* 모션 최소화 설정이면 애니메이션 끔 */
+@media (prefers-reduced-motion: reduce) {
+  .ob__reveal,
+  .ob__characterArt,
+  .ob__characterShadow {
+    animation: none;
   }
 }
