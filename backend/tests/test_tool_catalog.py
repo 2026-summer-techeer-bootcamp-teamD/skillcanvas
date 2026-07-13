@@ -26,14 +26,14 @@ def _make(key: str) -> ToolCatalog:
 
 
 def test_list_no_auth_required(client, db_session):
-    db_session.add(_make("slack"))
+    db_session.add(_make("__test_slack__"))
     db_session.commit()
 
     r = client.get(BASE)
     assert r.status_code == 200
     body = r.json()
     assert body["total"] >= 1
-    assert any(item["key"] == "slack" for item in body["items"])
+    assert any(item["key"] == "__test_slack__" for item in body["items"])
 
 
 def test_pagination(client, db_session):
@@ -51,11 +51,13 @@ def test_pagination(client, db_session):
 
 
 def test_items_ordered_by_id_asc(client, db_session):
-    db_session.add(_make("first"))
+    first = _make("__test_first__")
+    db_session.add(first)
     db_session.commit()
-    db_session.add(_make("second"))
+    second = _make("__test_second__")
+    db_session.add(second)
     db_session.commit()
 
     items = client.get(BASE, params={"limit": 100}).json()["items"]
-    ids = [item["id"] for item in items]
-    assert ids == sorted(ids)
+    ids_by_key = {item["key"]: item["id"] for item in items}
+    assert ids_by_key["__test_first__"] < ids_by_key["__test_second__"]

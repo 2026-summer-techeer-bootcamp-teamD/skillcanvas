@@ -32,13 +32,13 @@ def test_list_tags_no_auth_required(client):
 
 def test_unused_tag_hidden(client, auth, db_session):
     # 워크플로우에 연결된 "used"만 노출되고, 아무 데도 안 걸린 "unused"는 숨겨져야 함
-    _create_workflow(client, auth, tags=["used"])
-    db_session.add(MasterTag(name="unused"))
+    _create_workflow(client, auth, tags=["__test_used__"])
+    db_session.add(MasterTag(name="__test_unused__"))
     db_session.commit()
 
     names = [t["name"] for t in client.get(BASE).json()["items"]]
-    assert "used" in names
-    assert "unused" not in names
+    assert "__test_used__" in names
+    assert "__test_unused__" not in names
 
 
 def test_tags_sorted_by_name(client, auth):
