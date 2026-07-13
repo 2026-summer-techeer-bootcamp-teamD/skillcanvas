@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState, type DragEvent } from "react";
 import ReactFlow, {
   Background,
   BackgroundVariant,
@@ -9,6 +9,7 @@ import ReactFlow, {
   type Connection,
   type Edge,
   type Node,
+  type ReactFlowInstance,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { PixelArt } from "../components/PixelArt";
@@ -59,10 +60,30 @@ const REC_MCP: { title: string; meta: string; color: string }[] = [
   { title: "Sheets MCP", meta: "표 데이터 append", color: "#1f8a4c" },
 ];
 
-const MY_SKILLS = [
-  { title: "본문 요약", meta: "에이전트 · claude", kind: "agent" as FlowNodeKind },
-  { title: "우선순위 분류", meta: "도구 · rules", kind: "tool" as FlowNodeKind },
+const MY_SKILLS: {
+  title: string;
+  meta: string;
+  kind: FlowNodeKind;
+  typeLabel: string;
+  op: string;
+}[] = [
+  {
+    title: "본문 요약",
+    meta: "에이전트 · claude",
+    kind: "agent",
+    typeLabel: "에이전트",
+    op: "claude.summarize",
+  },
+  {
+    title: "우선순위 분류",
+    meta: "도구 · rules",
+    kind: "tool",
+    typeLabel: "도구",
+    op: "rules.classify",
+  },
 ];
+
+const DRAG_MIME = "application/scflow";
 
 const nodeTypes = { flow: FlowNode };
 
@@ -78,6 +99,8 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
   const [edges, setEdges, onEdgesChange] = useEdgesState(INITIAL_EDGES);
   const [selected, setSelected] = useState<Node<FlowNodeData> | null>(null);
   const idRef = useRef(100);
+  const flowWrapper = useRef<HTMLDivElement>(null);
+  const [rfInstance, setRfInstance] = useState<ReactFlowInstance | null>(null);
 
   const deleteNode = useCallback(
     (id: string) => {
@@ -98,6 +121,34 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
       ]);
     },
     [setNodes],
+  );
+
+  // 사이드바 "내 스킬"을 캔버스로 드래그해서 노드로 추가
+  const onSkillDragStart = (event: DragEvent<HTMLDivElement>, data: FlowNodeData) => {
+    event.dataTransfer.setData(DRAG_MIME, JSON.stringify(data));
+    event.dataTransfer.effectAllowed = "move";
+  };
+
+  const onDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+  }, []);
+
+  const onDrop = useCallback(
+    (event: DragEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      const raw = event.dataTransfer.getData(DRAG_MIME);
+      if (!raw || !rfInstance || !flowWrapper.current) return;
+      const data = JSON.parse(raw) as FlowNodeData;
+      const bounds = flowWrapper.current.getBoundingClientRect();
+      const position = rfInstance.project({
+        x: event.clientX - bounds.left,
+        y: event.clientY - bounds.top,
+      });
+      const id = `x${idRef.current++}`;
+      setNodes((nds) => [...nds, { id, type: "flow", position, data }]);
+    },
+    [rfInstance, setNodes],
   );
 
   const onConnect = useCallback(
@@ -286,11 +337,12 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
             </div>
           </div>
 
-          <div className="af__flow">
+          <div className="af__flow" ref={flowWrapper} onDragOver={onDragOver} onDrop={onDrop}>
             <ReactFlow
               nodes={nodesWithHandlers}
               edges={edges}
               nodeTypes={nodeTypes}
+              onInit={setRfInstance}
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
@@ -367,7 +419,19 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
 
           <p className="af__group">내 스킬 · 드래그해서 추가</p>
           {MY_SKILLS.map((s) => (
-            <div className="af__mine" key={s.title}>
+            <div
+              className="af__mine"
+              key={s.title}
+              draggable
+              onDragStart={(e) =>
+                onSkillDragStart(e, {
+                  kind: s.kind,
+                  typeLabel: s.typeLabel,
+                  title: s.title,
+                  op: s.op,
+                })
+              }
+            >
               <span className="af__recBar" style={{ background: NODE_COLOR[s.kind] }} />
               <div className="af__recText">
                 <p className="af__recTitle">{s.title}</p>

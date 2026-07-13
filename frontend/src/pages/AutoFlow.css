@@ -259,10 +259,15 @@
   font-size: 1rem;
   border-radius: 0.4375rem;
 }
+.af__mine {
+  cursor: grab;
+}
+.af__mine:active {
+  cursor: grabbing;
+}
 .af__mineHandle {
   flex-shrink: 0;
   color: #c7bdae;
-  cursor: grab;
 }
 
 /* 가운데 캔버스 */
