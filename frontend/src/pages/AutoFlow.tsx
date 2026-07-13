@@ -7,6 +7,7 @@ import ReactFlow, {
   useEdgesState,
   useNodesState,
   type Connection,
+  type Edge,
   type Node,
 } from "reactflow";
 import "reactflow/dist/style.css";
@@ -128,6 +129,27 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
     [],
   );
 
+  // 연결선을 클릭하면 활성/비활성 토글 (비활성은 회색 점선, 애니메이션 off)
+  const onEdgeClick = useCallback(
+    (_: unknown, clicked: Edge) => {
+      setEdges((eds) =>
+        eds.map((e) => {
+          if (e.id !== clicked.id) return e;
+          const disabled = !e.data?.disabled;
+          return {
+            ...e,
+            data: { ...e.data, disabled },
+            animated: !disabled,
+            style: disabled
+              ? { stroke: "#c9c2b4", strokeWidth: 1.4, strokeDasharray: "2 5" }
+              : { stroke: "#e8843c", strokeWidth: 1.6, strokeDasharray: "5 5" },
+          };
+        }),
+      );
+    },
+    [setEdges],
+  );
+
   const nodesWithHandlers = useMemo(
     () => nodes.map((n) => ({ ...n, data: { ...n.data, onDelete: deleteNode } })),
     [nodes, deleteNode],
@@ -189,7 +211,101 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
       <TopNav active="AUTO-FLOW" onNavigate={onNavigate} />
 
       <div className="af__work">
-        {/* 왼쪽: 추천/라이브러리 패널 */}
+        {/* 왼쪽: 노드 편집 인스펙터 */}
+        <aside className="af__inspect">
+          <header className="af__inspectHead">
+            <strong>노드 편집</strong>
+            {selected && (
+              <button
+                className="af__inspectClose"
+                type="button"
+                aria-label="선택 해제"
+                onClick={() => setSelected(null)}
+              >
+                ×
+              </button>
+            )}
+          </header>
+
+          {selected ? (
+            <>
+              <span className="af__typePill">
+                <span
+                  className="af__typeDot"
+                  style={{ background: NODE_COLOR[selected.data.kind] }}
+                />
+                {selected.data.typeLabel}
+              </span>
+
+              <label className="af__field">
+                라벨
+                <input
+                  className="af__fieldInput"
+                  value={selected.data.title}
+                  onChange={(e) => updateSelectedTitle(e.target.value)}
+                />
+              </label>
+
+              <label className="af__field">
+                상세
+                <input className="af__fieldInput" defaultValue={selected.data.op} />
+              </label>
+
+              {selected.data.needsKey && (
+                <div className="af__keyWarn">
+                  <p className="af__keyWarnTitle">▨ MCP 키 연결 필요</p>
+                  <p className="af__keyWarnBody">이 도구는 본인 키를 붙여넣어야 실행돼요.</p>
+                  <button className="af__keyBtn" type="button">
+                    키 붙여넣기
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            <p className="af__inspectEmpty">
+              노드를 클릭하면 여기서 편집해요.
+              <br />
+              연결선을 클릭하면 켜고 끌 수 있어요.
+            </p>
+          )}
+        </aside>
+
+        {/* 가운데: React Flow 캔버스 */}
+        <div className="af__canvas">
+          <div className="af__toolbar">
+            <span className="af__flowChip">cs-complaint-handler</span>
+            <span className="af__conn">◈ Gmail</span>
+            <span className="af__conn">◈ Slack</span>
+            <div className="af__toolbarRight">
+              <button className="af__run" type="button">
+                실행
+              </button>
+              <button className="af__publish" type="button">
+                갤러리에 발행
+              </button>
+            </div>
+          </div>
+
+          <div className="af__flow">
+            <ReactFlow
+              nodes={nodesWithHandlers}
+              edges={edges}
+              nodeTypes={nodeTypes}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+              onSelectionChange={onSelectionChange}
+              onEdgeClick={onEdgeClick}
+              fitView
+              proOptions={{ hideAttribution: true }}
+            >
+              <Background variant={BackgroundVariant.Dots} gap={26} size={1.4} color="#ddd7c7" />
+              <Controls showInteractive={false} />
+            </ReactFlow>
+          </div>
+        </div>
+
+        {/* 오른쪽: 자연어 추천 / 라이브러리 패널 */}
         <aside className="af__side">
           <span className="af__sideBadge">✦ 플로우 편집</span>
           <p className="af__flowName">cs-complaint-handler</p>
@@ -263,89 +379,6 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
             </div>
           ))}
         </aside>
-
-        {/* 가운데: React Flow 캔버스 */}
-        <div className="af__canvas">
-          <div className="af__toolbar">
-            <span className="af__flowChip">cs-complaint-handler</span>
-            <span className="af__conn">◈ Gmail</span>
-            <span className="af__conn">◈ Slack</span>
-            <div className="af__toolbarRight">
-              <button className="af__run" type="button">
-                실행
-              </button>
-              <button className="af__publish" type="button">
-                갤러리에 발행
-              </button>
-            </div>
-          </div>
-
-          <div className="af__flow">
-            <ReactFlow
-              nodes={nodesWithHandlers}
-              edges={edges}
-              nodeTypes={nodeTypes}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              onConnect={onConnect}
-              onSelectionChange={onSelectionChange}
-              fitView
-              proOptions={{ hideAttribution: true }}
-            >
-              <Background variant={BackgroundVariant.Dots} gap={26} size={1.4} color="#ddd7c7" />
-              <Controls showInteractive={false} />
-            </ReactFlow>
-          </div>
-        </div>
-
-        {/* 오른쪽: 노드 인스펙터 */}
-        {selected && (
-          <aside className="af__inspect">
-            <header className="af__inspectHead">
-              <strong>노드 편집</strong>
-              <button
-                className="af__inspectClose"
-                type="button"
-                aria-label="닫기"
-                onClick={() => setSelected(null)}
-              >
-                ×
-              </button>
-            </header>
-
-            <span className="af__typePill">
-              <span
-                className="af__typeDot"
-                style={{ background: NODE_COLOR[selected.data.kind] }}
-              />
-              {selected.data.typeLabel}
-            </span>
-
-            <label className="af__field">
-              라벨
-              <input
-                className="af__fieldInput"
-                value={selected.data.title}
-                onChange={(e) => updateSelectedTitle(e.target.value)}
-              />
-            </label>
-
-            <label className="af__field">
-              상세
-              <input className="af__fieldInput" defaultValue={selected.data.op} />
-            </label>
-
-            {selected.data.needsKey && (
-              <div className="af__keyWarn">
-                <p className="af__keyWarnTitle">▨ MCP 키 연결 필요</p>
-                <p className="af__keyWarnBody">이 도구는 본인 키를 붙여넣어야 실행돼요.</p>
-                <button className="af__keyBtn" type="button">
-                  키 붙여넣기
-                </button>
-              </div>
-            )}
-          </aside>
-        )}
       </div>
     </div>
   );

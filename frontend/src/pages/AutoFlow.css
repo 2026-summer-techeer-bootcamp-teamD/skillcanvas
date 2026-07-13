@@ -135,13 +135,13 @@
   min-height: 0;
 }
 
-/* 왼쪽 패널 */
+/* 오른쪽 패널 (자연어 추천/라이브러리) */
 .af__side {
   width: 18.75rem;
   flex-shrink: 0;
   padding: 1.25rem;
   overflow-y: auto;
-  border-right: 1px solid var(--sc-line);
+  border-left: 1px solid var(--sc-line);
 }
 .af__sideBadge {
   font-size: 0.72rem;
@@ -334,13 +334,19 @@
   min-height: 0;
 }
 
-/* 오른쪽 인스펙터 */
+/* 왼쪽 인스펙터 (노드 편집) */
 .af__inspect {
   width: 18.75rem;
   flex-shrink: 0;
   padding: 1.25rem;
   overflow-y: auto;
-  border-left: 1px solid var(--sc-line);
+  border-right: 1px solid var(--sc-line);
+}
+.af__inspectEmpty {
+  margin-top: 1.5rem;
+  font-size: 0.84rem;
+  line-height: 1.7;
+  color: var(--sc-muted);
 }
 .af__inspectHead {
   display: flex;
