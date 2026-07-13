@@ -1,0 +1,178 @@
+.splash {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  background-color: var(--sc-bg);
+  background-image: radial-gradient(var(--sc-dot) 0.1rem, transparent 0.1rem);
+  background-size: 3.25rem 3.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 노드 모티프 (SVG) */
+.splash__motif {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.splash__motifLine {
+  stroke: #ded3c3;
+  stroke-width: 1.5;
+}
+.splash__motifDash {
+  stroke: var(--sc-accent);
+  stroke-width: 2.5;
+  stroke-dasharray: 0.5 9;
+  stroke-linecap: round;
+}
+
+/* 상단 바 */
+.splash__nav {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4rem;
+  padding: 0 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 2;
+}
+.splash__logo {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  color: var(--sc-ink);
+  text-decoration: none;
+}
+.splash__mark {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+.splash__brandSmall {
+  font-weight: 800;
+  font-size: 1.0625rem;
+  letter-spacing: -0.01em;
+}
+.splash__skip {
+  border: 1px solid var(--sc-line);
+  background: transparent;
+  color: var(--sc-muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0.5rem 1.125rem;
+  border-radius: 0.5625rem;
+  transition: border-color 0.16s ease;
+}
+.splash__skip:hover {
+  border-color: #d8ccbb;
+}
+
+/* 히어로 */
+.splash__hero {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 0 1.5rem;
+}
+.splash__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5625rem;
+  background: var(--sc-card);
+  border: 1px solid #efe6d9;
+  border-radius: 999px;
+  padding: 0.4375rem 1rem 0.4375rem 0.5625rem;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #8a6b3f;
+  box-shadow: 0 0.25rem 0.875rem -0.5rem rgba(120, 80, 20, 0.25);
+  margin-bottom: 1.625rem;
+}
+.splash__badgeMascot {
+  width: 1.375rem;
+  height: 1.375rem;
+}
+
+.splash__wordmark {
+  display: inline-block;
+  position: relative;
+  margin: 0;
+  font-size: clamp(2.75rem, 8vw, 5.5rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--sc-ink);
+}
+/* 워드마크 오른쪽 끝("s") 아래쪽에 걸터앉은 주황 마스코트 (Figma 32px @ 88px = 0.36em) */
+.splash__rider {
+  position: absolute;
+  right: -0.28em;
+  top: 0.54em;
+  width: 0.38em;
+  height: 0.38em;
+  transform: rotate(-4deg);
+}
+
+.splash__tagline {
+  margin: 1.5rem 0 0;
+  font-size: 1.0625rem;
+  color: var(--sc-muted);
+  line-height: 1.7;
+}
+
+.splash__cta {
+  margin-top: 2.25rem;
+  background: var(--sc-ink);
+  color: var(--sc-cream);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  padding: 0.9375rem 2rem;
+  border: none;
+  border-radius: 0.75rem;
+  transition: filter 0.16s ease;
+}
+.splash__cta:hover {
+  filter: brightness(1.12);
+}
+
+/* 진행점 (하단) */
+.splash__progress {
+  position: absolute;
+  bottom: 4.4rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  z-index: 2;
+}
+.splash__progressBar {
+  width: 1.5rem;
+  height: 0.3125rem;
+  border-radius: 0.1875rem;
+  background: var(--sc-accent);
+}
+.splash__progressDot {
+  width: 0.3125rem;
+  height: 0.3125rem;
+  border-radius: 50%;
+  background: #e3d6c4;
+}
+
+@media (max-width: 40rem) {
+  .splash__motif {
+    display: none;
+  }
+  .splash__nav {
+    padding: 0 1.25rem;
+  }
+}

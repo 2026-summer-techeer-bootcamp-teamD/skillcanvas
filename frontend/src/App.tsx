@@ -1,23 +1,6 @@
-import { Background, Controls, ReactFlow, type Edge, type Node } from "reactflow";
-import "reactflow/dist/style.css";
+import { Splash } from "./pages/Splash";
 
-// 뼈대 확인용 노드 1개. 실제 캔버스(부품/워크플로우)는 여기부터 구현.
-const nodes: Node[] = [
-  {
-    id: "1",
-    position: { x: 120, y: 120 },
-    data: { label: "SkillCanvas 캔버스 뼈대 ✅" },
-  },
-];
-const edges: Edge[] = [];
-
+// 라우팅은 페이지가 늘어나면 react-router로 붙일 예정. 지금은 스플래시만 렌더.
 export default function App() {
-  return (
-    <div style={{ width: "100vw", height: "100vh" }}>
-      <ReactFlow nodes={nodes} edges={edges} fitView>
-        <Background />
-        <Controls />
-      </ReactFlow>
-    </div>
-  );
+  return <Splash />;
 }
