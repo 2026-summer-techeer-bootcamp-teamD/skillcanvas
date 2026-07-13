@@ -29,11 +29,14 @@
 """
 
 import json
+import logging
 
 from anthropic import Anthropic, AnthropicError
 from fastapi import HTTPException
 
 from app.core.config import settings
+
+logger = logging.getLogger("skillcanvas.llm")
 
 # 키가 없으면 client 생성이 실패하므로 지연 생성(lazy). AI 안 쓰는 팀원도 앱은 뜸.
 _client: Anthropic | None = None
@@ -82,10 +85,16 @@ def ask_claude(
             system=system,
             messages=[{"role": "user", "content": user}],
         )
-        return resp.content[0].text
+        # content에 thinking 블록 등 text 아닌 블록이 섞일 수 있으니 text 블록만 모은다
+        return "".join(
+            getattr(b, "text", "") for b in resp.content if getattr(b, "type", "") == "text"
+        )
     # AnthropicError=API/네트워크 실패, IndexError/AttributeError=빈/비-텍스트 응답.
     # 모두 Claude 쪽 문제이므로 명세서대로 502로 일관 처리한다.
     except (AnthropicError, IndexError, AttributeError) as e:
+        # 실제 원인(크레딧 부족·레이트리밋·인증 등)은 서버 로그에 남긴다.
+        # (외부 응답은 규격상 502 하나로 통일하되, 디버깅은 로그로)
+        logger.warning("Claude 호출 실패 [%s]: %s", type(e).__name__, e)
         raise HTTPException(
             502, {"code": "CLAUDE_UNAVAILABLE", "message": "Claude 호출에 실패했습니다"}
         ) from e
