@@ -6,6 +6,7 @@ psycopg[binary]>=3.2
 pydantic-settings>=2.5
 python-dotenv>=1.0
 anthropic>=0.40   # Claude API SDK (백엔드 AI 기능 3장)
+prometheus-fastapi-instrumentator>=7.0   # /metrics 노출 (Prometheus 연동)
 
 # dev (포매터/린터/테스트)
 black>=24.0
