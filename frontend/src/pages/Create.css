@@ -128,12 +128,6 @@
   align-items: center;
   margin-top: 1.5rem;
 }
-.cr__recLabel {
-  margin: 0 0 1rem;
-  font-size: 1.0625rem;
-  font-weight: 700;
-  color: var(--sc-accent-dark);
-}
 .cr__chips {
   display: flex;
   align-items: center;

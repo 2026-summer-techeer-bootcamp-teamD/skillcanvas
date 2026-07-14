@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useClerk } from "@clerk/clerk-react";
 import { PixelArt } from "./PixelArt";
-import { BLOCK_MARK, ROBOT_MUTED } from "../lib/pixelMaps";
+import { ROBOT_BLACK, ROBOT_MUTED } from "../lib/pixelMaps";
 import "./TopNav.css";
 
 export type NavTab = "START" | "CREATE" | "SKILL" | "AUTO-FLOW" | "MY WORLD" | "SHARE";
@@ -76,7 +76,7 @@ export function TopNav({ active, onNavigate }: TopNavProps) {
   return (
     <header className="nav">
       <button className="nav__brand" type="button" onClick={() => onNavigate?.("START")}>
-        <PixelArt sprite={BLOCK_MARK} className="nav__mark" />
+        <PixelArt sprite={ROBOT_BLACK} className="nav__mark" />
         <span className="nav__logo">SkillCanvas</span>
       </button>
 

@@ -41,13 +41,6 @@ export function Create({ onNavigate, onCreate }: CreateProps) {
     onCreate?.(selected, text);
   };
 
-  const recLabel =
-    intent === "workflow"
-      ? "오토플로우에 더 가까워요"
-      : intent === "skill"
-        ? "스킬에 더 가까워요"
-        : null;
-
   const chip = (kind: Choice, label: string) => {
     const recommended = intent === kind; // 크기 강조 대상
     const isSel = selected === kind;
@@ -117,7 +110,6 @@ export function Create({ onNavigate, onCreate }: CreateProps) {
 
         {phase === "choose" && (
           <div className="cr__choose">
-            {recLabel && <p className="cr__recLabel">{recLabel}</p>}
             <div className="cr__chips">
               {chip("skill", "스킬")}
               {chip("workflow", "오토플로우")}
