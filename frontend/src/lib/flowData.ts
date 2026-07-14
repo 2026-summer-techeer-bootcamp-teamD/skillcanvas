@@ -12,6 +12,8 @@ export interface FlowNodeData {
   needsKey?: boolean;
   /** 노드의 × 버튼 핸들러 (렌더 시 주입) */
   onDelete?: (id: string) => void;
+  /** 실행 상태 (실행 결과 주입 시). 캔버스에 색으로 표시 */
+  runState?: "done" | "pending" | "stopped";
 }
 
 export const NODE_COLOR: Record<FlowNodeKind, string> = {

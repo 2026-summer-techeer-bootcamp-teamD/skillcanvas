@@ -280,9 +280,24 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
     [setEdges],
   );
 
+  // 실행 결과 → 노드별 상태 맵 (캔버스 색칠용)
+  const runStateById = useMemo(() => {
+    const m: Record<string, "done" | "pending" | "stopped"> = {};
+    runResults.forEach((r) => (m[r.id] = "done"));
+    if (runStatus === "stopped" && runResults.length) {
+      m[runResults[runResults.length - 1].id] = "stopped";
+    }
+    if (runPending) m[runPending.id] = "pending";
+    return m;
+  }, [runResults, runStatus, runPending]);
+
   const nodesWithHandlers = useMemo(
-    () => nodes.map((n) => ({ ...n, data: { ...n.data, onDelete: deleteNode } })),
-    [nodes, deleteNode],
+    () =>
+      nodes.map((n) => ({
+        ...n,
+        data: { ...n.data, onDelete: deleteNode, runState: runStateById[n.id] },
+      })),
+    [nodes, deleteNode, runStateById],
   );
 
   const generate = (prompt: string) => {
