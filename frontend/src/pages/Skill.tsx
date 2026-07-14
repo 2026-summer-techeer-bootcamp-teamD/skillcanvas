@@ -146,8 +146,11 @@ export function Skill({ onNavigate }: SkillProps) {
   const handleSaveLocal = async () => {
     if (!draft) return;
     try {
-      const tools = draft.blocks.filter((b) => b.type === "tool").map((b) => b.title.toLowerCase());
-      await saveSkill(slugify(draft.name), draft.name, draft.summary, tools);
+      // allowed-tools = 카탈로그 MCP 키(used_mcps). 한글 노드 라벨이 아니라 실제 키여야
+      // GET /graph에서 스킬→mcp 엣지가 생긴다.
+      const tools = draft.mcps ?? [];
+      const description = draft.source?.trim() || draft.summary;
+      await saveSkill(slugify(draft.name), draft.name, description, tools);
       alert("로컬 .claude에 저장됐어요.");
     } catch (e) {
       alert(e instanceof RunnerError ? e.message : "로컬 저장 실패");
@@ -194,6 +197,8 @@ export function Skill({ onNavigate }: SkillProps) {
         name: data.name,
         summary: `${data.nodes.length}개 블록으로 조립했어요.`,
         blocks,
+        mcps: data.used_mcps ?? [],
+        source: prompt,
       });
       setPhase("result");
     } catch (e) {
