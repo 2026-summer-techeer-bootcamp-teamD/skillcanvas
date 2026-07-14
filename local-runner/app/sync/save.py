@@ -33,10 +33,19 @@ def _skill_md_path(skill: str) -> Path:
     return target
 
 
-def save_skill(skill: str, name: str, description: str, allowed_tools: list[str]) -> None:
+def save_skill(
+    skill: str,
+    name: str,
+    description: str,
+    allowed_tools: list[str],
+    body: str | None = None,
+) -> None:
     skill_md = _skill_md_path(skill)  # 경로 조작 방어
 
-    if skill_md.exists():
+    if body is not None:
+        # 본문을 명시적으로 받으면 그 값으로 저장(빌더에서 조립한 본문)
+        body = body if body.endswith("\n") else body + "\n"
+    elif skill_md.exists():
         try:
             _old_meta, body = read_skill(skill_md)  # 기존 본문 보존
         except yaml.YAMLError as e:

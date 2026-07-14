@@ -5,6 +5,7 @@ import { Splash } from "./pages/Splash";
 import { Onboarding } from "./pages/onboarding";
 import { Login } from "./pages/Login";
 import { Signup } from "./pages/Signup";
+import { Create } from "./pages/Create";
 import { Skill } from "./pages/Skill";
 import { AutoFlow } from "./pages/AutoFlow";
 import { Share } from "./pages/Share";
@@ -13,6 +14,7 @@ import type { NavTab } from "./components/TopNav";
 
 const TAB_ROUTES: Record<NavTab, string> = {
   START: "/",
+  CREATE: "/create",
   SKILL: "/skill",
   "AUTO-FLOW": "/auto-flow",
   "MY WORLD": "/my-world",
@@ -31,7 +33,7 @@ function RequireAuth({ children }: { children: ReactNode }) {
 function RedirectIfSignedIn({ children }: { children: ReactNode }) {
   const { isLoaded, isSignedIn } = useAuth();
   if (!isLoaded) return null;
-  if (isSignedIn) return <Navigate to="/skill" replace />;
+  if (isSignedIn) return <Navigate to="/create" replace />;
   return <>{children}</>;
 }
 
@@ -49,8 +51,9 @@ function LoginRoute() {
   const navigate = useNavigate();
   return (
     <Login
-      onSkip={() => navigate("/skill")}
-      onEnter={() => navigate("/skill")}
+      onSkip={() => navigate("/create")}
+      // 권한 모달 통과 → 통합 입력(Create)로 진입
+      onEnter={() => navigate("/create")}
       onSignup={() => navigate("/signup")}
     />
   );
@@ -61,9 +64,22 @@ function SignupRoute() {
   return (
     <Signup
       onSkip={() => navigate("/login")}
-      // 회원가입+이메일 인증 완료 → 로그인된 상태로 앱 진입
-      onSignup={() => navigate("/skill")}
+      // 회원가입+이메일 인증 완료 → 로그인된 상태로 Create 진입
+      onSignup={() => navigate("/create")}
       onLogin={() => navigate("/login")}
+    />
+  );
+}
+
+function CreateRoute() {
+  const navigate = useNavigate();
+  return (
+    <Create
+      onNavigate={(tab) => navigate(TAB_ROUTES[tab])}
+      // 선택 확정 → 해당 빌더로 입력 텍스트와 함께 이동(그때 그 탭이 활성화됨)
+      onCreate={(choice, text) =>
+        navigate(choice === "workflow" ? "/auto-flow" : "/skill", { state: { text } })
+      }
     />
   );
 }
@@ -107,6 +123,14 @@ export default function App() {
           <RedirectIfSignedIn>
             <SignupRoute />
           </RedirectIfSignedIn>
+        }
+      />
+      <Route
+        path="/create"
+        element={
+          <RequireAuth>
+            <CreateRoute />
+          </RequireAuth>
         }
       />
       <Route
