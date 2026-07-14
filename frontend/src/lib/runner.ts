@@ -104,7 +104,12 @@ export function getGraph() {
 }
 
 /** A-2: 스킬 구조를 로컬 SKILL.md로 저장(본문 보존). */
-export function saveSkill(skill: string, name: string, description: string, allowedTools: string[]) {
+export function saveSkill(
+  skill: string,
+  name: string,
+  description: string,
+  allowedTools: string[],
+) {
   return runnerFetch<RunnerGraph>("/save", {
     method: "POST",
     body: JSON.stringify({ skill, name, description, allowed_tools: allowedTools }),
@@ -132,7 +137,10 @@ const GRAPH_KIND: Record<string, FlowNodeKind> = {
 };
 
 /** 러너 그래프 → ReactFlow 노드/엣지 (캔버스에 로컬 부품 그리기). */
-export function fromRunnerGraph(graph: RunnerGraph): { nodes: Node<FlowNodeData>[]; edges: Edge[] } {
+export function fromRunnerGraph(graph: RunnerGraph): {
+  nodes: Node<FlowNodeData>[];
+  edges: Edge[];
+} {
   const nodes: Node<FlowNodeData>[] = graph.nodes.map((n, i) => ({
     id: n.id,
     type: "flow",
