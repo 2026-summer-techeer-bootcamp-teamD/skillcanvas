@@ -9,7 +9,7 @@ import json
 import logging
 import time
 
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import Response
 
@@ -31,8 +31,11 @@ def _parse_fail_code(body: bytes) -> str | None:
 class AccessLogMiddleware(BaseHTTPMiddleware):
     # Prometheus가 15초마다 스크랩하는 엔드포인트 — 로그에는 노이즈만 됨
     _SKIP_PATHS = {"/metrics"}
+    # 매칭 안 된 경로(오타·존재하지 않는 리소스 등)를 그대로 라벨로 쓰면 Loki 카디널리티가
+    # 무한정 늘어나므로 하나의 값으로 뭉갠다.
+    _UNMATCHED_HANDLER = "unmatched"
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         if request.url.path in self._SKIP_PATHS:
             return await call_next(request)
 
@@ -41,7 +44,7 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
         duration_ms = round((time.perf_counter() - start) * 1000, 2)
 
         route = request.scope.get("route")
-        handler = getattr(route, "path", request.url.path)
+        handler = getattr(route, "path", None) or self._UNMATCHED_HANDLER
 
         fail_code = None
         if response.status_code >= 400:
@@ -49,12 +52,11 @@ class AccessLogMiddleware(BaseHTTPMiddleware):
             # JSONResponse가 아니므로(.body 없음), 직접 소비한 뒤 같은 바이트로 재구성해서 돌려준다.
             body = b"".join([chunk async for chunk in response.body_iterator])
             fail_code = _parse_fail_code(body)
-            response = Response(
-                content=body,
-                status_code=response.status_code,
-                headers=dict(response.headers),
-                media_type=response.media_type,
+            rebuilt = Response(
+                content=body, status_code=response.status_code, background=response.background
             )
+            rebuilt.raw_headers = response.raw_headers  # 중복 헤더(Set-Cookie 등) 보존
+            response = rebuilt
 
         logger.info(
             "request",

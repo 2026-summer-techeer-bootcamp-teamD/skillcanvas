@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -7,12 +9,20 @@ from app.core.config import settings
 from app.core.logging_config import configure_logging
 from app.routers import assemble, health, recommend, skills, tags, tool_catalog, users, workflows
 
-configure_logging()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # import 시점이 아니라 앱이 실제로 뜰 때만 루트 로거를 JSON 포맷으로 교체
+    # (모듈 최상위에서 호출하면 테스트가 app.main을 import하기만 해도 로깅이 바뀌어버림)
+    configure_logging()
+    yield
+
 
 app = FastAPI(
     title="SkillCanvas API",
     description="스킬 부품을 워크플로우로 조립하고 갤러리로 공유하는 플랫폼의 서버 API",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
