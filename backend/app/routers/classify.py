@@ -37,14 +37,16 @@ def classify(
     data = ask_claude_json(SYSTEM, payload.text, fail_code="CLASSIFY_FAILED")
 
     # Claude 응답 방어 — 점수가 정수가 아니면 파싱 실패로 간주 (422)
+    # Claude 응답 방어 — 숫자가 아니면 파싱 실패로 간주 (422)
+    # float(82.0)도 허용하고 int로 변환 (Claude가 소수로 줄 수 있음)
     skill = data.get("skill")
     workflow = data.get("workflow")
-    if not isinstance(skill, int) or not isinstance(workflow, int):
+    if not isinstance(skill, (int, float)) or not isinstance(workflow, (int, float)):
         raise HTTPException(
             422, {"code": "CLASSIFY_FAILED", "message": "AI 응답을 해석하지 못했습니다"}
         )
-    skill = max(0, min(100, skill))
-    workflow = max(0, min(100, workflow))
+    skill = max(0, min(100, int(skill)))
+    workflow = max(0, min(100, int(workflow)))
 
     # 최종 판정은 백엔드가 계산 — 애매하면 neutral (틀린 추천보다 중립)
     winner = "workflow" if workflow > skill else "skill"
