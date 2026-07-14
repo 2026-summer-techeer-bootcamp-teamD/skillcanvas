@@ -322,11 +322,19 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
               )}
             </>
           ) : (
-            <p className="af__inspectEmpty">
-              노드를 클릭하면 여기서 편집해요.
-              <br />
-              노드 옆 점을 끌어 서로 연결하고, 연결선을 클릭하면 지워요.
-            </p>
+            <>
+              {text.trim() && (
+                <div className="af__request">
+                  <span className="af__requestLabel">요청</span>
+                  <p className="af__requestText">{text}</p>
+                </div>
+              )}
+              <p className="af__inspectEmpty">
+                노드를 클릭하면 여기서 편집해요.
+                <br />
+                노드 옆 점을 끌어 서로 연결하고, 연결선을 클릭하면 지워요.
+              </p>
+            </>
           )}
         </aside>
 
