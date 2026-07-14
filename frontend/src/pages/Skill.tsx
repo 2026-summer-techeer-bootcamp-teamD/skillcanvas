@@ -6,6 +6,7 @@ import { PublishModal, type PublishPayload } from "../components/PublishModal";
 import { ROBOT_BLACK, ROBOT_ORANGE } from "../lib/pixelMaps";
 import type { SkillBlock, SkillDraft, SkillNodeType } from "../lib/recommendSkill";
 import { useApi, ApiError } from "../lib/api";
+import { saveSkill, RunnerError } from "../lib/runner";
 import "./Skill.css";
 
 const EXAMPLES = [
@@ -132,6 +133,25 @@ export function Skill({ onNavigate }: SkillProps) {
       method: "POST",
       json: { ...payload, content_md: blocksToMarkdown(draft) },
     });
+  };
+
+  // 로컬 동기화 = 내 .claude/SKILL.md 로 저장 (본문 보존, POST /save)
+  const slugify = (s: string) =>
+    s
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9가-힣]+/g, "-")
+      .replace(/^-|-$/g, "") || "skill";
+
+  const handleSaveLocal = async () => {
+    if (!draft) return;
+    try {
+      const tools = draft.blocks.filter((b) => b.type === "tool").map((b) => b.title.toLowerCase());
+      await saveSkill(slugify(draft.name), draft.name, draft.summary, tools);
+      alert("로컬 .claude에 저장됐어요.");
+    } catch (e) {
+      alert(e instanceof RunnerError ? e.message : "로컬 저장 실패");
+    }
   };
   const reorder = (from: number, to: number) => {
     setDraft((prev) => {
@@ -332,6 +352,9 @@ export function Skill({ onNavigate }: SkillProps) {
 
             <button className="skill__run" type="button" onClick={() => setPublishOpen(true)}>
               ▶ 실행 / 저장
+            </button>
+            <button className="skill__run" type="button" onClick={handleSaveLocal}>
+              💾 로컬에 저장
             </button>
           </aside>
         </div>
