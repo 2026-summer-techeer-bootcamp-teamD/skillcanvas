@@ -178,7 +178,8 @@ def create_workflow(
     _sync_tags(db, wf.id, payload.tags)
     db.commit()
     db.refresh(wf)
-    WORKFLOW_PUBLISHED.inc()
+    if wf.is_public:
+        WORKFLOW_PUBLISHED.inc()
     return _summary(db, wf)
 
 
