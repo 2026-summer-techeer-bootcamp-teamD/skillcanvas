@@ -132,7 +132,7 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
     try {
       const r = await runFlow(nodes, edges);
       setRunId(r.run_id);
-      setRunResults(r.results);
+      setRunResults(r.results); // 러너가 배치로 실행 → 결과 한 번에 반영(정직)
       setRunStatus(r.status);
       setRunPending(r.pending ?? null);
     } catch (e) {
@@ -146,6 +146,7 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
     if (!runId) return;
     setRunning(true);
     setRunError(null);
+    setRunPending(null); // 승인 노드의 🚨 해제하고 이어서 실행
     try {
       const r = await approveRun(runId);
       setRunResults((prev) => [...prev, ...r.results]); // 델타 append
