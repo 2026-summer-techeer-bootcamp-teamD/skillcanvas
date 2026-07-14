@@ -105,24 +105,32 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
   const [recLoading, setRecLoading] = useState(false);
   const [recError, setRecError] = useState<string | null>(null);
   const [recMcps, setRecMcps] = useState<string[]>([]);
+  const [recSkill, setRecSkill] = useState<{ name: string; description: string } | null>(null);
 
   const handleRecommend = async () => {
-    if (!sideText.trim()) return;
+    const text = sideText.trim();
+    if (!text) return;
+    if (text.length > 500) {
+      setRecError("500자 이내로 입력해주세요.");
+      return;
+    }
     setRecLoading(true);
     setRecError(null);
+    setRecSkill(null); // 재요청 시 이전 결과 비우기
+    setRecMcps([]);
     try {
       const data = await call<{ skill: string; description: string; mcps: string[] }>(
         "/recommend",
-        { method: "POST", json: { text: sideText } },
+        { method: "POST", json: { text } },
       );
-      setRecMcps(data.mcps);
+      setRecSkill({ name: data.skill, description: data.description });
+      setRecMcps(Array.isArray(data.mcps) ? data.mcps : []); // null 방어
     } catch (e) {
       setRecError(e instanceof ApiError ? e.message : "추천 실패");
     } finally {
       setRecLoading(false);
     }
   };
-
   // 발행 = graph_json(노드+엣지+뷰포트)에 폼 값을 합쳐 POST /workflows 로 보낼 자리.
   const handlePublish = (payload: PublishPayload) => {
     const graph_json = rfInstance?.toObject() ?? { nodes, edges };
@@ -383,6 +391,7 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
             placeholder="예: 실패하면 3번 재시도하고, 발송 전 승인 단계 추가해줘"
             value={sideText}
             onChange={(e) => setSideText(e.target.value)}
+            maxLength={500}
           />
           <button
             className="af__recommend"
@@ -395,6 +404,29 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
           {recError && <p className="af__recMeta">에러: {recError}</p>}
 
           <p className="af__group">✦ AI 추천 · 스킬</p>
+          {recSkill && (
+            <div className="af__rec">
+              <span className="af__recBar" style={{ background: NODE_COLOR.agent }} />
+              <div className="af__recText">
+                <p className="af__recTitle">{recSkill.name}</p>
+                <p className="af__recMeta">{recSkill.description}</p>
+              </div>
+              <button
+                className="af__recAdd"
+                type="button"
+                onClick={() =>
+                  addNode({
+                    kind: "agent",
+                    typeLabel: "스킬",
+                    title: recSkill.name,
+                    op: recSkill.name,
+                  })
+                }
+              >
+                + 추가
+              </button>
+            </div>
+          )}
           {REC_SKILLS.map((s) => (
             <div className="af__rec" key={s.title}>
               <span className="af__recBar" style={{ background: NODE_COLOR[s.kind] }} />
@@ -443,7 +475,6 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
               </button>
             </div>
           ))}
-
 
           <p className="af__group">내 스킬 · 드래그해서 추가</p>
           {MY_SKILLS.map((s) => (
