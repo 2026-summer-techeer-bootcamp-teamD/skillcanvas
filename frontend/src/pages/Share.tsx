@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useApi, ApiError } from "../lib/api";
 import { PixelArt } from "../components/PixelArt";
 import { TopNav, type NavTab } from "../components/TopNav";
 import { GalleryCard } from "../components/GalleryCard";
@@ -19,8 +20,42 @@ interface ShareProps {
 
 export function Share({ onNavigate }: ShareProps) {
   const [filter, setFilter] = useState<"all" | ItemKind>("all");
+  const call = useApi();
+  const [skills, setSkills] = useState<GalleryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const items = GALLERY_ITEMS.filter((it) => filter === "all" || it.kind === filter);
+  // GET /skills — 공개 스킬 목록 (백엔드 응답 → 화면 GalleryItem으로 변환)
+  useEffect(() => {
+    call<{
+      items: {
+        id: number;
+        name: string;
+        description: string | null;
+        owner: { nickname: string };
+        tags: string[];
+        import_count: number;
+      }[];
+    }>("/skills?sort=recent")
+      .then((data) => {
+        setSkills(
+          data.items.map((s) => ({
+            id: String(s.id),
+            kind: "skill" as const,
+            title: s.name,
+            description: s.description ?? "",
+            tags: s.tags,
+            owner: s.owner.nickname,
+            imports: s.import_count,
+          })),
+        );
+      })
+      .catch((e) => setError(e instanceof ApiError ? e.message : "불러오기 실패"))
+      .finally(() => setLoading(false));
+  }, [call]);
+
+  // 워크플로우는 팀장님 담당 → 지금은 스킬만 표시
+  const items = skills.filter((it) => filter === "all" || it.kind === filter);
 
   const handleImport = (item: GalleryItem) => {
     // TODO: 백엔드 연결 시 POST /workflows/{id}/import 또는 /skills/{id}/import
@@ -75,7 +110,8 @@ export function Share({ onNavigate }: ShareProps) {
             </button>
           ))}
         </div>
-
+        {loading && <p className="share__sub">불러오는 중…</p>}
+        {error && <p className="share__sub">에러: {error}</p>}
         {/* 그리드 */}
         <div className="share__grid">
           {items.map((item) => (
