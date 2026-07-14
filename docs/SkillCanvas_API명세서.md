@@ -825,7 +825,7 @@
 ---
 
 ## A-2. 저장(동기화)
-스킬 구조를 `SKILL.md`로 저장한다. **본문(사용자 지시문)은 보존**하고 frontmatter만 갱신. 없는 스킬은 신규 생성.
+스킬 구조를 `SKILL.md`로 저장한다. `body`를 주면 **그 본문으로 저장**(빌더에서 조립한 본문), 없으면 **기존 본문 보존**(신규는 플레이스홀더)하고 frontmatter만 갱신. 없는 스킬은 신규 생성.
 
 | 항목 | 내용 |
 | --- | --- |
@@ -836,7 +836,8 @@
 **Request Body**
 ```json
 { "skill": "meeting-notes", "name": "meeting-notes",
-  "description": "회의록을 요약해 Notion에 저장", "allowed_tools": ["notion", "slack"] }
+  "description": "회의록을 요약해 Notion에 저장", "allowed_tools": ["notion", "slack"],
+  "body": "# 회의록 정리\n1. Slack에서 회의록을 받는다\n2. 200자로 요약한다\n..." }
 ```
 
 | 필드 | 타입 | 필수 | 설명 |
@@ -845,6 +846,7 @@
 | `name` | String | Y | 스킬 이름(frontmatter) |
 | `description` | String | N | 설명 |
 | `allowed_tools` | String[] | N | 사용할 도구 key 목록 |
+| `body` | String | N | `SKILL.md` 본문. 주면 그 값으로 저장, 없으면 기존 본문 보존(신규는 플레이스홀더) |
 
 **Response Body (200 OK)**: 저장 반영된 최신 그래프(A-1과 동일 형식 `{ nodes, edges }`)
 
