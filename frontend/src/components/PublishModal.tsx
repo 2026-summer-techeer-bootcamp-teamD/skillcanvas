@@ -16,7 +16,7 @@ interface PublishModalProps {
   defaultName: string;
   onClose: () => void;
   onPublish: (payload: PublishPayload) => void | Promise<void>;
-
+  }
 const MAX_TAGS = 5;
 
 export function PublishModal({ open, kind, defaultName, onClose, onPublish }: PublishModalProps) {
