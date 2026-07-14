@@ -3,7 +3,8 @@
 .skill {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  /* 높이 고정: 블록을 펼쳐 왼쪽이 길어져도 캔버스만 내부 스크롤 → 오른쪽 채팅 패널 크기 불변 */
+  height: 100vh;
   background: var(--sc-bg);
 }
 

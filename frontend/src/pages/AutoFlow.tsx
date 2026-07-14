@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useRef, useState, type DragEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
+import { useLocation } from "react-router-dom";
 import ReactFlow, {
   Background,
   BackgroundVariant,
@@ -15,6 +16,7 @@ import "reactflow/dist/style.css";
 import { PixelArt } from "../components/PixelArt";
 import { TopNav, type NavTab } from "../components/TopNav";
 import { PublishModal, type PublishPayload } from "../components/PublishModal";
+import { KeyModal } from "../components/KeyModal";
 import { FlowNode } from "../components/flow/FlowNode";
 import { ROBOT_BLACK, ROBOT_ORANGE } from "../lib/pixelMaps";
 import {
@@ -24,6 +26,16 @@ import {
   type FlowNodeData,
   type FlowNodeKind,
 } from "../lib/flowData";
+import { useApi, ApiError } from "../lib/api";
+import type { ToolCatalogItem } from "../lib/toolCatalog";
+import {
+  runFlow,
+  approveRun,
+  saveCredential,
+  RunnerError,
+  type RunResultItem,
+  type RunResponse,
+} from "../lib/runner";
 import "./AutoFlow.css";
 
 const EXAMPLES = [
@@ -53,12 +65,6 @@ const REC_SKILLS: {
     typeLabel: "승인",
     op: "human.gate",
   },
-];
-
-const REC_MCP: { title: string; meta: string; color: string }[] = [
-  { title: "GitHub MCP", meta: "PR·이슈·릴리스", color: "#7a4fd6" },
-  { title: "Notion MCP", meta: "문서·DB 읽기/쓰기", color: "#2a2620" },
-  { title: "Sheets MCP", meta: "표 데이터 append", color: "#1f8a4c" },
 ];
 
 const MY_SKILLS: {
@@ -103,12 +109,99 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
   const flowWrapper = useRef<HTMLDivElement>(null);
   const [rfInstance, setRfInstance] = useState<ReactFlowInstance | null>(null);
   const [publishOpen, setPublishOpen] = useState(false);
+  // ── AI 추천 (POST /recommend) ────────────────────
+  const call = useApi();
+  const [sideText, setSideText] = useState("");
+  const [recLoading, setRecLoading] = useState(false);
+  const [recError, setRecError] = useState<string | null>(null);
+  const [recMcps, setRecMcps] = useState<string[]>([]);
+  const [recSkill, setRecSkill] = useState<{ name: string; description: string } | null>(null);
 
-  // 발행 = graph_json(노드+엣지+뷰포트)에 폼 값을 합쳐 POST /workflows 로 보낼 자리.
-  const handlePublish = (payload: PublishPayload) => {
+  // ── 도구 카탈로그 (GET /tool-catalog) — 키 붙여넣기 팝업 자동생성 ──
+  const [catalog, setCatalog] = useState<ToolCatalogItem[]>([]);
+  const [keyModalOpen, setKeyModalOpen] = useState(false);
+  const [keyTarget, setKeyTarget] = useState<{ key: string; tool: ToolCatalogItem | null } | null>(
+    null,
+  );
+
+  // ── 실행 (로컬 실행기 POST /run) ──────────────────
+  const [runId, setRunId] = useState<string | null>(null);
+  const [runResults, setRunResults] = useState<RunResultItem[]>([]);
+  const [runStatus, setRunStatus] = useState<RunResponse["status"] | null>(null);
+  const [runPending, setRunPending] = useState<{ id: string; message: string } | null>(null);
+  const [running, setRunning] = useState(false);
+  const [runError, setRunError] = useState<string | null>(null);
+
+  const handleRun = async () => {
+    setRunning(true);
+    setRunError(null);
+    setRunResults([]);
+    setRunPending(null);
+    setRunStatus(null);
+    try {
+      const r = await runFlow(nodes, edges);
+      setRunId(r.run_id);
+      setRunResults(r.results); // 러너가 배치로 실행 → 결과 한 번에 반영(정직)
+      setRunStatus(r.status);
+      setRunPending(r.pending ?? null);
+    } catch (e) {
+      setRunError(e instanceof RunnerError ? e.message : "실행 실패");
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  const handleApprove = async () => {
+    if (!runId) return;
+    setRunning(true);
+    setRunError(null);
+    setRunPending(null); // 승인 노드의 🚨 해제하고 이어서 실행
+    try {
+      const r = await approveRun(runId);
+      setRunResults((prev) => [...prev, ...r.results]); // 델타 append
+      setRunStatus(r.status);
+      setRunPending(r.pending ?? null);
+    } catch (e) {
+      setRunError(e instanceof RunnerError ? e.message : "승인 실패");
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  const handleRecommend = async () => {
+    const text = sideText.trim();
+    if (!text) return;
+    if (text.length > 500) {
+      setRecError("500자 이내로 입력해주세요.");
+      return;
+    }
+    setRecLoading(true);
+    setRecError(null);
+    setRecSkill(null); // 재요청 시 이전 결과 비우기
+    setRecMcps([]);
+    try {
+      const data = await call<{ skill: string; description: string; mcps: string[] }>(
+        "/recommend",
+        { method: "POST", json: { text } },
+      );
+      setRecSkill({ name: data.skill, description: data.description });
+      setRecMcps(Array.isArray(data.mcps) ? data.mcps : []); // null 방어
+    } catch (e) {
+      setRecError(e instanceof ApiError ? e.message : "추천 실패");
+    } finally {
+      setRecLoading(false);
+    }
+  };
+  // 발행 = graph_json(노드+엣지+뷰포트)에 폼 값을 합쳐 POST /workflows.
+  const handlePublish = async (payload: PublishPayload) => {
     const graph_json = rfInstance?.toObject() ?? { nodes, edges };
-    // TODO: 백엔드 연결 시 POST /workflows { ...payload, graph_json }
-    console.log("[발행] POST /workflows", { ...payload, graph_json });
+    try {
+      await call("/workflows", { method: "POST", json: { ...payload, graph_json } });
+      setPublishOpen(false);
+      alert("갤러리에 발행됐어요!");
+    } catch (e) {
+      alert(e instanceof ApiError ? e.message : "발행 실패");
+    }
   };
 
   const deleteNode = useCallback(
@@ -197,14 +290,65 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
     [setEdges],
   );
 
+  // 실행 결과 → 노드별 상태 맵 (캔버스 색칠용)
+  const runStateById = useMemo(() => {
+    const m: Record<string, "done" | "pending" | "stopped"> = {};
+    runResults.forEach((r) => (m[r.id] = "done"));
+    if (runStatus === "stopped" && runResults.length) {
+      m[runResults[runResults.length - 1].id] = "stopped";
+    }
+    if (runPending) m[runPending.id] = "pending";
+    return m;
+  }, [runResults, runStatus, runPending]);
+
   const nodesWithHandlers = useMemo(
-    () => nodes.map((n) => ({ ...n, data: { ...n.data, onDelete: deleteNode } })),
-    [nodes, deleteNode],
+    () =>
+      nodes.map((n) => ({
+        ...n,
+        data: { ...n.data, onDelete: deleteNode, runState: runStateById[n.id] },
+      })),
+    [nodes, deleteNode, runStateById],
   );
 
   const generate = (prompt: string) => {
     if (!prompt.trim()) return;
     setPhase("builder");
+  };
+
+  // Create에서 텍스트를, MyWorld 노드뷰에서 그래프를 들고 오면 바로 빌더로.
+  const location = useLocation();
+  const kickedOff = useRef(false);
+  useEffect(() => {
+    const s = location.state as {
+      text?: string;
+      graph?: { nodes: Node<FlowNodeData>[]; edges: Edge[] };
+    } | null;
+    if (kickedOff.current) return;
+    if (s?.graph) {
+      kickedOff.current = true;
+      setNodes(s.graph.nodes);
+      setEdges(s.graph.edges);
+      setPhase("builder");
+    } else if (s?.text) {
+      kickedOff.current = true;
+      setText(s.text);
+      setPhase("builder");
+    }
+  }, [location.state, setNodes, setEdges]);
+
+  // 도구 카탈로그 1회 로드 (키 붙여넣기 팝업 메타). 실패해도 폴백 입력으로 동작.
+  useEffect(() => {
+    call<{ items: ToolCatalogItem[] }>("/tool-catalog")
+      .then((d) => setCatalog(d.items))
+      .catch(() => {});
+  }, [call]);
+
+  // MCP 노드 키로 카탈로그 매칭 후 키 팝업 열기
+  const openKeyModal = (toolKey: string) => {
+    const tool = catalog.find((t) => t.key === toolKey.trim().toLowerCase()) ?? null;
+    // 매칭되면 카탈로그 정본 키로 저장(더 견고). 매칭 실패 시 원본 title 폴백.
+    setKeyTarget({ key: tool?.key ?? toolKey, tool });
+    setKeyModalOpen(true);
   };
 
   if (phase === "input") {
@@ -302,18 +446,30 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
                 <div className="af__keyWarn">
                   <p className="af__keyWarnTitle">▨ MCP 키 연결 필요</p>
                   <p className="af__keyWarnBody">이 도구는 본인 키를 붙여넣어야 실행돼요.</p>
-                  <button className="af__keyBtn" type="button">
+                  <button
+                    className="af__keyBtn"
+                    type="button"
+                    onClick={() => openKeyModal(selected.data.title)}
+                  >
                     키 붙여넣기
                   </button>
                 </div>
               )}
             </>
           ) : (
-            <p className="af__inspectEmpty">
-              노드를 클릭하면 여기서 편집해요.
-              <br />
-              노드 옆 점을 끌어 서로 연결하고, 연결선을 클릭하면 지워요.
-            </p>
+            <>
+              {text.trim() && (
+                <div className="af__request">
+                  <span className="af__requestLabel">요청</span>
+                  <p className="af__requestText">{text}</p>
+                </div>
+              )}
+              <p className="af__inspectEmpty">
+                노드를 클릭하면 여기서 편집해요.
+                <br />
+                노드 옆 점을 끌어 서로 연결하고, 연결선을 클릭하면 지워요.
+              </p>
+            </>
           )}
         </aside>
 
@@ -324,8 +480,8 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
             <span className="af__conn">◈ Gmail</span>
             <span className="af__conn">◈ Slack</span>
             <div className="af__toolbarRight">
-              <button className="af__run" type="button">
-                실행
+              <button className="af__run" type="button" onClick={handleRun} disabled={running}>
+                {running ? "실행 중…" : "실행"}
               </button>
               <button className="af__publish" type="button" onClick={() => setPublishOpen(true)}>
                 갤러리에 발행
@@ -354,6 +510,93 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
           </div>
         </div>
 
+        {/* 실행 결과 오버레이 (로컬 실행기 응답) */}
+        {(running || runStatus || runError) && (
+          <div
+            style={{
+              position: "fixed",
+              right: 20,
+              bottom: 20,
+              width: 380,
+              maxHeight: "44vh",
+              overflow: "auto",
+              background: "#fff",
+              border: "1px solid #e5e0d2",
+              borderRadius: 12,
+              padding: "12px 14px",
+              boxShadow: "0 8px 24px rgba(0,0,0,.12)",
+              zIndex: 50,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 8,
+              }}
+            >
+              <strong>실행 결과</strong>
+              <span style={{ fontSize: 13, color: "#8a8375" }}>
+                {running
+                  ? "▶ 실행 중…"
+                  : runStatus === "done"
+                    ? "✅ 완료"
+                    : runStatus === "awaiting_approval"
+                      ? "🚨 승인 대기"
+                      : runStatus === "stopped"
+                        ? "⛔ 중단(중복)"
+                        : ""}
+              </span>
+            </div>
+            {runError && (
+              <p style={{ color: "#c0392b", fontSize: 13, margin: "4px 0" }}>⚠ {runError}</p>
+            )}
+            <ol
+              style={{
+                margin: 0,
+                paddingLeft: 18,
+                fontSize: 13,
+                lineHeight: 1.7,
+                color: "#4a4636",
+              }}
+            >
+              {runResults.map((r, i) => (
+                <li key={`${r.id}-${i}`}>{r.result}</li>
+              ))}
+            </ol>
+            {runPending && (
+              <div
+                style={{
+                  marginTop: 10,
+                  padding: "10px 12px",
+                  background: "#fff4ec",
+                  border: "1px solid #f2c9a8",
+                  borderRadius: 8,
+                }}
+              >
+                <p style={{ margin: "0 0 8px", fontSize: 13 }}>🚨 {runPending.message}</p>
+                <button
+                  type="button"
+                  onClick={handleApprove}
+                  disabled={running}
+                  style={{
+                    padding: "6px 14px",
+                    background: "#e8843c",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 6,
+                    cursor: "pointer",
+                    fontWeight: 600,
+                  }}
+                >
+                  승인하고 계속
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* 오른쪽: 자연어 추천 / 라이브러리 패널 */}
         <aside className="af__side">
           <span className="af__sideBadge">✦ 플로우 편집</span>
@@ -362,12 +605,44 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
           <textarea
             className="af__sideInput"
             placeholder="예: 실패하면 3번 재시도하고, 발송 전 승인 단계 추가해줘"
+            value={sideText}
+            onChange={(e) => setSideText(e.target.value)}
+            maxLength={500}
           />
-          <button className="af__recommend" type="button">
-            ⚡ AI에게 추천받기
+          <button
+            className="af__recommend"
+            type="button"
+            onClick={handleRecommend}
+            disabled={recLoading}
+          >
+            {recLoading ? "추천 중…" : "⚡ AI에게 추천받기"}
           </button>
+          {recError && <p className="af__recMeta">에러: {recError}</p>}
 
           <p className="af__group">✦ AI 추천 · 스킬</p>
+          {recSkill && (
+            <div className="af__rec">
+              <span className="af__recBar" style={{ background: NODE_COLOR.agent }} />
+              <div className="af__recText">
+                <p className="af__recTitle">{recSkill.name}</p>
+                <p className="af__recMeta">{recSkill.description}</p>
+              </div>
+              <button
+                className="af__recAdd"
+                type="button"
+                onClick={() =>
+                  addNode({
+                    kind: "agent",
+                    typeLabel: "스킬",
+                    title: recSkill.name,
+                    op: recSkill.name,
+                  })
+                }
+              >
+                + 추가
+              </button>
+            </div>
+          )}
           {REC_SKILLS.map((s) => (
             <div className="af__rec" key={s.title}>
               <span className="af__recBar" style={{ background: NODE_COLOR[s.kind] }} />
@@ -388,22 +663,25 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
           ))}
 
           <p className="af__group">◇ AI 추천 · MCP</p>
-          {REC_MCP.map((m) => (
-            <div className="af__rec" key={m.title}>
-              <span className="af__recIcon" style={{ background: m.color }} />
+          {recMcps.length === 0 && !recLoading && (
+            <p className="af__recMeta">추천받으면 여기에 표시돼요.</p>
+          )}
+          {recMcps.map((key) => (
+            <div className="af__rec" key={key}>
+              <span className="af__recIcon" style={{ background: "#7a4fd6" }} />
               <div className="af__recText">
-                <p className="af__recTitle">{m.title}</p>
-                <p className="af__recMeta">{m.meta}</p>
+                <p className="af__recTitle">{key}</p>
+                <p className="af__recMeta">MCP</p>
               </div>
               <button
                 className="af__recAdd af__recAdd--icon"
                 type="button"
-                aria-label={`${m.title} 추가`}
+                aria-label={`${key} 추가`}
                 onClick={() =>
                   addNode({
                     kind: "tool",
                     typeLabel: "MCP",
-                    title: m.title,
+                    title: key,
                     op: "mcp.call",
                     needsKey: true,
                   })
@@ -448,6 +726,20 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
         defaultName="cs-complaint-handler"
         onClose={() => setPublishOpen(false)}
         onPublish={handlePublish}
+      />
+
+      <KeyModal
+        open={keyModalOpen}
+        toolKey={keyTarget?.key ?? ""}
+        tool={keyTarget?.tool ?? null}
+        onClose={() => setKeyModalOpen(false)}
+        onSave={async (secret) => {
+          if (!keyTarget) return;
+          // 저장은 로컬 실행기(POST /credential). 실패하면 throw → 모달이 에러 표시
+          await saveCredential(keyTarget.key, secret);
+          setKeyModalOpen(false);
+          alert(`${keyTarget.key} 키가 로컬에 저장됐어요.`);
+        }}
       />
     </div>
   );

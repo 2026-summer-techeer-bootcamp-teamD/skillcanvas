@@ -399,6 +399,69 @@
 
 ---
 
+## 3-4. 유형 판단 (스킬 vs 오토플로우)
+자연어 요청이 **스킬에 가까운지 워크플로우(오토플로우)에 가까운지** 판단한다. (통합 입력 화면에서 생성 전에 사용자를 유도하는 용도)
+
+| 항목 | 내용 |
+| --- | --- |
+| **Method** | `POST` |
+| **URL** | `/api/v1/classify` |
+| **인증** | Required |
+
+**Request Headers**
+
+| 헤더 | 값 | 필수 |
+| --- | --- | --- |
+| Authorization | `Bearer {accessToken}` | Y |
+| Content-Type | `application/json` | Y |
+
+**Request Body**
+```json
+{ "text": "매일 아침 CS 컴플레인 오면 긴급도 보고 배송조회해서 사과+쿠폰, 보내기 전 확인받고" }
+```
+
+| 필드 | 타입 | 필수 | 설명 | 제약조건 |
+| --- | --- | --- | --- | --- |
+| `text` | String | Y | 자연어 요청 | 1~1000자 |
+
+**판단 기준** *(프롬프트에 주입)*
+- **워크플로우에 가까움**: 여러 단계 순서 흐름 · 자동/스케줄 트리거("매일", "~오면") · 사람 승인 지점 · 외부 도구 여러 개 · 조건 분기/반복
+- **스킬에 가까움**: 단일 작업/능력 · 단발성 · 도구 없거나 하나 · 흐름 없음
+
+**판정 규칙** *(백엔드에서 계산)*
+- Claude가 `skill`·`workflow` 점수(각 0~100, **독립** — 합이 100 아님)를 매긴다.
+- 백엔드가 최종 `closer_to` 판정: 이긴 쪽 점수 `< MIN_CONFIDENCE(60)` **또는** 두 점수 차 `< MIN_MARGIN(20)`이면 → **`neutral`**, 아니면 이긴 쪽.
+- 원칙: **틀린 추천보다 중립.** 두 상수는 튜닝 손잡이(오추천 잦으면 올림).
+
+**Response Body (200 OK)**
+```json
+{
+  "closer_to": "workflow",
+  "confidence": 82,
+  "scores": { "skill": 18, "workflow": 82 },
+  "reason": "매일 트리거 + 승인 + 다단계"
+}
+```
+
+| 필드 | 타입 | 설명 |
+| --- | --- | --- |
+| `closer_to` | String | `skill` / `workflow` / `neutral` — 추천 방향(애매하면 `neutral`) |
+| `confidence` | Integer | 이긴 쪽 점수 (0~100) |
+| `scores` | Object | `{ skill, workflow }` 각 0~100(독립). 튜닝·디버깅용 |
+| `reason` | String / null | 한 줄 근거(관측용). **프론트는 미표시** |
+
+**비고**: 프론트는 `closer_to`만 읽어 해당 버튼을 강조(넛지), `neutral`이면 두 버튼 동등. **실패(422/502)든 `neutral`이든 프론트는 "두 버튼 동등"으로 폴백** — 오추천보다 안전.
+
+**Error Codes**
+
+| HTTP 상태 | errorCode | 설명 |
+| --- | --- | --- |
+| 401 | `AUTH_UNAUTHORIZED` | 인증 실패 |
+| 422 | `CLASSIFY_FAILED` | 판단 파싱 실패 |
+| 502 | `CLAUDE_UNAVAILABLE` | Claude 호출 실패 |
+
+---
+
 # 4. 갤러리 — 워크플로우
 
 ## 4-1. 워크플로우 목록 조회
@@ -429,7 +492,7 @@
   "items": [
     { "id": 8, "name": "CS 컴플레인 봇", "description": "매일 컴플레인 대응",
       "owner": { "id": 12, "nickname": "teamd" }, "tags": ["cs", "자동화"],
-      "import_count": 34, "created_at": "2026-07-06T00:00:00Z" }
+      "import_count": 34, "is_public": true, "created_at": "2026-07-06T00:00:00Z" }
   ],
   "total": 137, "limit": 20, "offset": 0
 }
@@ -443,6 +506,7 @@
 | `items[].owner` | Object | `{ id, nickname }` |
 | `items[].tags` | String[] | 태그 |
 | `items[].import_count` | Integer | 가져가기 수 |
+| `items[].is_public` | Boolean | 공개 여부 (내 목록의 공개/나만보기 배지용) |
 | `items[].created_at` | DateTime | 발행일 |
 
 **비고**: 목록엔 `graph_json`(큰 데이터) 미포함 — 상세에서만. 기본은 **공개(`is_public=true`)만 노출**. **비공개(나만보기)는 오직 `mine=true`(+인증)로 본인 것만** 반환하며, 이때 소유자 판정은 **토큰 유저 id**로 한다(쿼리 `owner_id` 아님). `owner_id`는 남의 **공개** 목록 구경에만 쓴다.
@@ -762,7 +826,7 @@
 ---
 
 ## A-2. 저장(동기화)
-스킬 구조를 `SKILL.md`로 저장한다. **본문(사용자 지시문)은 보존**하고 frontmatter만 갱신. 없는 스킬은 신규 생성.
+스킬 구조를 `SKILL.md`로 저장한다. `body`를 주면 **그 본문으로 저장**(빌더에서 조립한 본문), 없으면 **기존 본문 보존**(신규는 플레이스홀더)하고 frontmatter만 갱신. 없는 스킬은 신규 생성.
 
 | 항목 | 내용 |
 | --- | --- |
@@ -773,7 +837,8 @@
 **Request Body**
 ```json
 { "skill": "meeting-notes", "name": "meeting-notes",
-  "description": "회의록을 요약해 Notion에 저장", "allowed_tools": ["notion", "slack"] }
+  "description": "회의록을 요약해 Notion에 저장", "allowed_tools": ["notion", "slack"],
+  "body": "# 회의록 정리\n1. Slack에서 회의록을 받는다\n2. 200자로 요약한다\n..." }
 ```
 
 | 필드 | 타입 | 필수 | 설명 |
@@ -782,6 +847,7 @@
 | `name` | String | Y | 스킬 이름(frontmatter) |
 | `description` | String | N | 설명 |
 | `allowed_tools` | String[] | N | 사용할 도구 key 목록 |
+| `body` | String | N | `SKILL.md` 본문. 주면 그 값으로 저장, 없으면 기존 본문 보존(신규는 플레이스홀더) |
 
 **Response Body (200 OK)**: 저장 반영된 최신 그래프(A-1과 동일 형식 `{ nodes, edges }`)
 

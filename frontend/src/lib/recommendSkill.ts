@@ -25,6 +25,10 @@ export interface SkillDraft {
   /** 스킬 전체가 무엇을 하는지 한 문장 요약 */
   summary: string;
   blocks: SkillBlock[];
+  /** 실제로 쓰는 카탈로그 MCP 키들 (로컬 저장 시 allowed-tools로) */
+  mcps?: string[];
+  /** 사용자가 입력한 원본 자연어 (로컬 저장 시 description으로) */
+  source?: string;
 }
 
 const MAIL_DRAFT: SkillDraft = {
