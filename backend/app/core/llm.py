@@ -40,9 +40,13 @@ from app.core.config import settings
 
 logger = logging.getLogger("skillcanvas.llm")
 
-# Claude 호출 계측 (Grafana에서 model/status별로 조회). status: "success" | "error"
+# Claude 호출 계측 (Grafana에서 model/status별로 조회). status: "success" | "error" | "parse_error"
+# 기본 버킷(~10s)은 claude-sonnet-5 호출(10초 초과 흔함)이 전부 +Inf에 몰려 버킷 커스텀
 AI_CALL_DURATION = Histogram(
-    "ai_call_duration_seconds", "Claude API 호출 소요 시간(초)", ["model", "status"]
+    "ai_call_duration_seconds",
+    "Claude API 호출 소요 시간(초)",
+    ["model", "status"],
+    buckets=(1, 2.5, 5, 10, 15, 20, 30, 45, 60, 90),
 )
 AI_CALL_TOTAL = Counter("ai_call_total", "Claude API 호출 횟수", ["model", "status"])
 
@@ -134,15 +138,20 @@ def ask_claude_json(
 
     system 프롬프트에 "반드시 JSON만 답하라"를 꼭 넣을 것.
     """
+    used_model = model or settings.anthropic_model
     text = ask_claude(system, user, model=model, max_tokens=max_tokens)
     try:
         data = json.loads(_strip_fence(text))
     except (json.JSONDecodeError, ValueError) as e:
+        # Claude API 호출 자체는 성공(ask_claude가 이미 status=success로 기록)했지만
+        # 응답을 못 써먹은 경우이므로 별도 status로 남겨 success에 묻히지 않게 한다.
+        AI_CALL_TOTAL.labels(model=used_model, status="parse_error").inc()
         raise HTTPException(
             422, {"code": fail_code, "message": "AI 응답을 해석하지 못했습니다"}
         ) from e
     # 유효한 JSON이라도 객체가 아니면(list/str/int/bool) 라우터가 dict로 다루다
     # AttributeError→500이 난다. 파싱 실패로 간주해 명세대로 422로 막는다.
     if not isinstance(data, dict):
+        AI_CALL_TOTAL.labels(model=used_model, status="parse_error").inc()
         raise HTTPException(422, {"code": fail_code, "message": "AI 응답을 해석하지 못했습니다"})
     return data
