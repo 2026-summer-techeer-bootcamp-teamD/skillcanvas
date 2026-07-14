@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { TopNav, type NavTab } from "../components/TopNav";
 import { NodeTrail } from "../components/NodeTrail";
+import { getGraph, RunnerError, type RunnerGraphNode } from "../lib/runner";
 import "./MyWorld.css";
 
 const WORLDS = [
@@ -28,6 +29,23 @@ interface MyWorldProps {
 
 export function MyWorld({ onNavigate }: MyWorldProps) {
   const [activeWorld, setActiveWorld] = useState("My World");
+  // 로컬 실행기(GET /graph)에서 읽어온 내 .claude 스킬 (표시 전용)
+  const [localSkills, setLocalSkills] = useState<RunnerGraphNode[] | null>(null);
+  const [localMsg, setLocalMsg] = useState<string | null>(null);
+  const [localLoading, setLocalLoading] = useState(false);
+
+  const loadLocalSkills = async () => {
+    setLocalLoading(true);
+    setLocalMsg(null);
+    try {
+      const g = await getGraph();
+      setLocalSkills(g.nodes.filter((n) => n.type === "skill"));
+    } catch (e) {
+      setLocalMsg(e instanceof RunnerError ? e.message : "불러오기 실패");
+    } finally {
+      setLocalLoading(false);
+    }
+  };
 
   return (
     <div className="mw">
@@ -55,6 +73,43 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
         <main className="mw__main">
           <h1 className="mw__title">My World</h1>
           <p className="mw__sub">내가 만든 스킬과 자동화를 한 곳에서 관리해요.</p>
+
+          <div className="mw__section">
+            <p className="mw__sectionLabel">
+              <span className="mw__dot" style={{ background: "var(--sc-node-tool)" }} />내 로컬 스킬
+              {localSkills && <span className="mw__count">{localSkills.length}개</span>}
+              <button
+                type="button"
+                className="mw__newWorld"
+                style={{ marginLeft: "auto" }}
+                onClick={loadLocalSkills}
+                disabled={localLoading}
+              >
+                {localLoading ? "불러오는 중…" : "💻 로컬 불러오기"}
+              </button>
+            </p>
+            {localMsg && <p className="mw__cardMeta">{localMsg}</p>}
+            {localSkills &&
+              (localSkills.length === 0 ? (
+                <p className="mw__cardMeta">로컬 .claude에 스킬이 없어요.</p>
+              ) : (
+                <div className="mw__grid">
+                  {localSkills.map((s) => (
+                    <article className="mw__skill" key={s.id}>
+                      <span className="mw__pill">
+                        <span
+                          className="mw__pillDot"
+                          style={{ background: "var(--sc-node-tool)" }}
+                        />
+                        로컬
+                      </span>
+                      <h3 className="mw__cardTitle">{s.label}</h3>
+                      <p className="mw__cardMeta">{s.detail || ".claude/skills"}</p>
+                    </article>
+                  ))}
+                </div>
+              ))}
+          </div>
 
           <div className="mw__section">
             <p className="mw__sectionLabel">

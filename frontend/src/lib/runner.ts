@@ -2,8 +2,8 @@
 // 백엔드 useApi(Clerk 토큰 첨부)와 **별개** — 로컬 실행기는 사용자 PC에서 돌고 인증이 없다.
 // 워크플로우 실제 실행(run) / 승인 재개(approve) / 상태 조회(status)를 담당한다.
 
-import { MarkerType, type Edge, type Node } from "reactflow";
-import { EDGE_STYLE, type FlowNodeData, type FlowNodeKind } from "./flowData";
+import type { Edge, Node } from "reactflow";
+import type { FlowNodeData } from "./flowData";
 
 const RUNNER_BASE = import.meta.env.VITE_RUNNER_URL ?? "http://localhost:4737";
 
@@ -122,43 +122,4 @@ export function saveCredential(toolKey: string, secret: string) {
     method: "POST",
     body: JSON.stringify({ tool_key: toolKey, secret }),
   });
-}
-
-// 러너 그래프 노드 타입 → 캔버스 FlowNodeKind (부품 시각화 표시용)
-const GRAPH_KIND: Record<string, FlowNodeKind> = {
-  skill: "agent",
-  mcp: "tool",
-  rule: "approve",
-  trigger: "trigger",
-  tool: "tool",
-  agent: "agent",
-  output: "output",
-  approve: "approve",
-};
-
-/** 러너 그래프 → ReactFlow 노드/엣지 (캔버스에 로컬 부품 그리기). */
-export function fromRunnerGraph(graph: RunnerGraph): {
-  nodes: Node<FlowNodeData>[];
-  edges: Edge[];
-} {
-  const nodes: Node<FlowNodeData>[] = graph.nodes.map((n, i) => ({
-    id: n.id,
-    type: "flow",
-    position: { x: 120 + (i % 3) * 240, y: 120 + Math.floor(i / 3) * 170 },
-    data: {
-      kind: GRAPH_KIND[n.type] ?? "tool",
-      typeLabel: n.type,
-      title: n.label,
-      op: n.detail ?? "",
-    },
-  }));
-  const edges: Edge[] = graph.edges.map((e, i) => ({
-    id: `ge${i}`,
-    source: e.from,
-    target: e.to,
-    animated: true,
-    style: EDGE_STYLE,
-    markerEnd: { type: MarkerType.ArrowClosed, color: "#e8843c" },
-  }));
-  return { nodes, edges };
 }

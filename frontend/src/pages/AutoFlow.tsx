@@ -30,8 +30,6 @@ import {
   runFlow,
   approveRun,
   saveCredential,
-  getGraph,
-  fromRunnerGraph,
   RunnerError,
   type RunResultItem,
   type RunResponse,
@@ -158,21 +156,6 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
       setRunError(e instanceof RunnerError ? e.message : "승인 실패");
     } finally {
       setRunning(false);
-    }
-  };
-
-  // 로컬 부품 불러오기 (GET /graph → 캔버스에 내 .claude 스킬/도구 그리기)
-  const handleLoadLocal = async () => {
-    if (!window.confirm("현재 캔버스를 로컬 부품으로 교체할까요? 저장 안 한 작업은 사라져요."))
-      return;
-    try {
-      const g = await getGraph();
-      const { nodes: n, edges: e } = fromRunnerGraph(g);
-      setNodes(n);
-      setEdges(e);
-      setPhase("builder");
-    } catch (err) {
-      alert(err instanceof RunnerError ? err.message : "불러오기 실패");
     }
   };
 
@@ -474,9 +457,6 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
             <span className="af__conn">◈ Gmail</span>
             <span className="af__conn">◈ Slack</span>
             <div className="af__toolbarRight">
-              <button className="af__run" type="button" onClick={handleLoadLocal}>
-                로컬 불러오기
-              </button>
               <button className="af__run" type="button" onClick={handleRun} disabled={running}>
                 {running ? "실행 중…" : "실행"}
               </button>
