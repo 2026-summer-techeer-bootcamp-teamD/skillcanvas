@@ -23,6 +23,7 @@ import {
   INITIAL_EDGES,
   INITIAL_NODES,
   NODE_COLOR,
+  assembleWorkflowToFlow,
   type FlowNodeData,
   type FlowNodeKind,
 } from "../lib/flowData";
@@ -101,6 +102,8 @@ interface AutoFlowProps {
 export function AutoFlow({ onNavigate }: AutoFlowProps) {
   const [phase, setPhase] = useState<"input" | "builder">("input");
   const [text, setText] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const [genError, setGenError] = useState<string | null>(null);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(INITIAL_NODES);
   const [edges, setEdges, onEdgesChange] = useEdgesState(INITIAL_EDGES);
@@ -310,9 +313,34 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
     [nodes, deleteNode, runStateById],
   );
 
-  const generate = (prompt: string) => {
-    if (!prompt.trim()) return;
-    setPhase("builder");
+  // 자연어 → 워크플로우 그래프 자동생성 (POST /assemble target=workflow)
+  const generate = async (prompt: string) => {
+    if (!prompt.trim() || generating) return;
+    setText(prompt);
+    setGenerating(true);
+    setGenError(null);
+    try {
+      const data = await call<{
+        name: string;
+        nodes: { id: string; type: string; label: string; detail: string | null }[];
+        edges: { from: string; to: string }[];
+        used_mcps: string[];
+      }>("/assemble", { method: "POST", json: { text: prompt, target: "workflow" } });
+      const { nodes: n, edges: e } = assembleWorkflowToFlow(data.nodes, data.edges ?? []);
+      setNodes(n);
+      setEdges(e);
+      setPhase("builder");
+    } catch (err) {
+      const msg =
+        err instanceof ApiError
+          ? err.message
+          : err instanceof TypeError
+            ? "백엔드 서버(localhost:8000)에 연결 못 했어요. 백엔드를 켜주세요."
+            : "생성 실패";
+      setGenError(msg);
+    } finally {
+      setGenerating(false);
+    }
   };
 
   // Create에서 텍스트를, MyWorld 노드뷰에서 그래프를 들고 오면 바로 빌더로.
@@ -379,15 +407,24 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
               placeholder="예: 웹훅 들어오면 페이지 가져와 요약해서 Slack 전송"
               value={text}
               onChange={(e) => setText(e.target.value)}
+              disabled={generating}
             />
-            <button className="af__go" type="submit">
-              입력
+            <button className="af__go" type="submit" disabled={generating || !text.trim()}>
+              {generating ? "조립 중…" : "입력"}
             </button>
           </form>
 
+          {genError && <p className="af__subtitle">에러: {genError}</p>}
+
           <div className="af__examples">
             {EXAMPLES.map((ex) => (
-              <button key={ex} type="button" className="af__example" onClick={() => generate(ex)}>
+              <button
+                key={ex}
+                type="button"
+                className="af__example"
+                onClick={() => generate(ex)}
+                disabled={generating}
+              >
                 📮 {ex}
               </button>
             ))}

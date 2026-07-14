@@ -139,3 +139,49 @@ export function assembleToFlow(
   const rfEdges: Edge[] = nodes.slice(1).map((n, i) => edge(`ae${i}`, nodes[i].id, n.id));
   return { nodes: rfNodes, edges: rfEdges };
 }
+
+/**
+ * /assemble(target=workflow)의 노드+엣지 → ReactFlow 그래프.
+ * 위치 정보가 없으므로 엣지 기반 레이어드 레이아웃(좌→우): 열=최장경로 깊이.
+ */
+export function assembleWorkflowToFlow(
+  nodes: AssembledNode[],
+  edges: { from: string; to: string }[],
+): { nodes: Node<FlowNodeData>[]; edges: Edge[] } {
+  // 각 노드의 열(깊이): 루트=0, 자식=부모열+1 (longest-path 완화)
+  const col: Record<string, number> = {};
+  nodes.forEach((n) => (col[n.id] = 0));
+  for (let iter = 0; iter < nodes.length; iter++) {
+    let changed = false;
+    for (const e of edges) {
+      if ((col[e.to] ?? 0) < (col[e.from] ?? 0) + 1) {
+        col[e.to] = (col[e.from] ?? 0) + 1;
+        changed = true;
+      }
+    }
+    if (!changed) break;
+  }
+  // 열별로 세로로 쌓기
+  const rowInCol: Record<number, number> = {};
+  const rfNodes: Node<FlowNodeData>[] = nodes.map((n) => {
+    const c = col[n.id] ?? 0;
+    const r = rowInCol[c] ?? 0;
+    rowInCol[c] = r + 1;
+    const kind = (
+      ["trigger", "tool", "agent", "approve", "output"].includes(n.type) ? n.type : "tool"
+    ) as FlowNodeKind;
+    return {
+      id: n.id,
+      type: "flow",
+      position: { x: 80 + c * 250, y: 80 + r * 150 },
+      data: {
+        kind,
+        typeLabel: ASSEMBLE_LABEL[n.type] ?? n.type,
+        title: n.label,
+        op: n.detail ?? "",
+      },
+    };
+  });
+  const rfEdges: Edge[] = edges.map((e, i) => edge(`we${i}`, e.from, e.to));
+  return { nodes: rfNodes, edges: rfEdges };
+}
