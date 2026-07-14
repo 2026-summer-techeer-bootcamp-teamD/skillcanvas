@@ -16,6 +16,7 @@ import "reactflow/dist/style.css";
 import { PixelArt } from "../components/PixelArt";
 import { TopNav, type NavTab } from "../components/TopNav";
 import { PublishModal, type PublishPayload } from "../components/PublishModal";
+import { KeyModal } from "../components/KeyModal";
 import { FlowNode } from "../components/flow/FlowNode";
 import { ROBOT_BLACK, ROBOT_ORANGE } from "../lib/pixelMaps";
 import {
@@ -26,6 +27,7 @@ import {
   type FlowNodeKind,
 } from "../lib/flowData";
 import { useApi, ApiError } from "../lib/api";
+import type { ToolCatalogItem } from "../lib/toolCatalog";
 import {
   runFlow,
   approveRun,
@@ -114,6 +116,13 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
   const [recError, setRecError] = useState<string | null>(null);
   const [recMcps, setRecMcps] = useState<string[]>([]);
   const [recSkill, setRecSkill] = useState<{ name: string; description: string } | null>(null);
+
+  // ── 도구 카탈로그 (GET /tool-catalog) — 키 붙여넣기 팝업 자동생성 ──
+  const [catalog, setCatalog] = useState<ToolCatalogItem[]>([]);
+  const [keyModalOpen, setKeyModalOpen] = useState(false);
+  const [keyTarget, setKeyTarget] = useState<{ key: string; tool: ToolCatalogItem | null } | null>(
+    null,
+  );
 
   // ── 실행 (로컬 실행기 POST /run) ──────────────────
   const [runId, setRunId] = useState<string | null>(null);
@@ -327,6 +336,20 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
     }
   }, [location.state, setNodes, setEdges]);
 
+  // 도구 카탈로그 1회 로드 (키 붙여넣기 팝업 메타). 실패해도 폴백 입력으로 동작.
+  useEffect(() => {
+    call<{ items: ToolCatalogItem[] }>("/tool-catalog")
+      .then((d) => setCatalog(d.items))
+      .catch(() => {});
+  }, [call]);
+
+  // MCP 노드 키로 카탈로그 매칭 후 키 팝업 열기
+  const openKeyModal = (toolKey: string) => {
+    const tool = catalog.find((t) => t.key === toolKey.trim().toLowerCase()) ?? null;
+    setKeyTarget({ key: toolKey, tool });
+    setKeyModalOpen(true);
+  };
+
   if (phase === "input") {
     return (
       <div className="af">
@@ -425,17 +448,7 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
                   <button
                     className="af__keyBtn"
                     type="button"
-                    onClick={async () => {
-                      const toolKey = selected.data.title;
-                      const secret = window.prompt(`${toolKey} 키를 붙여넣으세요`);
-                      if (!secret) return;
-                      try {
-                        await saveCredential(toolKey, secret);
-                        alert(`${toolKey} 키가 로컬에 저장됐어요.`);
-                      } catch (e) {
-                        alert(e instanceof RunnerError ? e.message : "키 저장 실패");
-                      }
-                    }}
+                    onClick={() => openKeyModal(selected.data.title)}
                   >
                     키 붙여넣기
                   </button>
@@ -712,6 +725,20 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
         defaultName="cs-complaint-handler"
         onClose={() => setPublishOpen(false)}
         onPublish={handlePublish}
+      />
+
+      <KeyModal
+        open={keyModalOpen}
+        toolKey={keyTarget?.key ?? ""}
+        tool={keyTarget?.tool ?? null}
+        onClose={() => setKeyModalOpen(false)}
+        onSave={async (secret) => {
+          if (!keyTarget) return;
+          // 저장은 로컬 실행기(POST /credential). 실패하면 throw → 모달이 에러 표시
+          await saveCredential(keyTarget.key, secret);
+          setKeyModalOpen(false);
+          alert(`${keyTarget.key} 키가 로컬에 저장됐어요.`);
+        }}
       />
     </div>
   );
