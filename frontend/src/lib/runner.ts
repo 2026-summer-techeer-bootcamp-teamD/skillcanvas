@@ -2,8 +2,8 @@
 // 백엔드 useApi(Clerk 토큰 첨부)와 **별개** — 로컬 실행기는 사용자 PC에서 돌고 인증이 없다.
 // 워크플로우 실제 실행(run) / 승인 재개(approve) / 상태 조회(status)를 담당한다.
 
-import { MarkerType, type Edge, type Node } from "reactflow";
-import { EDGE_STYLE, type FlowNodeData, type FlowNodeKind } from "./flowData";
+import type { Edge, Node } from "reactflow";
+import type { FlowNodeData } from "./flowData";
 
 const RUNNER_BASE = import.meta.env.VITE_RUNNER_URL ?? "http://localhost:4737";
 
@@ -122,50 +122,4 @@ export function saveCredential(toolKey: string, secret: string) {
     method: "POST",
     body: JSON.stringify({ tool_key: toolKey, secret }),
   });
-}
-
-// 러너 그래프 노드 타입 → 캔버스 색상용 FlowNodeKind
-const GRAPH_KIND: Record<string, FlowNodeKind> = {
-  skill: "agent",
-  mcp: "tool",
-  rule: "approve",
-};
-
-/**
- * 특정 스킬 노드 + 그와 연결된 부품(MCP·rule)만 골라 읽기 전용 ReactFlow 그래프로.
- * MyWorld에서 스킬 카드를 눌렀을 때 "이 스킬이 이렇게 생겼다"를 보여주는 용도(편집 X).
- */
-export function skillSubgraph(
-  graph: RunnerGraph,
-  skillId: string,
-): { nodes: Node<FlowNodeData>[]; edges: Edge[] } {
-  const connected = new Set<string>([skillId]);
-  for (const e of graph.edges) {
-    if (e.from === skillId) connected.add(e.to);
-    if (e.to === skillId) connected.add(e.from);
-  }
-  const nodes: Node<FlowNodeData>[] = graph.nodes
-    .filter((n) => connected.has(n.id))
-    .map((n, i) => ({
-      id: n.id,
-      type: "flow",
-      position: { x: 120 + (i % 3) * 220, y: 90 + Math.floor(i / 3) * 150 },
-      data: {
-        kind: GRAPH_KIND[n.type] ?? "tool",
-        typeLabel: n.type,
-        title: n.label,
-        op: n.detail ?? "",
-      },
-    }));
-  const edges: Edge[] = graph.edges
-    .filter((e) => connected.has(e.from) && connected.has(e.to))
-    .map((e, i) => ({
-      id: `ge${i}`,
-      source: e.from,
-      target: e.to,
-      animated: true,
-      style: EDGE_STYLE,
-      markerEnd: { type: MarkerType.ArrowClosed, color: "#e8843c" },
-    }));
-  return { nodes, edges };
 }

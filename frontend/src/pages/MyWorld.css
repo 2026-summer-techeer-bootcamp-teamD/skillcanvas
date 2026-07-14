@@ -261,3 +261,16 @@
 .mw__modalEdit:hover {
   filter: brightness(0.95);
 }
+
+.mw__modalState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--sc-muted, #9a938a);
+  font-size: 0.9rem;
+}
+.mw__modalEdit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

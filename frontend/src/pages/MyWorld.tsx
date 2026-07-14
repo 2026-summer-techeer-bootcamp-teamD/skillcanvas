@@ -1,11 +1,13 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import ReactFlow, { Background, BackgroundVariant } from "reactflow";
+import ReactFlow, { Background, BackgroundVariant, type Edge, type Node } from "reactflow";
 import "reactflow/dist/style.css";
 import { TopNav, type NavTab } from "../components/TopNav";
 import { NodeTrail } from "../components/NodeTrail";
 import { FlowNode } from "../components/flow/FlowNode";
-import { getGraph, skillSubgraph, RunnerError, type RunnerGraph } from "../lib/runner";
+import { getGraph, RunnerError, type RunnerGraph, type RunnerGraphNode } from "../lib/runner";
+import { useApi, ApiError } from "../lib/api";
+import { assembleToFlow, type AssembledNode, type FlowNodeData } from "../lib/flowData";
 import "./MyWorld.css";
 
 const nodeTypes = { flow: FlowNode };
@@ -35,20 +37,19 @@ interface MyWorldProps {
 
 export function MyWorld({ onNavigate }: MyWorldProps) {
   const navigate = useNavigate();
+  const call = useApi();
   const [activeWorld, setActiveWorld] = useState("My World");
-  // 로컬 실행기(GET /graph)에서 읽어온 내 .claude 전체 그래프 (표시 전용)
+  // 로컬 실행기(GET /graph)에서 읽어온 내 .claude 전체 그래프 (스킬 목록용)
   const [graph, setGraph] = useState<RunnerGraph | null>(null);
   const [localMsg, setLocalMsg] = useState<string | null>(null);
   const [localLoading, setLocalLoading] = useState(false);
-  // 노드 뷰로 펼쳐 볼 스킬 노드 id
-  const [openSkillId, setOpenSkillId] = useState<string | null>(null);
+  // 노드 뷰(실행 플로우)로 펼쳐 볼 스킬
+  const [openSkill, setOpenSkill] = useState<RunnerGraphNode | null>(null);
+  const [flow, setFlow] = useState<{ nodes: Node<FlowNodeData>[]; edges: Edge[] } | null>(null);
+  const [flowLoading, setFlowLoading] = useState(false);
+  const [flowError, setFlowError] = useState<string | null>(null);
 
   const localSkills = graph?.nodes.filter((n) => n.type === "skill") ?? null;
-  const openSkill = graph?.nodes.find((n) => n.id === openSkillId) ?? null;
-  const sub = useMemo(
-    () => (graph && openSkillId ? skillSubgraph(graph, openSkillId) : null),
-    [graph, openSkillId],
-  );
 
   const loadLocalSkills = async () => {
     setLocalLoading(true);
@@ -60,6 +61,32 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
     } finally {
       setLocalLoading(false);
     }
+  };
+
+  // 스킬 카드 클릭 → 설명을 /assemble(AI)에 넣어 실행 플로우로 그린다.
+  const openLocalSkill = async (node: RunnerGraphNode) => {
+    setOpenSkill(node);
+    setFlow(null);
+    setFlowError(null);
+    setFlowLoading(true);
+    try {
+      const seed = node.detail?.trim() || node.label;
+      const data = await call<{ nodes: AssembledNode[] }>("/assemble", {
+        method: "POST",
+        json: { text: seed, target: "skill" },
+      });
+      setFlow(assembleToFlow(data.nodes));
+    } catch (e) {
+      setFlowError(e instanceof ApiError ? e.message : "플로우 생성 실패");
+    } finally {
+      setFlowLoading(false);
+    }
+  };
+
+  const closeModal = () => {
+    setOpenSkill(null);
+    setFlow(null);
+    setFlowError(null);
   };
 
   return (
@@ -116,8 +143,8 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
                       style={{ cursor: "pointer" }}
                       role="button"
                       tabIndex={0}
-                      onClick={() => setOpenSkillId(s.id)}
-                      onKeyDown={(e) => e.key === "Enter" && setOpenSkillId(s.id)}
+                      onClick={() => openLocalSkill(s)}
+                      onKeyDown={(e) => e.key === "Enter" && openLocalSkill(s)}
                     >
                       <span className="mw__pill">
                         <span
@@ -129,7 +156,7 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
                       <h3 className="mw__cardTitle">{s.label}</h3>
                       <p className="mw__cardMeta">{s.detail || ".claude/skills"}</p>
                       <p className="mw__cardMeta" style={{ opacity: 0.7 }}>
-                        클릭 → 노드로 보기
+                        클릭 → 실행 플로우 보기
                       </p>
                     </article>
                   ))}
@@ -174,19 +201,20 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
         </main>
       </div>
 
-      {openSkill && sub && (
-        <div className="mw__modalBackdrop" onClick={() => setOpenSkillId(null)}>
+      {openSkill && (
+        <div className="mw__modalBackdrop" onClick={closeModal}>
           <div className="mw__modal" onClick={(e) => e.stopPropagation()}>
             <header className="mw__modalHead">
               <div>
-                <p className="mw__modalKicker">로컬 스킬 · 노드 구조</p>
+                <p className="mw__modalKicker">로컬 스킬 · 실행 플로우 (AI)</p>
                 <h3 className="mw__modalTitle">{openSkill.label}</h3>
               </div>
               <div className="mw__modalActions">
                 <button
                   type="button"
                   className="mw__modalEdit"
-                  onClick={() => navigate("/auto-flow", { state: { graph: sub } })}
+                  disabled={!flow}
+                  onClick={() => flow && navigate("/auto-flow", { state: { graph: flow } })}
                 >
                   ✏️ AUTO-FLOW에서 편집
                 </button>
@@ -194,27 +222,40 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
                   type="button"
                   className="mw__modalClose"
                   aria-label="닫기"
-                  onClick={() => setOpenSkillId(null)}
+                  onClick={closeModal}
                 >
                   ✕
                 </button>
               </div>
             </header>
             <div className="mw__modalCanvas">
-              <ReactFlow
-                nodes={sub.nodes}
-                edges={sub.edges}
-                nodeTypes={nodeTypes}
-                fitView
-                nodesDraggable={false}
-                nodesConnectable={false}
-                elementsSelectable={false}
-                proOptions={{ hideAttribution: true }}
-              >
-                <Background variant={BackgroundVariant.Dots} gap={26} size={1.4} color="#ddd7c7" />
-              </ReactFlow>
+              {flowLoading ? (
+                <p className="mw__modalState">AI가 실행 플로우를 그리는 중…</p>
+              ) : flowError ? (
+                <p className="mw__modalState">에러: {flowError}</p>
+              ) : flow ? (
+                <ReactFlow
+                  nodes={flow.nodes}
+                  edges={flow.edges}
+                  nodeTypes={nodeTypes}
+                  fitView
+                  nodesDraggable={false}
+                  nodesConnectable={false}
+                  elementsSelectable={false}
+                  proOptions={{ hideAttribution: true }}
+                >
+                  <Background
+                    variant={BackgroundVariant.Dots}
+                    gap={26}
+                    size={1.4}
+                    color="#ddd7c7"
+                  />
+                </ReactFlow>
+              ) : null}
             </div>
-            <p className="mw__modalHint">여기선 보기만 · 편집은 “AUTO-FLOW에서 편집”으로</p>
+            <p className="mw__modalHint">
+              스킬 설명을 AI가 실행 순서로 재구성 · 편집은 “AUTO-FLOW에서 편집”으로
+            </p>
           </div>
         </div>
       )}
