@@ -1,57 +1,10 @@
 /* MY WORLD */
 .mw {
-  display: flex;
-  flex-direction: column;
   min-height: 100vh;
   background: var(--sc-bg);
 }
-.mw__body {
-  flex: 1;
-  display: flex;
-  min-height: 0;
-}
 
-/* Worlds 사이드바 */
-.mw__side {
-  width: 12.5rem;
-  flex-shrink: 0;
-  padding: 1.25rem 0.875rem;
-  border-right: 1px solid var(--sc-line);
-}
-.mw__sideLabel {
-  margin: 0 0 0.75rem 0.5rem;
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--sc-muted);
-}
-.mw__world {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  padding: 0.5625rem 0.625rem;
-  margin-bottom: 0.1875rem;
-  font-family: inherit;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--sc-ink);
-  text-align: left;
-  background: none;
-  border: none;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  transition: background 0.14s ease;
-}
-.mw__world:hover {
-  background: #f0ede6;
-}
-.mw__world--on {
-  background: #f0ede6;
-}
 .mw__newWorld {
-  width: 100%;
-  margin-top: 0.375rem;
   padding: 0.5625rem 0.625rem;
   font-family: inherit;
   font-size: 0.84rem;
@@ -69,14 +22,16 @@
 
 /* 메인 */
 .mw__main {
-  flex: 1;
-  min-width: 0;
-  padding: 2rem clamp(1.5rem, 4vw, 3rem) 4rem;
-  overflow-y: auto;
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 2.25rem clamp(1.25rem, 4vw, 2.5rem) 4rem;
+}
+.mw__head {
+  margin-bottom: 1.75rem;
 }
 .mw__title {
   margin: 0;
-  font-size: 1.875rem;
+  font-size: 2rem;
   font-weight: 800;
   letter-spacing: -0.02em;
   color: var(--sc-ink);
@@ -174,12 +129,6 @@
 }
 .mw__flowTrail {
   margin-top: 1rem;
-}
-
-@media (max-width: 40rem) {
-  .mw__side {
-    display: none;
-  }
 }
 
 /* 로컬 스킬 노드 뷰 모달 */
