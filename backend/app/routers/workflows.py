@@ -201,6 +201,8 @@ def update_workflow(
     if wf.users_id != user.id:
         raise HTTPException(403, {"code": "WORKFLOW_FORBIDDEN", "message": "소유자가 아닙니다"})
 
+    was_public = wf.is_public
+
     if payload.name is not None:
         wf.name = payload.name
     if payload.description is not None:
@@ -213,6 +215,8 @@ def update_workflow(
 
     db.commit()
     db.refresh(wf)
+    if wf.is_public and not was_public:
+        WORKFLOW_PUBLISHED.inc()
     return _summary(db, wf)
 
 
