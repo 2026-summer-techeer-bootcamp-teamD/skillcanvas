@@ -12,6 +12,7 @@
 """
 
 from fastapi import APIRouter, Depends, HTTPException
+from prometheus_client import Counter
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
@@ -31,6 +32,10 @@ from app.schemas.skill import (
 )
 
 router = APIRouter(prefix="/skills", tags=["스킬"])
+
+# 비즈니스 지표 (Grafana에서 "오늘 생성/가져오기 수" 등에 사용)
+SKILL_CREATED = Counter("skill_created_total", "생성된 스킬 수")
+SKILL_IMPORTED = Counter("skill_imported_total", "가져온 스킬 수")
 
 
 # ── 헬퍼: 태그 ────────────────────────────────────────
@@ -172,6 +177,7 @@ def create_skill(
     _sync_tags(db, sk.id, payload.tags)
     db.commit()
     db.refresh(sk)
+    SKILL_CREATED.inc()
     return _summary(db, sk)
 
 
@@ -236,6 +242,7 @@ def import_skill(
     sk.import_count += 1
     db.commit()
     db.refresh(sk)
+    SKILL_IMPORTED.inc()
     return {
         "id": sk.id,
         "name": sk.name,
