@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ReactFlow, { Background, BackgroundVariant, type Edge, type Node } from "reactflow";
 import "reactflow/dist/style.css";
@@ -18,18 +18,18 @@ const WORLDS = [
   { name: "Team-Ops", icon: "🛠" },
 ];
 
-const MW_SKILLS = [
-  { title: "본문 요약", meta: "claude-sonnet", color: "var(--sc-node-agent)" },
-  { title: "우선순위 분류", meta: "rules + LLM", color: "var(--sc-node-tool)" },
-  { title: "감정 분석", meta: "CS 티켓 태깅", color: "var(--sc-accent)" },
-  { title: "키워드 추출", meta: "claude-sonnet", color: "var(--sc-node-output)" },
-];
-
 const MW_FLOWS = [
   { title: "메일 비서", desc: "받은 편지함 요약 → Slack·Notion" },
   { title: "리서치 수집기", desc: "키워드 뉴스 요약 브리핑" },
   { title: "고객 타겟 분류", desc: "세그먼트 라벨링 자동화" },
 ];
+
+interface MySkill {
+  id: number;
+  name: string;
+  description: string | null;
+  is_public: boolean;
+}
 
 interface MyWorldProps {
   onNavigate?: (tab: NavTab) => void;
@@ -104,6 +104,47 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
     setFlow(null);
     setFlowError(null);
     setOpenMcps([]);
+  };
+
+  const [mySkills, setMySkills] = useState<MySkill[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // GET /skills?mine=true — 내 스킬 (비공개 포함) (5-1)
+  const loadMySkills = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    call<{ items: MySkill[] }>("/skills?mine=true")
+      .then((data) => setMySkills(data.items))
+      .catch((e) => setError(e instanceof ApiError ? e.message : "불러오기 실패"))
+      .finally(() => setLoading(false));
+  }, [call]);
+
+  useEffect(() => {
+    loadMySkills();
+  }, [loadMySkills]);
+
+  // PATCH /skills/{id} — 이름 수정 (5-4)
+  const handleRename = async (skill: MySkill) => {
+    const name = window.prompt("새 이름", skill.name);
+    if (!name || name === skill.name) return;
+    try {
+      await call(`/skills/${skill.id}`, { method: "PATCH", json: { name } });
+      loadMySkills();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "수정 실패");
+    }
+  };
+
+  // DELETE /skills/{id} — 삭제 (5-5)
+  const handleDelete = async (skill: MySkill) => {
+    if (!window.confirm(`"${skill.name}" 스킬을 삭제할까요?`)) return;
+    try {
+      await call(`/skills/${skill.id}`, { method: "DELETE" });
+      loadMySkills();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "삭제 실패");
+    }
   };
 
   return (
@@ -184,17 +225,32 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
           <div className="mw__section">
             <p className="mw__sectionLabel">
               <span className="mw__dot" style={{ background: "var(--sc-node-agent)" }} />
-              SKILL <span className="mw__count">{MW_SKILLS.length}개</span>
+              SKILL <span className="mw__count">{mySkills.length}개</span>
             </p>
+
+            {loading && <p className="mw__sub">불러오는 중…</p>}
+            {error && <p className="mw__sub">에러: {error}</p>}
+            {!loading && !error && mySkills.length === 0 && (
+              <p className="mw__sub">아직 만든 스킬이 없어요.</p>
+            )}
+
             <div className="mw__grid">
-              {MW_SKILLS.map((s) => (
-                <article className="mw__skill" key={s.title}>
+              {mySkills.map((s) => (
+                <article className="mw__skill" key={s.id}>
                   <span className="mw__pill">
-                    <span className="mw__pillDot" style={{ background: s.color }} />
-                    스킬
+                    <span className="mw__pillDot" style={{ background: "var(--sc-node-agent)" }} />
+                    {s.is_public ? "공개" : "나만보기"}
                   </span>
-                  <h3 className="mw__cardTitle">{s.title}</h3>
-                  <p className="mw__cardMeta">{s.meta}</p>
+                  <h3 className="mw__cardTitle">{s.name}</h3>
+                  <p className="mw__cardMeta">{s.description ?? "-"}</p>
+                  <div className="mw__cardActions">
+                    <button type="button" onClick={() => handleRename(s)}>
+                      수정
+                    </button>
+                    <button type="button" onClick={() => handleDelete(s)}>
+                      삭제
+                    </button>
+                  </div>
                 </article>
               ))}
             </div>
