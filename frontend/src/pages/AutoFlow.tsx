@@ -25,6 +25,7 @@ import {
   type FlowNodeData,
   type FlowNodeKind,
 } from "../lib/flowData";
+import { useApi, ApiError } from "../lib/api";
 import "./AutoFlow.css";
 
 const EXAMPLES = [
@@ -56,11 +57,6 @@ const REC_SKILLS: {
   },
 ];
 
-const REC_MCP: { title: string; meta: string; color: string }[] = [
-  { title: "GitHub MCP", meta: "PR·이슈·릴리스", color: "#7a4fd6" },
-  { title: "Notion MCP", meta: "문서·DB 읽기/쓰기", color: "#2a2620" },
-  { title: "Sheets MCP", meta: "표 데이터 append", color: "#1f8a4c" },
-];
 
 const MY_SKILLS: {
   title: string;
@@ -104,7 +100,38 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
   const flowWrapper = useRef<HTMLDivElement>(null);
   const [rfInstance, setRfInstance] = useState<ReactFlowInstance | null>(null);
   const [publishOpen, setPublishOpen] = useState(false);
+  // ── AI 추천 (POST /recommend) ────────────────────
+  const call = useApi();
+  const [sideText, setSideText] = useState("");
+  const [recLoading, setRecLoading] = useState(false);
+  const [recError, setRecError] = useState<string | null>(null);
+  const [recMcps, setRecMcps] = useState<string[]>([]);
+  const [recSkill, setRecSkill] = useState<{ name: string; description: string } | null>(null);
 
+  const handleRecommend = async () => {
+    const text = sideText.trim();
+    if (!text) return;
+    if (text.length > 500) {
+      setRecError("500자 이내로 입력해주세요.");
+      return;
+    }
+    setRecLoading(true);
+    setRecError(null);
+    setRecSkill(null); // 재요청 시 이전 결과 비우기
+    setRecMcps([]);
+    try {
+      const data = await call<{ skill: string; description: string; mcps: string[] }>(
+        "/recommend",
+        { method: "POST", json: { text } },
+      );
+      setRecSkill({ name: data.skill, description: data.description });
+      setRecMcps(Array.isArray(data.mcps) ? data.mcps : []); // null 방어
+    } catch (e) {
+      setRecError(e instanceof ApiError ? e.message : "추천 실패");
+    } finally {
+      setRecLoading(false);
+    }
+  };
   // 발행 = graph_json(노드+엣지+뷰포트)에 폼 값을 합쳐 POST /workflows 로 보낼 자리.
   const handlePublish = (payload: PublishPayload) => {
     const graph_json = rfInstance?.toObject() ?? { nodes, edges };
@@ -383,12 +410,44 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
           <textarea
             className="af__sideInput"
             placeholder="예: 실패하면 3번 재시도하고, 발송 전 승인 단계 추가해줘"
+            value={sideText}
+            onChange={(e) => setSideText(e.target.value)}
+            maxLength={500}
           />
-          <button className="af__recommend" type="button">
-            ⚡ AI에게 추천받기
+          <button
+            className="af__recommend"
+            type="button"
+            onClick={handleRecommend}
+            disabled={recLoading}
+          >
+            {recLoading ? "추천 중…" : "⚡ AI에게 추천받기"}
           </button>
+          {recError && <p className="af__recMeta">에러: {recError}</p>}
 
           <p className="af__group">✦ AI 추천 · 스킬</p>
+          {recSkill && (
+            <div className="af__rec">
+              <span className="af__recBar" style={{ background: NODE_COLOR.agent }} />
+              <div className="af__recText">
+                <p className="af__recTitle">{recSkill.name}</p>
+                <p className="af__recMeta">{recSkill.description}</p>
+              </div>
+              <button
+                className="af__recAdd"
+                type="button"
+                onClick={() =>
+                  addNode({
+                    kind: "agent",
+                    typeLabel: "스킬",
+                    title: recSkill.name,
+                    op: recSkill.name,
+                  })
+                }
+              >
+                + 추가
+              </button>
+            </div>
+          )}
           {REC_SKILLS.map((s) => (
             <div className="af__rec" key={s.title}>
               <span className="af__recBar" style={{ background: NODE_COLOR[s.kind] }} />
@@ -409,22 +468,25 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
           ))}
 
           <p className="af__group">◇ AI 추천 · MCP</p>
-          {REC_MCP.map((m) => (
-            <div className="af__rec" key={m.title}>
-              <span className="af__recIcon" style={{ background: m.color }} />
+          {recMcps.length === 0 && !recLoading && (
+            <p className="af__recMeta">추천받으면 여기에 표시돼요.</p>
+          )}
+          {recMcps.map((key) => (
+            <div className="af__rec" key={key}>
+              <span className="af__recIcon" style={{ background: "#7a4fd6" }} />
               <div className="af__recText">
-                <p className="af__recTitle">{m.title}</p>
-                <p className="af__recMeta">{m.meta}</p>
+                <p className="af__recTitle">{key}</p>
+                <p className="af__recMeta">MCP</p>
               </div>
               <button
                 className="af__recAdd af__recAdd--icon"
                 type="button"
-                aria-label={`${m.title} 추가`}
+                aria-label={`${key} 추가`}
                 onClick={() =>
                   addNode({
                     kind: "tool",
                     typeLabel: "MCP",
-                    title: m.title,
+                    title: key,
                     op: "mcp.call",
                     needsKey: true,
                   })
