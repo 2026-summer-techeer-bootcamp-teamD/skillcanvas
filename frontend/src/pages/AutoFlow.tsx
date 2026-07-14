@@ -328,7 +328,11 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
         edges: { from: string; to: string }[];
         used_mcps: string[];
       }>("/assemble", { method: "POST", json: { text: prompt, target: "workflow" } });
-      const { nodes: n, edges: e } = assembleWorkflowToFlow(data.nodes, data.edges ?? []);
+      const { nodes: n, edges: e } = assembleWorkflowToFlow(
+        data.nodes,
+        data.edges ?? [],
+        data.used_mcps ?? [],
+      );
       setNodes(n);
       setEdges(e);
       if (data.name) setFlowName(data.name);
@@ -498,7 +502,7 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
                   <button
                     className="af__keyBtn"
                     type="button"
-                    onClick={() => openKeyModal(selected.data.title)}
+                    onClick={() => openKeyModal(selected.data.mcpKey ?? selected.data.title)}
                   >
                     키 붙여넣기
                   </button>
@@ -736,6 +740,7 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
                     title: key,
                     op: "mcp.call",
                     needsKey: true,
+                    mcpKey: key,
                   })
                 }
               >

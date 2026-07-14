@@ -10,6 +10,8 @@ export interface FlowNodeData {
   op: string;
   /** MCP 도구처럼 본인 키 연결이 필요한 노드 */
   needsKey?: boolean;
+  /** 카탈로그 MCP 키(안정 식별자). 키 팝업 매칭은 title 아닌 이걸로 (경로별 title/op 불일치 방지) */
+  mcpKey?: string;
   /** 노드의 × 버튼 핸들러 (렌더 시 주입) */
   onDelete?: (id: string) => void;
   /** 실행 상태 (실행 결과 주입 시). 캔버스에 색으로 표시 */
@@ -147,6 +149,7 @@ export function assembleToFlow(
 export function assembleWorkflowToFlow(
   nodes: AssembledNode[],
   edges: { from: string; to: string }[],
+  usedMcps: string[] = [],
 ): { nodes: Node<FlowNodeData>[]; edges: Edge[] } {
   // 각 노드의 열(깊이): 루트=0, 자식=부모열+1 (longest-path 완화)
   const col: Record<string, number> = {};
@@ -170,6 +173,8 @@ export function assembleWorkflowToFlow(
     const kind = (
       ["trigger", "tool", "agent", "approve", "output"].includes(n.type) ? n.type : "tool"
     ) as FlowNodeKind;
+    // detail이 이 워크플로우가 쓰는 MCP 키면 → 키 연결 필요. 매칭은 이 mcpKey로(한글 title 아님).
+    const isMcp = kind === "tool" && n.detail != null && usedMcps.includes(n.detail);
     return {
       id: n.id,
       type: "flow",
@@ -179,6 +184,7 @@ export function assembleWorkflowToFlow(
         typeLabel: ASSEMBLE_LABEL[n.type] ?? n.type,
         title: n.label,
         op: n.detail ?? "",
+        ...(isMcp ? { needsKey: true, mcpKey: n.detail ?? undefined } : {}),
       },
     };
   });
