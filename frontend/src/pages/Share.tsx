@@ -20,13 +20,30 @@ interface ShareProps {
 
 export function Share({ onNavigate }: ShareProps) {
   const [filter, setFilter] = useState<"all" | ItemKind>("all");
+  const [tags, setTags] = useState<string[]>([]);
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const call = useApi();
   const [skills, setSkills] = useState<GalleryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // GET /tags — 필터 칩용 태그 목록
+  useEffect(() => {
+    call<{ items: { id: number; name: string }[] }>("/tags")
+      .then((data) => setTags(data.items.map((t) => t.name)))
+      .catch(() => {
+        /* 태그 칩은 부가 기능 — 실패해도 갤러리는 계속 보여준다 */
+      });
+  }, [call]);
+
   // GET /skills — 공개 스킬 목록 (백엔드 응답 → 화면 GalleryItem으로 변환)
   useEffect(() => {
+    let ignore = false;
+    setLoading(true);
+    setError(null);
+    const query = selectedTag
+      ? `/skills?sort=recent&tag=${encodeURIComponent(selectedTag)}`
+      : "/skills?sort=recent";
     call<{
       items: {
         id: number;
@@ -36,8 +53,9 @@ export function Share({ onNavigate }: ShareProps) {
         tags: string[];
         import_count: number;
       }[];
-    }>("/skills?sort=recent")
+    }>(query)
       .then((data) => {
+        if (ignore) return;
         setSkills(
           data.items.map((s) => ({
             id: String(s.id),
@@ -50,9 +68,18 @@ export function Share({ onNavigate }: ShareProps) {
           })),
         );
       })
-      .catch((e) => setError(e instanceof ApiError ? e.message : "불러오기 실패"))
-      .finally(() => setLoading(false));
-  }, [call]);
+      .catch((e) => {
+        if (ignore) return;
+        setError(e instanceof ApiError ? e.message : "불러오기 실패");
+      })
+      .finally(() => {
+        if (ignore) return;
+        setLoading(false);
+      });
+    return () => {
+      ignore = true;
+    };
+  }, [call, selectedTag]);
 
   // 워크플로우는 팀장님 담당 → 지금은 스킬만 표시
   const items = skills.filter((it) => filter === "all" || it.kind === filter);
@@ -120,8 +147,35 @@ export function Share({ onNavigate }: ShareProps) {
             </button>
           ))}
         </div>
+
+        {/* 태그 칩 */}
+        {tags.length > 0 && (
+          <div className="share__tags">
+            <button
+              type="button"
+              className={selectedTag === null ? "share__tag share__tag--on" : "share__tag"}
+              onClick={() => setSelectedTag(null)}
+            >
+              전체 태그
+            </button>
+            {tags.map((tag) => (
+              <button
+                key={tag}
+                type="button"
+                className={tag === selectedTag ? "share__tag share__tag--on" : "share__tag"}
+                onClick={() => setSelectedTag(tag === selectedTag ? null : tag)}
+              >
+                #{tag}
+              </button>
+            ))}
+          </div>
+        )}
+
         {loading && <p className="share__sub">불러오는 중…</p>}
         {error && <p className="share__sub">에러: {error}</p>}
+        {!loading && !error && items.length === 0 && (
+          <p className="share__sub">조건에 맞는 결과가 없어요.</p>
+        )}
         {/* 그리드 */}
         <div className="share__grid">
           {items.map((item) => (
