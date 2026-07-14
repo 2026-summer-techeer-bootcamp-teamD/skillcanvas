@@ -41,6 +41,8 @@ def _system_prompt(catalog_keys: list[str], target: str) -> str:
         "도구가 필요한 노드는 반드시 아래 카탈로그 key 안에서만 골라라. "
         "카탈로그에 없는 도구는 절대 지어내지 마라.\n"
         f"카탈로그: {', '.join(catalog_keys) if catalog_keys else '(없음)'}\n"
+        "detail 규칙: tool 노드의 detail은 반드시 위 카탈로그 key 하나만 넣어라(예: notion). "
+        "trigger·agent·approve 노드의 detail은 10자 이내 짧은 힌트로. 긴 문장은 절대 쓰지 마라.\n"
         "다른 설명 없이 반드시 아래 형태의 JSON만 답한다:\n"
         '{"name": "kebab-case 이름", '
         '"nodes": [{"id": str, "type": "trigger|tool|agent|approve", '
@@ -88,6 +90,8 @@ def _map_node_system_prompt(catalog_keys: list[str]) -> str:
         "도구가 필요한 노드는 반드시 아래 카탈로그 key 안에서만 골라라. "
         "카탈로그에 없는 도구는 절대 지어내지 마라.\n"
         f"카탈로그: {', '.join(catalog_keys) if catalog_keys else '(없음)'}\n"
+        "detail 규칙: tool 노드의 detail은 반드시 위 카탈로그 key 하나만 넣어라(예: notion). "
+        "trigger·agent·approve 노드의 detail은 10자 이내 짧은 힌트로. 긴 문장은 절대 쓰지 마라.\n"
         "다른 설명 없이 반드시 아래 형태의 JSON만 답한다:\n"
         '{"node": {"type": "trigger|tool|agent|approve", "label": str, "detail": str}, '
         '"mcp_added": "새로 필요해진 카탈로그 key 또는 null"}'
