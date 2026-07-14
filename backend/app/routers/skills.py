@@ -80,6 +80,7 @@ def _list_item(db: Session, sk: Skill) -> dict:
         "owner": sk.owner,
         "tags": _tag_names(db, sk.id),
         "import_count": sk.import_count,
+        "is_public": sk.is_public,  # 목록에서도 공개/비공개 배지 판단 가능하게(내 스킬 뷰)
         "created_at": sk.created_at,
     }
 

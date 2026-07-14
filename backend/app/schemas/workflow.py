@@ -40,6 +40,7 @@ class WorkflowListItem(BaseModel):
     owner: OwnerOut
     tags: list[str]
     import_count: int
+    is_public: bool  # 내 워크플로우 뷰에서 공개/비공개 배지 판단
     created_at: datetime
 
 

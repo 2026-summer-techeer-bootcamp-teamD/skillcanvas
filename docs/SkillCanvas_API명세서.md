@@ -492,7 +492,7 @@
   "items": [
     { "id": 8, "name": "CS 컴플레인 봇", "description": "매일 컴플레인 대응",
       "owner": { "id": 12, "nickname": "teamd" }, "tags": ["cs", "자동화"],
-      "import_count": 34, "created_at": "2026-07-06T00:00:00Z" }
+      "import_count": 34, "is_public": true, "created_at": "2026-07-06T00:00:00Z" }
   ],
   "total": 137, "limit": 20, "offset": 0
 }
@@ -506,6 +506,7 @@
 | `items[].owner` | Object | `{ id, nickname }` |
 | `items[].tags` | String[] | 태그 |
 | `items[].import_count` | Integer | 가져가기 수 |
+| `items[].is_public` | Boolean | 공개 여부 (내 목록의 공개/나만보기 배지용) |
 | `items[].created_at` | DateTime | 발행일 |
 
 **비고**: 목록엔 `graph_json`(큰 데이터) 미포함 — 상세에서만. 기본은 **공개(`is_public=true`)만 노출**. **비공개(나만보기)는 오직 `mine=true`(+인증)로 본인 것만** 반환하며, 이때 소유자 판정은 **토큰 유저 id**로 한다(쿼리 `owner_id` 아님). `owner_id`는 남의 **공개** 목록 구경에만 쓴다.
