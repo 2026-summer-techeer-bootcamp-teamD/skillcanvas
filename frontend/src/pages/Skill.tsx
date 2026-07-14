@@ -97,6 +97,7 @@ export function Skill({ onNavigate }: SkillProps) {
   const [draft, setDraft] = useState<SkillDraft | null>(null);
   const [chat, setChat] = useState<ChatMessage[]>(SEED_CHAT);
   const [chatInput, setChatInput] = useState("");
+  const [chatBusy, setChatBusy] = useState(false);
   // 드래그 중인 블록의 현재 위치 (끌면서 실시간으로 순서 재배치)
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   // 설명이 펼쳐진 블록 (클릭 토글)
@@ -190,7 +191,7 @@ export function Skill({ onNavigate }: SkillProps) {
         type: n.type as SkillNodeType,
         typeLabel: TYPE_LABEL[n.type] ?? n.type,
         title: n.label,
-        meta: data.used_mcps.join(", ") || "-",
+        meta: n.detail || "-", // 블록별 자기 도구/힌트(detail). 스킬 전체 목록 아님
         desc: n.detail ?? "",
       }));
 
@@ -226,16 +227,84 @@ export function Skill({ onNavigate }: SkillProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state]);
 
-  const sendChat = (e: React.FormEvent) => {
+  // AI 편집 = 선택 블록 + 지시문 → POST /map-node → 응답 노드로 그 블록 갱신 (명세 3-3)
+  const sendChat = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!chatInput.trim()) return;
-    setChat((prev) => [
-      ...prev,
-      { from: "user", text: chatInput },
-      { from: "ai", text: "반영했어요. 캔버스에서 바로 확인해 보세요." },
-    ]);
+    const instruction = chatInput.trim();
+    if (!instruction || chatBusy || !draft) return;
+
+    const target = draft.blocks.find((b) => b.id === selectedId);
+    if (!target) {
+      setChat((prev) => [
+        ...prev,
+        { from: "user", text: instruction },
+        { from: "ai", text: "먼저 왼쪽에서 수정할 블록을 클릭해 주세요." },
+      ]);
+      setChatInput("");
+      return;
+    }
+
+    setChat((prev) => [...prev, { from: "user", text: instruction }]);
     setChatInput("");
+    setChatBusy(true);
+    try {
+      const data = await call<{
+        node: { type: string; label: string; detail: string | null };
+        mcp_added: string | null;
+      }>("/map-node", {
+        method: "POST",
+        json: {
+          node: { type: target.type, label: target.title, detail: target.desc || null },
+          instruction,
+        },
+      });
+      setDraft((prev) =>
+        prev
+          ? {
+              ...prev,
+              blocks: prev.blocks.map((b) =>
+                b.id === target.id
+                  ? {
+                      ...b,
+                      type: data.node.type as SkillNodeType,
+                      typeLabel: TYPE_LABEL[data.node.type] ?? data.node.type,
+                      title: data.node.label,
+                      meta: data.node.detail || "-",
+                      desc: data.node.detail ?? "",
+                    }
+                  : b,
+              ),
+              // 새로 필요해진 도구는 mcps에 반영(로컬 저장 allowed-tools로 이어짐)
+              mcps:
+                data.mcp_added && !prev.mcps?.includes(data.mcp_added)
+                  ? [...(prev.mcps ?? []), data.mcp_added]
+                  : prev.mcps,
+            }
+          : prev,
+      );
+      setChat((prev) => [
+        ...prev,
+        {
+          from: "ai",
+          text: `'${data.node.label}'(으)로 바꿨어요.${
+            data.mcp_added ? ` ${data.mcp_added} 도구를 추가했어요.` : ""
+          }`,
+        },
+      ]);
+    } catch (err) {
+      setChat((prev) => [
+        ...prev,
+        {
+          from: "ai",
+          text: err instanceof ApiError ? `에러: ${err.message}` : "수정에 실패했어요.",
+        },
+      ]);
+    } finally {
+      setChatBusy(false);
+    }
   };
+
+  const selectedBlock = draft?.blocks.find((b) => b.id === selectedId) ?? null;
 
   return (
     <div className="skill">
@@ -320,7 +389,9 @@ export function Skill({ onNavigate }: SkillProps) {
             <header className="skill__chatHead">
               <span className="skill__chatDot" />
               <strong>AI 편집</strong>
-              <span className="skill__chatHint">· 자연어로 고치기</span>
+              <span className="skill__chatHint">
+                {selectedBlock ? `· '${selectedBlock.title}' 편집 중` : "· 블록을 클릭해 고치기"}
+              </span>
             </header>
 
             <div className="skill__chatLog">
@@ -332,25 +403,42 @@ export function Skill({ onNavigate }: SkillProps) {
             </div>
 
             <div className="skill__chatChips">
-              <button type="button" className="skill__chip">
-                + 블록 추가
-              </button>
-              <button type="button" className="skill__chip">
+              <button
+                type="button"
+                className="skill__chip"
+                onClick={() => setChatInput("이 블록을 더 짧게 요약해줘")}
+              >
                 더 짧게 요약
               </button>
-              <button type="button" className="skill__chip">
-                블록 삭제
+              <button
+                type="button"
+                className="skill__chip"
+                onClick={() => setChatInput("이 단계를 슬랙 대신 노션으로 바꿔줘")}
+              >
+                도구 바꾸기
               </button>
             </div>
 
             <form className="skill__chatInputRow" onSubmit={sendChat}>
               <input
                 className="skill__chatInput"
-                placeholder="고치고 싶은 걸 말해보세요"
+                placeholder={
+                  chatBusy
+                    ? "고치는 중…"
+                    : selectedBlock
+                      ? "고치고 싶은 걸 말해보세요"
+                      : "블록을 먼저 클릭"
+                }
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
+                disabled={chatBusy}
               />
-              <button className="skill__chatSend" type="submit" aria-label="보내기">
+              <button
+                className="skill__chatSend"
+                type="submit"
+                aria-label="보내기"
+                disabled={chatBusy || !chatInput.trim()}
+              >
                 ↑
               </button>
             </form>
