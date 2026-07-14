@@ -5,7 +5,8 @@
   align-items: center;
   gap: 1.5rem;
   width: 100%;
-  padding: 0.75rem 1.625rem;
+  height: 4rem; /* BrandNav(.sc-nav)와 동일 높이 → 로고 세로 위치 통일 */
+  padding: 0 2.5rem; /* BrandNav와 동일 좌우 여백 → 로고 가로 위치 통일 */
   background: var(--sc-bg);
   border-bottom: 1px solid var(--sc-line);
 }
@@ -26,7 +27,7 @@
 .nav__logo {
   font-size: 1.0625rem;
   font-weight: 800;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em; /* BrandNav(.sc-nav__brand)와 동일 자간 */
   color: var(--sc-ink);
 }
 
@@ -56,6 +57,13 @@
 .nav__tab--active {
   color: var(--sc-ink);
   background: #f0eee7;
+}
+.nav__tab--disabled {
+  color: #c4bbac;
+  cursor: not-allowed;
+}
+.nav__tab--disabled:hover {
+  background: none;
 }
 
 .nav__profile {
@@ -196,6 +204,13 @@
 .nav__popLogout:hover {
   background: var(--sc-input);
   color: var(--sc-ink);
+}
+
+/* 좁은 화면: BrandNav(.sc-nav)와 동일하게 좌우 여백 축소 → 로고 가로 위치 통일 유지 */
+@media (max-width: 40rem) {
+  .nav {
+    padding: 0 1.25rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
