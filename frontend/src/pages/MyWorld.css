@@ -243,3 +243,21 @@
   color: var(--sc-muted, #9a938a);
   border-top: 1px solid var(--sc-border, #e3ddcd);
 }
+
+.mw__modalActions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.mw__modalEdit {
+  border: 1px solid var(--sc-accent, #e8843c);
+  background: var(--sc-accent, #e8843c);
+  color: #fff;
+  border-radius: 8px;
+  padding: 0.4rem 0.7rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.mw__modalEdit:hover {
+  filter: brightness(0.95);
+}

@@ -306,17 +306,26 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
     setPhase("builder");
   };
 
-  // Create에서 입력 텍스트를 들고 오면 히어로를 건너뛰고 바로 빌더.
+  // Create에서 텍스트를, MyWorld 노드뷰에서 그래프를 들고 오면 바로 빌더로.
   const location = useLocation();
   const kickedOff = useRef(false);
   useEffect(() => {
-    const initial = (location.state as { text?: string } | null)?.text;
-    if (initial && !kickedOff.current) {
+    const s = location.state as {
+      text?: string;
+      graph?: { nodes: Node<FlowNodeData>[]; edges: Edge[] };
+    } | null;
+    if (kickedOff.current) return;
+    if (s?.graph) {
       kickedOff.current = true;
-      setText(initial);
+      setNodes(s.graph.nodes);
+      setEdges(s.graph.edges);
+      setPhase("builder");
+    } else if (s?.text) {
+      kickedOff.current = true;
+      setText(s.text);
       setPhase("builder");
     }
-  }, [location.state]);
+  }, [location.state, setNodes, setEdges]);
 
   if (phase === "input") {
     return (

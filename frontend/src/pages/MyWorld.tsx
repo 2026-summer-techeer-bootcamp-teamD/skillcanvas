@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import ReactFlow, { Background, BackgroundVariant } from "reactflow";
 import "reactflow/dist/style.css";
 import { TopNav, type NavTab } from "../components/TopNav";
@@ -33,6 +34,7 @@ interface MyWorldProps {
 }
 
 export function MyWorld({ onNavigate }: MyWorldProps) {
+  const navigate = useNavigate();
   const [activeWorld, setActiveWorld] = useState("My World");
   // 로컬 실행기(GET /graph)에서 읽어온 내 .claude 전체 그래프 (표시 전용)
   const [graph, setGraph] = useState<RunnerGraph | null>(null);
@@ -180,14 +182,23 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
                 <p className="mw__modalKicker">로컬 스킬 · 노드 구조</p>
                 <h3 className="mw__modalTitle">{openSkill.label}</h3>
               </div>
-              <button
-                type="button"
-                className="mw__modalClose"
-                aria-label="닫기"
-                onClick={() => setOpenSkillId(null)}
-              >
-                ✕
-              </button>
+              <div className="mw__modalActions">
+                <button
+                  type="button"
+                  className="mw__modalEdit"
+                  onClick={() => navigate("/auto-flow", { state: { graph: sub } })}
+                >
+                  ✏️ AUTO-FLOW에서 편집
+                </button>
+                <button
+                  type="button"
+                  className="mw__modalClose"
+                  aria-label="닫기"
+                  onClick={() => setOpenSkillId(null)}
+                >
+                  ✕
+                </button>
+              </div>
             </header>
             <div className="mw__modalCanvas">
               <ReactFlow
@@ -203,7 +214,7 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
                 <Background variant={BackgroundVariant.Dots} gap={26} size={1.4} color="#ddd7c7" />
               </ReactFlow>
             </div>
-            <p className="mw__modalHint">읽기 전용 · 편집은 AUTO-FLOW에서</p>
+            <p className="mw__modalHint">여기선 보기만 · 편집은 “AUTO-FLOW에서 편집”으로</p>
           </div>
         </div>
       )}
