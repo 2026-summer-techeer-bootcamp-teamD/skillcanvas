@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@clerk/clerk-react";
 import { Splash } from "./pages/Splash";
-import { Onboarding } from "./pages/Onboarding";
+import { Onboarding } from "./pages/onboarding";
 import { Login } from "./pages/Login";
 import { Signup } from "./pages/Signup";
 import { Skill } from "./pages/Skill";
