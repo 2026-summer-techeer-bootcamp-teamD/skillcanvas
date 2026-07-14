@@ -109,10 +109,12 @@ export function saveSkill(
   name: string,
   description: string,
   allowedTools: string[],
+  body?: string,
 ) {
+  // body 미지정(undefined)이면 JSON에서 빠져 러너가 기존 본문 보존(backward compat)
   return runnerFetch<RunnerGraph>("/save", {
     method: "POST",
-    body: JSON.stringify({ skill, name, description, allowed_tools: allowedTools }),
+    body: JSON.stringify({ skill, name, description, allowed_tools: allowedTools, body }),
   });
 }
 

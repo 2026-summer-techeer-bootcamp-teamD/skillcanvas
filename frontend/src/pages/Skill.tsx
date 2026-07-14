@@ -150,7 +150,8 @@ export function Skill({ onNavigate }: SkillProps) {
       // GET /graph에서 스킬→mcp 엣지가 생긴다.
       const tools = draft.mcps ?? [];
       const description = draft.source?.trim() || draft.summary;
-      await saveSkill(slugify(draft.name), draft.name, description, tools);
+      // 조립한 블록을 마크다운 본문으로 함께 저장(러너 /save body)
+      await saveSkill(slugify(draft.name), draft.name, description, tools, blocksToMarkdown(draft));
       alert("로컬 .claude에 저장됐어요.");
     } catch (e) {
       alert(e instanceof RunnerError ? e.message : "로컬 저장 실패");
