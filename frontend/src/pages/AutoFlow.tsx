@@ -104,6 +104,7 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
   const [text, setText] = useState("");
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState<string | null>(null);
+  const [flowName, setFlowName] = useState("cs-complaint-handler");
 
   const [nodes, setNodes, onNodesChange] = useNodesState(INITIAL_NODES);
   const [edges, setEdges, onEdgesChange] = useEdgesState(INITIAL_EDGES);
@@ -329,6 +330,7 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
       const { nodes: n, edges: e } = assembleWorkflowToFlow(data.nodes, data.edges ?? []);
       setNodes(n);
       setEdges(e);
+      if (data.name) setFlowName(data.name);
       setPhase("builder");
     } catch (err) {
       const msg =
@@ -359,9 +361,9 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
       setPhase("builder");
     } else if (s?.text) {
       kickedOff.current = true;
-      setText(s.text);
-      setPhase("builder");
+      generate(s.text); // 자연어 → assemble로 그래프 생성 (setText·setPhase는 generate가 함)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state, setNodes, setEdges]);
 
   // 도구 카탈로그 1회 로드 (키 붙여넣기 팝업 메타). 실패해도 폴백 입력으로 동작.
@@ -513,7 +515,7 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
         {/* 가운데: React Flow 캔버스 */}
         <div className="af__canvas">
           <div className="af__toolbar">
-            <span className="af__flowChip">cs-complaint-handler</span>
+            <span className="af__flowChip">{flowName}</span>
             <span className="af__conn">◈ Gmail</span>
             <span className="af__conn">◈ Slack</span>
             <div className="af__toolbarRight">
@@ -637,7 +639,7 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
         {/* 오른쪽: 자연어 추천 / 라이브러리 패널 */}
         <aside className="af__side">
           <span className="af__sideBadge">✦ 플로우 편집</span>
-          <p className="af__flowName">cs-complaint-handler</p>
+          <p className="af__flowName">{flowName}</p>
           <h2 className="af__sideTitle">어떤 기능을 넣을까요?</h2>
           <textarea
             className="af__sideInput"
@@ -760,7 +762,7 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
       <PublishModal
         open={publishOpen}
         kind="workflow"
-        defaultName="cs-complaint-handler"
+        defaultName={flowName}
         onClose={() => setPublishOpen(false)}
         onPublish={handlePublish}
       />
