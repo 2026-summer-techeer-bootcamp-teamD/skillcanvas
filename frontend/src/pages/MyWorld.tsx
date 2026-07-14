@@ -12,12 +12,6 @@ import "./MyWorld.css";
 
 const nodeTypes = { flow: FlowNode };
 
-const WORLDS = [
-  { name: "My World", icon: "🌐" },
-  { name: "Team-Growth", icon: "📈" },
-  { name: "Team-Ops", icon: "🛠" },
-];
-
 const MW_FLOWS = [
   { title: "메일 비서", desc: "받은 편지함 요약 → Slack·Notion" },
   { title: "리서치 수집기", desc: "키워드 뉴스 요약 브리핑" },
@@ -38,7 +32,6 @@ interface MyWorldProps {
 export function MyWorld({ onNavigate }: MyWorldProps) {
   const navigate = useNavigate();
   const call = useApi();
-  const [activeWorld, setActiveWorld] = useState("My World");
   // 로컬 실행기(GET /graph)에서 읽어온 내 .claude 전체 그래프 (스킬 목록용)
   const [graph, setGraph] = useState<RunnerGraph | null>(null);
   const [localMsg, setLocalMsg] = useState<string | null>(null);
@@ -151,28 +144,11 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
     <div className="mw">
       <TopNav active="MY WORLD" onNavigate={onNavigate} />
 
-      <div className="mw__body">
-        <aside className="mw__side">
-          <p className="mw__sideLabel">WORLDS</p>
-          {WORLDS.map((w) => (
-            <button
-              key={w.name}
-              type="button"
-              className={w.name === activeWorld ? "mw__world mw__world--on" : "mw__world"}
-              onClick={() => setActiveWorld(w.name)}
-            >
-              <span aria-hidden="true">{w.icon}</span>
-              {w.name}
-            </button>
-          ))}
-          <button className="mw__newWorld" type="button">
-            + New World
-          </button>
-        </aside>
-
-        <main className="mw__main">
+      <main className="mw__main">
+        <div className="mw__head">
           <h1 className="mw__title">My World</h1>
           <p className="mw__sub">내가 만든 스킬과 자동화를 한 곳에서 관리해요.</p>
+        </div>
 
           <div className="mw__section">
             <p className="mw__sectionLabel">
@@ -271,8 +247,7 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
               ))}
             </div>
           </div>
-        </main>
-      </div>
+      </main>
 
       {openSkill && (
         <div className="mw__modalBackdrop" onClick={closeModal}>
