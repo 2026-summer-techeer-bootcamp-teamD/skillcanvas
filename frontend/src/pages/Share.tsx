@@ -57,9 +57,19 @@ export function Share({ onNavigate }: ShareProps) {
   // 워크플로우는 팀장님 담당 → 지금은 스킬만 표시
   const items = skills.filter((it) => filter === "all" || it.kind === filter);
 
-  const handleImport = (item: GalleryItem) => {
-    // TODO: 백엔드 연결 시 POST /workflows/{id}/import 또는 /skills/{id}/import
-    console.log("[가져오기] import", item.id, item.title);
+  // POST /skills/{id}/import — 가져오기 (5-6)
+  const handleImport = async (item: GalleryItem) => {
+    if (item.kind !== "skill") return; // 워크플로우는 팀장님 담당
+    try {
+      const data = await call<{ import_count: number }>(`/skills/${item.id}/import`, {
+        method: "POST",
+      });
+      setSkills((prev) =>
+        prev.map((s) => (s.id === item.id ? { ...s, imports: data.import_count } : s)),
+      );
+    } catch (e) {
+      alert(e instanceof ApiError ? e.message : "가져오기 실패");
+    }
   };
 
   return (
