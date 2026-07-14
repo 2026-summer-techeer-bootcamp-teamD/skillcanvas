@@ -64,7 +64,6 @@ const REC_SKILLS: {
   },
 ];
 
-
 const MY_SKILLS: {
   title: string;
   meta: string;

@@ -3,10 +3,7 @@ import { NODE_COLOR, type FlowNodeData } from "../../lib/flowData";
 import "./FlowNode.css";
 
 // 실행 상태별 표시(테두리색 + 배지)
-const RUN_STYLE: Record<
-  NonNullable<FlowNodeData["runState"]>,
-  { color: string; badge: string }
-> = {
+const RUN_STYLE: Record<NonNullable<FlowNodeData["runState"]>, { color: string; badge: string }> = {
   done: { color: "#2e9e5b", badge: "✓" },
   pending: { color: "#e8843c", badge: "🚨" },
   stopped: { color: "#9a938a", badge: "⛔" },
