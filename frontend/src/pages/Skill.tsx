@@ -3,12 +3,8 @@ import { PixelArt } from "../components/PixelArt";
 import { TopNav, type NavTab } from "../components/TopNav";
 import { PublishModal, type PublishPayload } from "../components/PublishModal";
 import { ROBOT_BLACK, ROBOT_ORANGE } from "../lib/pixelMaps";
-import {
-  recommendSkill,
-  type SkillBlock,
-  type SkillDraft,
-  type SkillNodeType,
-} from "../lib/recommendSkill";
+import type { SkillBlock, SkillDraft, SkillNodeType } from "../lib/recommendSkill";
+import { useApi, ApiError } from "../lib/api";
 import "./Skill.css";
 
 const EXAMPLES = [
@@ -104,6 +100,17 @@ export function Skill({ onNavigate }: SkillProps) {
   // 설명이 펼쳐진 블록 (클릭 토글)
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [publishOpen, setPublishOpen] = useState(false);
+  // ── assemble API 연동 ────────────────────────────
+  const call = useApi();
+  const [genError, setGenError] = useState<string | null>(null);
+
+  const TYPE_LABEL: Record<string, string> = {
+    trigger: "트리거",
+    agent: "에이전트",
+    tool: "도구",
+    approve: "승인",
+    output: "출력",
+  };
 
   // 저장 = content_md(SKILL.md)에 폼 값을 합쳐 POST /skills 로 보낼 자리.
   const handlePublish = (payload: PublishPayload) => {
@@ -130,9 +137,34 @@ export function Skill({ onNavigate }: SkillProps) {
   const generate = async (prompt: string) => {
     if (!prompt.trim()) return;
     setPhase("generating");
-    const result = await recommendSkill(prompt);
-    setDraft(result);
-    setPhase("result");
+    setGenError(null);
+    try {
+      // POST /assemble — 자연어를 노드(블록)로 조립 (명세 3-1)
+      const data = await call<{
+        name: string;
+        nodes: { id: string; type: string; label: string; detail: string | null }[];
+        used_mcps: string[];
+      }>("/assemble", { method: "POST", json: { text: prompt, target: "skill" } });
+
+      const blocks: SkillBlock[] = data.nodes.map((n) => ({
+        id: n.id,
+        type: n.type as SkillNodeType,
+        typeLabel: TYPE_LABEL[n.type] ?? n.type,
+        title: n.label,
+        meta: data.used_mcps.join(", ") || "-",
+        desc: n.detail ?? "",
+      }));
+
+      setDraft({
+        name: data.name,
+        summary: `${data.nodes.length}개 블록으로 조립했어요.`,
+        blocks,
+      });
+      setPhase("result");
+    } catch (e) {
+      setGenError(e instanceof ApiError ? e.message : "생성 실패");
+      setPhase("input");
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -268,6 +300,7 @@ export function Skill({ onNavigate }: SkillProps) {
                 ↑
               </button>
             </form>
+            {genError && <p className="skill__subtitle">에러: {genError}</p>}
 
             <button className="skill__run" type="button" onClick={() => setPublishOpen(true)}>
               ▶ 실행 / 저장
