@@ -2,7 +2,16 @@ import { useEffect, useRef, useState } from "react";
 import { useClerk } from "@clerk/clerk-react";
 import { PixelArt } from "./PixelArt";
 import { ROBOT_BLACK, ROBOT_MUTED } from "../lib/pixelMaps";
+import { ApiError, useApi } from "../lib/api";
 import "./TopNav.css";
+
+interface UserMe {
+  id: number;
+  clerk_user_id: string;
+  nickname: string;
+  created_at: string;
+  updated_at: string;
+}
 
 export type NavTab = "START" | "CREATE" | "SKILL" | "AUTO-FLOW" | "MY WORLD" | "SHARE";
 
@@ -32,10 +41,34 @@ interface TopNavProps {
 
 export function TopNav({ active, onNavigate }: TopNavProps) {
   const { signOut } = useClerk();
+  const call = useApi();
   const [nickname, setNickname] = useState(loadNickname);
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(nickname);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const profileRef = useRef<HTMLDivElement>(null);
+
+  // 내 프로필 조회 (GET /users/me) — 첫 로그인이면 백엔드가 자동 생성해서 반환
+  useEffect(() => {
+    let cancelled = false;
+    call<UserMe>("/users/me")
+      .then((me) => {
+        if (cancelled) return;
+        setNickname(me.nickname);
+        try {
+          localStorage.setItem(NICK_KEY, me.nickname);
+        } catch {
+          /* 무시 */
+        }
+      })
+      .catch(() => {
+        /* 실패 시 로컬 캐시 닉네임 유지 */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [call]);
 
   // 바깥 클릭 / Esc 로 닫기
   useEffect(() => {
@@ -54,6 +87,7 @@ export function TopNav({ active, onNavigate }: TopNavProps) {
 
   const toggle = () => {
     setDraft(nickname);
+    setError(null);
     setOpen((v) => !v);
   };
 
@@ -61,16 +95,24 @@ export function TopNav({ active, onNavigate }: TopNavProps) {
   const valid = trimmed.length >= 2 && trimmed.length <= 20;
   const changed = trimmed !== nickname;
 
-  const save = () => {
-    if (!valid || !changed) return;
-    // TODO: 백엔드 연결 시 PATCH /users/me { nickname } (중복 409 처리)
-    setNickname(trimmed);
+  const save = async () => {
+    if (!valid || !changed || saving) return;
+    setSaving(true);
+    setError(null);
     try {
-      localStorage.setItem(NICK_KEY, trimmed);
-    } catch {
-      /* 무시 */
+      const me = await call<UserMe>("/users/me", { method: "PATCH", json: { nickname: trimmed } });
+      setNickname(me.nickname);
+      try {
+        localStorage.setItem(NICK_KEY, me.nickname);
+      } catch {
+        /* 무시 */
+      }
+      setOpen(false);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "닉네임 저장에 실패했습니다");
+    } finally {
+      setSaving(false);
     }
-    setOpen(false);
   };
 
   return (
@@ -131,23 +173,30 @@ export function TopNav({ active, onNavigate }: TopNavProps) {
               <input
                 className="nav__popInput"
                 value={draft}
-                onChange={(e) => setDraft(e.target.value)}
+                onChange={(e) => {
+                  setDraft(e.target.value);
+                  setError(null);
+                }}
                 onKeyDown={(e) => e.key === "Enter" && save()}
                 maxLength={20}
                 autoFocus
               />
             </label>
-            <p className={valid || !trimmed ? "nav__popHint" : "nav__popHint nav__popHint--err"}>
-              2~20자로 지어주세요
+            <p
+              className={
+                error || (!valid && trimmed) ? "nav__popHint nav__popHint--err" : "nav__popHint"
+              }
+            >
+              {error ?? "2~20자로 지어주세요"}
             </p>
 
             <button
               className="nav__popSave"
               type="button"
               onClick={save}
-              disabled={!valid || !changed}
+              disabled={!valid || !changed || saving}
             >
-              저장
+              {saving ? "저장 중…" : "저장"}
             </button>
             <button
               className="nav__popLogout"
