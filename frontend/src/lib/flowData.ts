@@ -57,7 +57,7 @@ export const INITIAL_NODES: Node<FlowNodeData>[] = [
     data: {
       kind: "output",
       typeLabel: "출력",
-      title: "Slack 전송",
+      title: "Slack",
       op: "slack.post",
       needsKey: true,
     },
