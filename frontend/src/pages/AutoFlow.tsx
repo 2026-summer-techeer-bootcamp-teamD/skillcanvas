@@ -353,6 +353,7 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
   useEffect(() => {
     const s = location.state as {
       text?: string;
+      name?: string;
       graph?: { nodes: Node<FlowNodeData>[]; edges: Edge[] };
     } | null;
     if (kickedOff.current) return;
@@ -360,6 +361,7 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
       kickedOff.current = true;
       setNodes(s.graph.nodes);
       setEdges(s.graph.edges);
+      if (s.name) setFlowName(s.name); // MyWorld 편집 경로에서 원본 이름 유지(하드코딩 오염 방지)
       setPhase("builder");
     } else if (s?.text) {
       kickedOff.current = true;
