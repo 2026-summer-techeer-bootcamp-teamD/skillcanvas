@@ -2,8 +2,8 @@
 // 백엔드 useApi(Clerk 토큰 첨부)와 **별개** — 로컬 실행기는 사용자 PC에서 돌고 인증이 없다.
 // 워크플로우 실제 실행(run) / 승인 재개(approve) / 상태 조회(status)를 담당한다.
 
-import type { Edge, Node } from "reactflow";
-import type { FlowNodeData, FlowNodeKind } from "./flowData";
+import { MarkerType, type Edge, type Node } from "reactflow";
+import { EDGE_STYLE, type FlowNodeData, type FlowNodeKind } from "./flowData";
 
 const RUNNER_BASE = import.meta.env.VITE_RUNNER_URL ?? "http://localhost:4737";
 
@@ -152,6 +152,13 @@ export function fromRunnerGraph(graph: RunnerGraph): {
       op: n.detail ?? "",
     },
   }));
-  const edges: Edge[] = graph.edges.map((e, i) => ({ id: `ge${i}`, source: e.from, target: e.to }));
+  const edges: Edge[] = graph.edges.map((e, i) => ({
+    id: `ge${i}`,
+    source: e.from,
+    target: e.to,
+    animated: true,
+    style: EDGE_STYLE,
+    markerEnd: { type: MarkerType.ArrowClosed, color: "#e8843c" },
+  }));
   return { nodes, edges };
 }

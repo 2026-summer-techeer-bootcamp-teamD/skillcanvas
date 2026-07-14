@@ -163,6 +163,8 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
 
   // 로컬 부품 불러오기 (GET /graph → 캔버스에 내 .claude 스킬/도구 그리기)
   const handleLoadLocal = async () => {
+    if (!window.confirm("현재 캔버스를 로컬 부품으로 교체할까요? 저장 안 한 작업은 사라져요."))
+      return;
     try {
       const g = await getGraph();
       const { nodes: n, edges: e } = fromRunnerGraph(g);
