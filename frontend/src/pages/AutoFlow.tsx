@@ -346,7 +346,8 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
   // MCP 노드 키로 카탈로그 매칭 후 키 팝업 열기
   const openKeyModal = (toolKey: string) => {
     const tool = catalog.find((t) => t.key === toolKey.trim().toLowerCase()) ?? null;
-    setKeyTarget({ key: toolKey, tool });
+    // 매칭되면 카탈로그 정본 키로 저장(더 견고). 매칭 실패 시 원본 title 폴백.
+    setKeyTarget({ key: tool?.key ?? toolKey, tool });
     setKeyModalOpen(true);
   };
 
