@@ -44,6 +44,7 @@ class SkillListItem(BaseModel):
     owner: OwnerOut
     tags: list[str]
     import_count: int
+    is_public: bool  # 내 스킬 뷰에서 공개/비공개 배지 판단
     created_at: datetime
 
 

@@ -80,6 +80,7 @@ def _list_item(db: Session, wf: Workflow) -> dict:
         "owner": wf.owner,
         "tags": _tag_names(db, wf.id),
         "import_count": wf.import_count,
+        "is_public": wf.is_public,  # 목록에서도 공개/비공개 배지 판단 가능하게(내 워크플로우 뷰)
         "created_at": wf.created_at,
     }
 
