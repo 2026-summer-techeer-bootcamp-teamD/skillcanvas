@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { PixelArt } from "../components/PixelArt";
 import { TopNav, type NavTab } from "../components/TopNav";
 import { PublishModal, type PublishPayload } from "../components/PublishModal";
@@ -185,6 +186,19 @@ export function Skill({ onNavigate }: SkillProps) {
     e.preventDefault();
     generate(text);
   };
+
+  // Create에서 입력 텍스트를 들고 오면 히어로를 건너뛰고 바로 생성.
+  const location = useLocation();
+  const kickedOff = useRef(false);
+  useEffect(() => {
+    const initial = (location.state as { text?: string } | null)?.text;
+    if (initial && !kickedOff.current) {
+      kickedOff.current = true;
+      setText(initial);
+      generate(initial);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
 
   const sendChat = (e: React.FormEvent) => {
     e.preventDefault();
