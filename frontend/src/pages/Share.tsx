@@ -5,7 +5,7 @@ import { TopNav, type NavTab } from "../components/TopNav";
 import { GalleryCard } from "../components/GalleryCard";
 import { NodeTrail } from "../components/NodeTrail";
 import { ROBOT_BLACK } from "../lib/pixelMaps";
-import { FEATURED, GALLERY_ITEMS, type GalleryItem, type ItemKind } from "../lib/galleryData";
+import { FEATURED, type GalleryItem, type ItemKind } from "../lib/galleryData";
 import "./Share.css";
 
 const FILTERS: { key: "all" | ItemKind; label: string }[] = [
