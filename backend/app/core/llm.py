@@ -30,13 +30,21 @@
 
 import json
 import logging
+import time
 
 from anthropic import Anthropic, AnthropicError
 from fastapi import HTTPException
+from prometheus_client import Counter, Histogram
 
 from app.core.config import settings
 
 logger = logging.getLogger("skillcanvas.llm")
+
+# Claude 호출 계측 (Grafana에서 model/status별로 조회). status: "success" | "error"
+AI_CALL_DURATION = Histogram(
+    "ai_call_duration_seconds", "Claude API 호출 소요 시간(초)", ["model", "status"]
+)
+AI_CALL_TOTAL = Counter("ai_call_total", "Claude API 호출 횟수", ["model", "status"])
 
 # 키가 없으면 client 생성이 실패하므로 지연 생성(lazy). AI 안 쓰는 팀원도 앱은 뜸.
 _client: Anthropic | None = None
@@ -77,18 +85,23 @@ def ask_claude(
     model 미지정 시 settings.anthropic_model(기본 haiku). 품질 필요한
     assemble(3-1)은 model="claude-sonnet-5" 로 넘겨 쓰길 권장.
     """
-    client = _get_client()
+    used_model = model or settings.anthropic_model
+    start = time.perf_counter()
+    status = "error"
     try:
+        client = _get_client()
         resp = client.messages.create(
-            model=model or settings.anthropic_model,
+            model=used_model,
             max_tokens=max_tokens,
             system=system,
             messages=[{"role": "user", "content": user}],
         )
         # content에 thinking 블록 등 text 아닌 블록이 섞일 수 있으니 text 블록만 모은다
-        return "".join(
+        text = "".join(
             getattr(b, "text", "") for b in resp.content if getattr(b, "type", "") == "text"
         )
+        status = "success"
+        return text
     # AnthropicError=API/네트워크 실패, IndexError/AttributeError=빈/비-텍스트 응답.
     # 모두 Claude 쪽 문제이므로 명세서대로 502로 일관 처리한다.
     except (AnthropicError, IndexError, AttributeError) as e:
@@ -98,6 +111,12 @@ def ask_claude(
         raise HTTPException(
             502, {"code": "CLAUDE_UNAVAILABLE", "message": "Claude 호출에 실패했습니다"}
         ) from e
+    finally:
+        # 키 미설정으로 _get_client()가 502를 던진 경우도 실패 호출로 집계된다.
+        AI_CALL_DURATION.labels(model=used_model, status=status).observe(
+            time.perf_counter() - start
+        )
+        AI_CALL_TOTAL.labels(model=used_model, status=status).inc()
 
 
 def ask_claude_json(
