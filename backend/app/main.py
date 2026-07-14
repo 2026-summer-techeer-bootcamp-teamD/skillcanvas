@@ -2,8 +2,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 
+from app.core.access_log import AccessLogMiddleware
 from app.core.config import settings
+from app.core.logging_config import configure_logging
 from app.routers import assemble, health, recommend, skills, tags, tool_catalog, users, workflows
+
+configure_logging()
 
 app = FastAPI(
     title="SkillCanvas API",
@@ -18,6 +22,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 요청 단위 구조화(JSON) 로그. Loki+Promtail이 stdout을 스크랩해 handler/status/fail_code로 조회.
+app.add_middleware(AccessLogMiddleware)
 
 # Prometheus가 스크랩할 /metrics 노출 (Swagger 목록에는 안 뜨게 숨김)
 Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
