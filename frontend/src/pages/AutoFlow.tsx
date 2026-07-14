@@ -105,6 +105,7 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState<string | null>(null);
   const [flowName, setFlowName] = useState("cs-complaint-handler");
+  const [flowMcps, setFlowMcps] = useState<string[]>([]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(INITIAL_NODES);
   const [edges, setEdges, onEdgesChange] = useEdgesState(INITIAL_EDGES);
@@ -331,6 +332,7 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
       setNodes(n);
       setEdges(e);
       if (data.name) setFlowName(data.name);
+      setFlowMcps(data.used_mcps ?? []);
       setPhase("builder");
     } catch (err) {
       const msg =
@@ -391,46 +393,52 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
             <PixelArt sprite={ROBOT_BLACK} className="af__mascot af__mascot--2" />
             <PixelArt sprite={ROBOT_ORANGE} className="af__mascot af__mascot--3" />
           </div>
-          <span className="af__badge">✦ 자동화 생성</span>
-          <h1 className="af__title">무엇을 자동화할까요?</h1>
-          <p className="af__subtitle">
-            하고 싶은 자동화를 문장으로 적으면, Claude가 노드 플로우로 조립해 드려요.
-          </p>
 
-          <form
-            className="af__inputRow"
-            onSubmit={(e) => {
-              e.preventDefault();
-              generate(text);
-            }}
-          >
-            <input
-              className="af__input"
-              placeholder="예: 웹훅 들어오면 페이지 가져와 요약해서 Slack 전송"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              disabled={generating}
-            />
-            <button className="af__go" type="submit" disabled={generating || !text.trim()}>
-              {generating ? "조립 중…" : "입력"}
-            </button>
-          </form>
+          {generating ? (
+            // 조립 중엔 입력폼 대신 로딩만 (Create 경유 시 입력화면 깜빡임 방지)
+            <p className="af__loading">워크플로우를 조립하는 중…</p>
+          ) : (
+            <>
+              <span className="af__badge">✦ 자동화 생성</span>
+              <h1 className="af__title">무엇을 자동화할까요?</h1>
+              <p className="af__subtitle">
+                하고 싶은 자동화를 문장으로 적으면, Claude가 노드 플로우로 조립해 드려요.
+              </p>
 
-          {genError && <p className="af__subtitle">에러: {genError}</p>}
-
-          <div className="af__examples">
-            {EXAMPLES.map((ex) => (
-              <button
-                key={ex}
-                type="button"
-                className="af__example"
-                onClick={() => generate(ex)}
-                disabled={generating}
+              <form
+                className="af__inputRow"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  generate(text);
+                }}
               >
-                📮 {ex}
-              </button>
-            ))}
-          </div>
+                <input
+                  className="af__input"
+                  placeholder="예: 웹훅 들어오면 페이지 가져와 요약해서 Slack 전송"
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                />
+                <button className="af__go" type="submit" disabled={!text.trim()}>
+                  입력
+                </button>
+              </form>
+
+              {genError && <p className="af__subtitle">에러: {genError}</p>}
+
+              <div className="af__examples">
+                {EXAMPLES.map((ex) => (
+                  <button
+                    key={ex}
+                    type="button"
+                    className="af__example"
+                    onClick={() => generate(ex)}
+                  >
+                    📮 {ex}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </main>
       </div>
     );
@@ -516,8 +524,11 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
         <div className="af__canvas">
           <div className="af__toolbar">
             <span className="af__flowChip">{flowName}</span>
-            <span className="af__conn">◈ Gmail</span>
-            <span className="af__conn">◈ Slack</span>
+            {flowMcps.map((m) => (
+              <span key={m} className="af__conn">
+                ◈ {m}
+              </span>
+            ))}
             <div className="af__toolbarRight">
               <button className="af__run" type="button" onClick={handleRun} disabled={running}>
                 {running ? "실행 중…" : "실행"}
