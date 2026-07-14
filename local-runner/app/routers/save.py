@@ -14,12 +14,21 @@ class SaveIn(BaseModel):
     name: str = Field(min_length=1)
     description: str = ""
     allowed_tools: list[str] = Field(default_factory=list)
+    body: str | None = Field(
+        default=None, description="SKILL.md 본문. 주면 그 값으로 저장, 없으면 기존 본문 보존"
+    )
 
 
 @router.post("/save", summary="저장·동기화 (그래프 → .claude, 본문 보존)")
 def save(payload: SaveIn) -> dict:
     try:
-        save_skill(payload.skill, payload.name, payload.description, payload.allowed_tools)
+        save_skill(
+            payload.skill,
+            payload.name,
+            payload.description,
+            payload.allowed_tools,
+            payload.body,
+        )
     except ValueError as e:
         raise HTTPException(400, {"code": "SAVE_INVALID_INPUT", "message": str(e)}) from e
     return build_graph()  # 저장 결과가 반영된 최신 그래프
