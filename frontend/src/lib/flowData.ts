@@ -64,7 +64,7 @@ export const INITIAL_NODES: Node<FlowNodeData>[] = [
   },
 ];
 
-const EDGE_STYLE = {
+export const EDGE_STYLE = {
   stroke: "#e8843c",
   strokeWidth: 1.6,
   strokeDasharray: "5 5",

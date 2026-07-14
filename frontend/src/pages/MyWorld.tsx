@@ -1,8 +1,13 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import ReactFlow, { Background, BackgroundVariant } from "reactflow";
+import "reactflow/dist/style.css";
 import { TopNav, type NavTab } from "../components/TopNav";
 import { NodeTrail } from "../components/NodeTrail";
-import { getGraph, RunnerError, type RunnerGraphNode } from "../lib/runner";
+import { FlowNode } from "../components/flow/FlowNode";
+import { getGraph, skillSubgraph, RunnerError, type RunnerGraph } from "../lib/runner";
 import "./MyWorld.css";
+
+const nodeTypes = { flow: FlowNode };
 
 const WORLDS = [
   { name: "My World", icon: "🌐" },
@@ -29,17 +34,25 @@ interface MyWorldProps {
 
 export function MyWorld({ onNavigate }: MyWorldProps) {
   const [activeWorld, setActiveWorld] = useState("My World");
-  // 로컬 실행기(GET /graph)에서 읽어온 내 .claude 스킬 (표시 전용)
-  const [localSkills, setLocalSkills] = useState<RunnerGraphNode[] | null>(null);
+  // 로컬 실행기(GET /graph)에서 읽어온 내 .claude 전체 그래프 (표시 전용)
+  const [graph, setGraph] = useState<RunnerGraph | null>(null);
   const [localMsg, setLocalMsg] = useState<string | null>(null);
   const [localLoading, setLocalLoading] = useState(false);
+  // 노드 뷰로 펼쳐 볼 스킬 노드 id
+  const [openSkillId, setOpenSkillId] = useState<string | null>(null);
+
+  const localSkills = graph?.nodes.filter((n) => n.type === "skill") ?? null;
+  const openSkill = graph?.nodes.find((n) => n.id === openSkillId) ?? null;
+  const sub = useMemo(
+    () => (graph && openSkillId ? skillSubgraph(graph, openSkillId) : null),
+    [graph, openSkillId],
+  );
 
   const loadLocalSkills = async () => {
     setLocalLoading(true);
     setLocalMsg(null);
     try {
-      const g = await getGraph();
-      setLocalSkills(g.nodes.filter((n) => n.type === "skill"));
+      setGraph(await getGraph());
     } catch (e) {
       setLocalMsg(e instanceof RunnerError ? e.message : "불러오기 실패");
     } finally {
@@ -95,7 +108,15 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
               ) : (
                 <div className="mw__grid">
                   {localSkills.map((s) => (
-                    <article className="mw__skill" key={s.id}>
+                    <article
+                      className="mw__skill"
+                      key={s.id}
+                      style={{ cursor: "pointer" }}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setOpenSkillId(s.id)}
+                      onKeyDown={(e) => e.key === "Enter" && setOpenSkillId(s.id)}
+                    >
                       <span className="mw__pill">
                         <span
                           className="mw__pillDot"
@@ -105,6 +126,9 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
                       </span>
                       <h3 className="mw__cardTitle">{s.label}</h3>
                       <p className="mw__cardMeta">{s.detail || ".claude/skills"}</p>
+                      <p className="mw__cardMeta" style={{ opacity: 0.7 }}>
+                        클릭 → 노드로 보기
+                      </p>
                     </article>
                   ))}
                 </div>
@@ -147,6 +171,42 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
           </div>
         </main>
       </div>
+
+      {openSkill && sub && (
+        <div className="mw__modalBackdrop" onClick={() => setOpenSkillId(null)}>
+          <div className="mw__modal" onClick={(e) => e.stopPropagation()}>
+            <header className="mw__modalHead">
+              <div>
+                <p className="mw__modalKicker">로컬 스킬 · 노드 구조</p>
+                <h3 className="mw__modalTitle">{openSkill.label}</h3>
+              </div>
+              <button
+                type="button"
+                className="mw__modalClose"
+                aria-label="닫기"
+                onClick={() => setOpenSkillId(null)}
+              >
+                ✕
+              </button>
+            </header>
+            <div className="mw__modalCanvas">
+              <ReactFlow
+                nodes={sub.nodes}
+                edges={sub.edges}
+                nodeTypes={nodeTypes}
+                fitView
+                nodesDraggable={false}
+                nodesConnectable={false}
+                elementsSelectable={false}
+                proOptions={{ hideAttribution: true }}
+              >
+                <Background variant={BackgroundVariant.Dots} gap={26} size={1.4} color="#ddd7c7" />
+              </ReactFlow>
+            </div>
+            <p className="mw__modalHint">읽기 전용 · 편집은 AUTO-FLOW에서</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
