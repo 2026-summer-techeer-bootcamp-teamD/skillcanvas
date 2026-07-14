@@ -26,6 +26,13 @@ import {
   type FlowNodeKind,
 } from "../lib/flowData";
 import { useApi, ApiError } from "../lib/api";
+import {
+  runFlow,
+  approveRun,
+  RunnerError,
+  type RunResultItem,
+  type RunResponse,
+} from "../lib/runner";
 import "./AutoFlow.css";
 
 const EXAMPLES = [
@@ -56,7 +63,6 @@ const REC_SKILLS: {
     op: "human.gate",
   },
 ];
-
 
 const MY_SKILLS: {
   title: string;
@@ -108,6 +114,50 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
   const [recMcps, setRecMcps] = useState<string[]>([]);
   const [recSkill, setRecSkill] = useState<{ name: string; description: string } | null>(null);
 
+  // ── 실행 (로컬 실행기 POST /run) ──────────────────
+  const [runId, setRunId] = useState<string | null>(null);
+  const [runResults, setRunResults] = useState<RunResultItem[]>([]);
+  const [runStatus, setRunStatus] = useState<RunResponse["status"] | null>(null);
+  const [runPending, setRunPending] = useState<{ id: string; message: string } | null>(null);
+  const [running, setRunning] = useState(false);
+  const [runError, setRunError] = useState<string | null>(null);
+
+  const handleRun = async () => {
+    setRunning(true);
+    setRunError(null);
+    setRunResults([]);
+    setRunPending(null);
+    setRunStatus(null);
+    try {
+      const r = await runFlow(nodes, edges);
+      setRunId(r.run_id);
+      setRunResults(r.results); // 러너가 배치로 실행 → 결과 한 번에 반영(정직)
+      setRunStatus(r.status);
+      setRunPending(r.pending ?? null);
+    } catch (e) {
+      setRunError(e instanceof RunnerError ? e.message : "실행 실패");
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  const handleApprove = async () => {
+    if (!runId) return;
+    setRunning(true);
+    setRunError(null);
+    setRunPending(null); // 승인 노드의 🚨 해제하고 이어서 실행
+    try {
+      const r = await approveRun(runId);
+      setRunResults((prev) => [...prev, ...r.results]); // 델타 append
+      setRunStatus(r.status);
+      setRunPending(r.pending ?? null);
+    } catch (e) {
+      setRunError(e instanceof RunnerError ? e.message : "승인 실패");
+    } finally {
+      setRunning(false);
+    }
+  };
+
   const handleRecommend = async () => {
     const text = sideText.trim();
     if (!text) return;
@@ -132,11 +182,16 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
       setRecLoading(false);
     }
   };
-  // 발행 = graph_json(노드+엣지+뷰포트)에 폼 값을 합쳐 POST /workflows 로 보낼 자리.
-  const handlePublish = (payload: PublishPayload) => {
+  // 발행 = graph_json(노드+엣지+뷰포트)에 폼 값을 합쳐 POST /workflows.
+  const handlePublish = async (payload: PublishPayload) => {
     const graph_json = rfInstance?.toObject() ?? { nodes, edges };
-    // TODO: 백엔드 연결 시 POST /workflows { ...payload, graph_json }
-    console.log("[발행] POST /workflows", { ...payload, graph_json });
+    try {
+      await call("/workflows", { method: "POST", json: { ...payload, graph_json } });
+      setPublishOpen(false);
+      alert("갤러리에 발행됐어요!");
+    } catch (e) {
+      alert(e instanceof ApiError ? e.message : "발행 실패");
+    }
   };
 
   const deleteNode = useCallback(
@@ -225,9 +280,24 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
     [setEdges],
   );
 
+  // 실행 결과 → 노드별 상태 맵 (캔버스 색칠용)
+  const runStateById = useMemo(() => {
+    const m: Record<string, "done" | "pending" | "stopped"> = {};
+    runResults.forEach((r) => (m[r.id] = "done"));
+    if (runStatus === "stopped" && runResults.length) {
+      m[runResults[runResults.length - 1].id] = "stopped";
+    }
+    if (runPending) m[runPending.id] = "pending";
+    return m;
+  }, [runResults, runStatus, runPending]);
+
   const nodesWithHandlers = useMemo(
-    () => nodes.map((n) => ({ ...n, data: { ...n.data, onDelete: deleteNode } })),
-    [nodes, deleteNode],
+    () =>
+      nodes.map((n) => ({
+        ...n,
+        data: { ...n.data, onDelete: deleteNode, runState: runStateById[n.id] },
+      })),
+    [nodes, deleteNode, runStateById],
   );
 
   const generate = (prompt: string) => {
@@ -372,8 +442,8 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
             <span className="af__conn">◈ Gmail</span>
             <span className="af__conn">◈ Slack</span>
             <div className="af__toolbarRight">
-              <button className="af__run" type="button">
-                실행
+              <button className="af__run" type="button" onClick={handleRun} disabled={running}>
+                {running ? "실행 중…" : "실행"}
               </button>
               <button className="af__publish" type="button" onClick={() => setPublishOpen(true)}>
                 갤러리에 발행
@@ -401,6 +471,93 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
             </ReactFlow>
           </div>
         </div>
+
+        {/* 실행 결과 오버레이 (로컬 실행기 응답) */}
+        {(running || runStatus || runError) && (
+          <div
+            style={{
+              position: "fixed",
+              right: 20,
+              bottom: 20,
+              width: 380,
+              maxHeight: "44vh",
+              overflow: "auto",
+              background: "#fff",
+              border: "1px solid #e5e0d2",
+              borderRadius: 12,
+              padding: "12px 14px",
+              boxShadow: "0 8px 24px rgba(0,0,0,.12)",
+              zIndex: 50,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 8,
+              }}
+            >
+              <strong>실행 결과</strong>
+              <span style={{ fontSize: 13, color: "#8a8375" }}>
+                {running
+                  ? "▶ 실행 중…"
+                  : runStatus === "done"
+                    ? "✅ 완료"
+                    : runStatus === "awaiting_approval"
+                      ? "🚨 승인 대기"
+                      : runStatus === "stopped"
+                        ? "⛔ 중단(중복)"
+                        : ""}
+              </span>
+            </div>
+            {runError && (
+              <p style={{ color: "#c0392b", fontSize: 13, margin: "4px 0" }}>⚠ {runError}</p>
+            )}
+            <ol
+              style={{
+                margin: 0,
+                paddingLeft: 18,
+                fontSize: 13,
+                lineHeight: 1.7,
+                color: "#4a4636",
+              }}
+            >
+              {runResults.map((r, i) => (
+                <li key={`${r.id}-${i}`}>{r.result}</li>
+              ))}
+            </ol>
+            {runPending && (
+              <div
+                style={{
+                  marginTop: 10,
+                  padding: "10px 12px",
+                  background: "#fff4ec",
+                  border: "1px solid #f2c9a8",
+                  borderRadius: 8,
+                }}
+              >
+                <p style={{ margin: "0 0 8px", fontSize: 13 }}>🚨 {runPending.message}</p>
+                <button
+                  type="button"
+                  onClick={handleApprove}
+                  disabled={running}
+                  style={{
+                    padding: "6px 14px",
+                    background: "#e8843c",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 6,
+                    cursor: "pointer",
+                    fontWeight: 600,
+                  }}
+                >
+                  승인하고 계속
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 오른쪽: 자연어 추천 / 라이브러리 패널 */}
         <aside className="af__side">
