@@ -182,7 +182,11 @@ export function TopNav({ active, onNavigate }: TopNavProps) {
                 autoFocus
               />
             </label>
-            <p className={error || (!valid && trimmed) ? "nav__popHint nav__popHint--err" : "nav__popHint"}>
+            <p
+              className={
+                error || (!valid && trimmed) ? "nav__popHint nav__popHint--err" : "nav__popHint"
+              }
+            >
               {error ?? "2~20자로 지어주세요"}
             </p>
 
