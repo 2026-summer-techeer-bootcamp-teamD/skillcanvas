@@ -294,3 +294,23 @@
   color: var(--sc-ink, #2b2620);
   border: 1px solid color-mix(in srgb, var(--sc-node-tool) 40%, transparent);
 }
+
+/* 카드 액션 (수정/삭제) — SKILL·AUTO-FLOW 공통 */
+.mw__cardActions {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+}
+.mw__cardActions button {
+  font-size: 0.72rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid var(--sc-border, #e3ddcd);
+  background: transparent;
+  color: var(--sc-muted, #9a938a);
+  cursor: pointer;
+}
+.mw__cardActions button:hover {
+  color: var(--sc-ink, #2b2620);
+  border-color: var(--sc-muted, #9a938a);
+}
