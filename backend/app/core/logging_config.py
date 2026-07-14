@@ -38,3 +38,7 @@ def configure_logging(level: int = logging.INFO) -> None:
     root.handlers.clear()
     root.addHandler(handler)
     root.setLevel(level)
+
+    # uvicorn 자체 access 로그(평문)는 AccessLogMiddleware의 JSON 로그와 매 요청마다 중복으로
+    # stdout에 찍혀 Loki에 라벨 없는 잡음으로 그대로 적재됨 -> 끄고 미들웨어 쪽만 남긴다.
+    logging.getLogger("uvicorn.access").disabled = True
