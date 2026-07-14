@@ -191,7 +191,7 @@ export function Skill({ onNavigate }: SkillProps) {
         type: n.type as SkillNodeType,
         typeLabel: TYPE_LABEL[n.type] ?? n.type,
         title: n.label,
-        meta: data.used_mcps.join(", ") || "-",
+        meta: n.detail || "-", // 블록별 자기 도구/힌트(detail). 스킬 전체 목록 아님
         desc: n.detail ?? "",
       }));
 
@@ -269,6 +269,7 @@ export function Skill({ onNavigate }: SkillProps) {
                       type: data.node.type as SkillNodeType,
                       typeLabel: TYPE_LABEL[data.node.type] ?? data.node.type,
                       title: data.node.label,
+                      meta: data.node.detail || "-",
                       desc: data.node.detail ?? "",
                     }
                   : b,
