@@ -2,7 +2,8 @@ import { useState } from "react";
 import { PixelArt } from "../components/PixelArt";
 import { TopNav, type NavTab } from "../components/TopNav";
 import { ROBOT_BLACK, ROBOT_ORANGE } from "../lib/pixelMaps";
-import { classifyIntent, type Intent } from "../lib/classifyIntent";
+import { useApi } from "../lib/api";
+import type { Intent } from "../lib/classifyIntent";
 import "./Create.css";
 
 const EXAMPLES = [
@@ -25,14 +26,24 @@ export function Create({ onNavigate, onCreate }: CreateProps) {
   const [text, setText] = useState("");
   const [intent, setIntent] = useState<Intent>("neutral");
   const [selected, setSelected] = useState<Choice | null>(null);
+  const call = useApi();
 
   const run = async (value: string) => {
     if (!value.trim()) return;
     setText(value);
     setSelected(null);
     setPhase("classifying");
-    const result = await classifyIntent(value);
-    setIntent(result);
+    try {
+      // POST /classify — 스킬/워크플로우 유형 판단 (3-4)
+      const data = await call<{ closer_to: Intent }>("/classify", {
+        method: "POST",
+        json: { text: value },
+      });
+      setIntent(data.closer_to);
+    } catch {
+      // 실패(422/502)든 neutral이든 두 버튼 동등으로 폴백 (명세 3-4)
+      setIntent("neutral");
+    }
     setPhase("choose");
   };
 
