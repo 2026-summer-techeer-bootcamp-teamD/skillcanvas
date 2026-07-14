@@ -21,6 +21,19 @@ services:
       timeout: 3s
       retries: 5
 
+  # DB 내부 지표(커넥션/락/캐시 적중률) 노출. docker compose --profile monitoring up 으로 실행.
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: skillcanvas-postgres-exporter
+    environment:
+      DATA_SOURCE_NAME: "postgresql://postgres:postgres@postgres:5432/skillcanvas?sslmode=disable"
+    ports:
+      - "9187:9187"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["monitoring"]
+
   # (선택) 백엔드도 Docker로 돌리고 싶을 때만. 평소 개발은 venv 권장.
   backend:
     build: ./backend
@@ -55,6 +68,7 @@ services:
     container_name: skillcanvas-grafana
     volumes:
       - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
     ports:
       - "3000:3000"
     depends_on:

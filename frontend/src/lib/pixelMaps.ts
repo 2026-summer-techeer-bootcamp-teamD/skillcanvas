@@ -16,12 +16,6 @@ const ROBOT_MAP: string[] = [
   ".B...B.",
 ];
 
-// 블록 로고 (4x4)
-export const BLOCK_MARK: PixelSprite = {
-  map: [".AA.", "AAAA", "A..A", "AAAA"],
-  palette: { A: "#e8843c" },
-};
-
 // 검은 로봇 마스코트 (몸통 블랙 · 안테나/입 오렌지 · 눈 크림)
 export const ROBOT_BLACK: PixelSprite = {
   map: ROBOT_MAP,

@@ -347,6 +347,29 @@
   overflow-y: auto;
   border-right: 1px solid var(--sc-line);
 }
+/* Create에서 넘어온 입력 문장을 문맥으로 표시 */
+.af__request {
+  margin-top: 1.25rem;
+  padding: 0.75rem 0.875rem;
+  background: var(--sc-input);
+  border: 1px solid var(--sc-line);
+  border-radius: 0.625rem;
+}
+.af__requestLabel {
+  display: block;
+  margin-bottom: 0.3125rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--sc-muted);
+}
+.af__requestText {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.55;
+  color: var(--sc-ink);
+}
+
 .af__inspectEmpty {
   margin-top: 1.5rem;
   font-size: 0.84rem;

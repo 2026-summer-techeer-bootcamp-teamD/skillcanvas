@@ -13,6 +13,7 @@
 """
 
 from fastapi import APIRouter, Depends, HTTPException
+from prometheus_client import Counter
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
@@ -32,6 +33,9 @@ from app.schemas.workflow import (
 )
 
 router = APIRouter(prefix="/workflows", tags=["워크플로우"])
+
+# 비즈니스 지표 (Grafana에서 "오늘 발행 수" 등에 사용)
+WORKFLOW_PUBLISHED = Counter("workflow_published_total", "발행된 워크플로우 수")
 
 
 # ── 헬퍼: 태그 ────────────────────────────────────────
@@ -174,6 +178,7 @@ def create_workflow(
     _sync_tags(db, wf.id, payload.tags)
     db.commit()
     db.refresh(wf)
+    WORKFLOW_PUBLISHED.inc()
     return _summary(db, wf)
 
 
