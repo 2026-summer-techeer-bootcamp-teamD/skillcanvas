@@ -1,5 +1,5 @@
 import { PixelArt } from "./PixelArt";
-import { BLOCK_MARK } from "../lib/pixelMaps";
+import { ROBOT_BLACK } from "../lib/pixelMaps";
 
 interface BrandNavProps {
   /** 우측 액션 (예: 건너뛰기). 없으면 표시 안 함. */
@@ -13,7 +13,7 @@ export function BrandNav({ action, onLogoClick }: BrandNavProps) {
   return (
     <header className="sc-nav">
       <a className="sc-nav__logo" href="/" onClick={onLogoClick}>
-        <PixelArt sprite={BLOCK_MARK} className="sc-nav__mark" />
+        <PixelArt sprite={ROBOT_BLACK} className="sc-nav__mark" />
         <span className="sc-nav__brand">SkillCanvas</span>
       </a>
       {action ? <div className="sc-nav__action">{action}</div> : null}

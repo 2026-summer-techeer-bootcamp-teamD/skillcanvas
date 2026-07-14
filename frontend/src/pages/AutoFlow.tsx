@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useRef, useState, type DragEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
+import { useLocation } from "react-router-dom";
 import ReactFlow, {
   Background,
   BackgroundVariant,
@@ -207,6 +208,18 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
     setPhase("builder");
   };
 
+  // Create에서 입력 텍스트를 들고 오면 히어로를 건너뛰고 바로 빌더.
+  const location = useLocation();
+  const kickedOff = useRef(false);
+  useEffect(() => {
+    const initial = (location.state as { text?: string } | null)?.text;
+    if (initial && !kickedOff.current) {
+      kickedOff.current = true;
+      setText(initial);
+      setPhase("builder");
+    }
+  }, [location.state]);
+
   if (phase === "input") {
     return (
       <div className="af">
@@ -309,11 +322,19 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
               )}
             </>
           ) : (
-            <p className="af__inspectEmpty">
-              노드를 클릭하면 여기서 편집해요.
-              <br />
-              노드 옆 점을 끌어 서로 연결하고, 연결선을 클릭하면 지워요.
-            </p>
+            <>
+              {text.trim() && (
+                <div className="af__request">
+                  <span className="af__requestLabel">요청</span>
+                  <p className="af__requestText">{text}</p>
+                </div>
+              )}
+              <p className="af__inspectEmpty">
+                노드를 클릭하면 여기서 편집해요.
+                <br />
+                노드 옆 점을 끌어 서로 연결하고, 연결선을 클릭하면 지워요.
+              </p>
+            </>
           )}
         </aside>
 
