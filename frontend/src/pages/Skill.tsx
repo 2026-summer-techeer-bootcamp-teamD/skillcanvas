@@ -112,12 +112,30 @@ export function Skill({ onNavigate }: SkillProps) {
     output: "출력",
   };
 
-  // 저장 = content_md(SKILL.md)에 폼 값을 합쳐 POST /skills 로 보낼 자리.
-  const handlePublish = (payload: PublishPayload) => {
-    // TODO: 백엔드 연결 시 블록 → SKILL.md 변환 후 POST /skills { ...payload, content_md }
-    console.log("[저장] POST /skills", { ...payload, blocks: draft?.blocks });
+// 블록 배열 → SKILL.md(content_md) 마크다운 문자열로 변환
+  const blocksToMarkdown = (d: SkillDraft): string => {
+    const lines = [`# ${d.name}`, "", d.summary, "", "## 블록"];
+    d.blocks.forEach((b, i) => {
+      lines.push(`${i + 1}. **${b.title}** (${b.typeLabel} · ${b.meta})`);
+      if (b.desc) {
+        lines.push(`   - ${b.desc}`);
+      }
+    });
+    return lines.join("\n");
   };
 
+  // 저장 = content_md(SKILL.md)에 폼 값을 합쳐 POST /skills
+  const handlePublish = async (payload: PublishPayload) => {
+    if (!draft) return;
+    try {
+      await call("/skills", {
+        method: "POST",
+        json: { ...payload, content_md: blocksToMarkdown(draft) },
+      });
+    } catch (e) {
+      alert(e instanceof ApiError ? e.message : "저장 실패");
+    }
+  };
   const reorder = (from: number, to: number) => {
     setDraft((prev) => {
       if (!prev) return prev;
