@@ -18,7 +18,7 @@ const WORLDS = [
   { name: "Team-Ops", icon: "🛠" },
 ];
 
-interface MySkill {
+interface MyItem {
   id: number;
   name: string;
   description: string | null;
@@ -100,56 +100,56 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
     setOpenMcps([]);
   };
 
-  const [mySkills, setMySkills] = useState<MySkill[]>([]);
+  const [mySkills, setMyItems] = useState<MyItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // GET /skills?mine=true — 내 스킬 (비공개 포함) (5-1)
-  const loadMySkills = useCallback(() => {
+  const loadMyItems = useCallback(() => {
     setLoading(true);
     setError(null);
-    call<{ items: MySkill[] }>("/skills?mine=true")
-      .then((data) => setMySkills(data.items))
+    call<{ items: MyItem[] }>("/skills?mine=true")
+      .then((data) => setMyItems(data.items))
       .catch((e) => setError(e instanceof ApiError ? e.message : "불러오기 실패"))
       .finally(() => setLoading(false));
   }, [call]);
 
   useEffect(() => {
-    loadMySkills();
-  }, [loadMySkills]);
+    loadMyItems();
+  }, [loadMyItems]);
 
   // PATCH /skills/{id} — 이름 수정 (5-4)
-  const handleRename = async (skill: MySkill) => {
+  const handleRename = async (skill: MyItem) => {
     const name = window.prompt("새 이름", skill.name);
     if (!name || name === skill.name) return;
     try {
       await call(`/skills/${skill.id}`, { method: "PATCH", json: { name } });
-      loadMySkills();
+      loadMyItems();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "수정 실패");
     }
   };
 
   // DELETE /skills/{id} — 삭제 (5-5)
-  const handleDelete = async (skill: MySkill) => {
+  const handleDelete = async (skill: MyItem) => {
     if (!window.confirm(`"${skill.name}" 스킬을 삭제할까요?`)) return;
     try {
       await call(`/skills/${skill.id}`, { method: "DELETE" });
-      loadMySkills();
+      loadMyItems();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "삭제 실패");
     }
   };
 
   // ── 내 워크플로우 (GET /workflows?mine, 4-1) — SKILL과 동일 패턴 ──
-  const [myFlows, setMyFlows] = useState<MySkill[]>([]);
+  const [myFlows, setMyFlows] = useState<MyItem[]>([]);
   const [flowsLoading, setFlowsLoading] = useState(true);
   const [flowsError, setFlowsError] = useState<string | null>(null);
 
   const loadMyFlows = useCallback(() => {
     setFlowsLoading(true);
     setFlowsError(null);
-    call<{ items: MySkill[] }>("/workflows?mine=true")
+    call<{ items: MyItem[] }>("/workflows?mine=true")
       .then((data) => setMyFlows(data.items))
       .catch((e) => setFlowsError(e instanceof ApiError ? e.message : "불러오기 실패"))
       .finally(() => setFlowsLoading(false));
@@ -159,7 +159,7 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
     loadMyFlows();
   }, [loadMyFlows]);
 
-  const handleRenameFlow = async (wf: MySkill) => {
+  const handleRenameFlow = async (wf: MyItem) => {
     const name = window.prompt("새 이름", wf.name);
     if (!name || name === wf.name) return;
     try {
@@ -170,7 +170,7 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
     }
   };
 
-  const handleDeleteFlow = async (wf: MySkill) => {
+  const handleDeleteFlow = async (wf: MyItem) => {
     if (!window.confirm(`"${wf.name}" 워크플로우를 삭제할까요?`)) return;
     try {
       await call(`/workflows/${wf.id}`, { method: "DELETE" });

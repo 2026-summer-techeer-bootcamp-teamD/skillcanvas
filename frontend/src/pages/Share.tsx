@@ -48,35 +48,38 @@ export function Share({ onNavigate }: ShareProps) {
       owner: { nickname: string };
       tags: string[];
       import_count: number;
+      created_at: string;
     };
-    const toItem =
-      (kind: ItemKind) =>
-      (x: ListItem): GalleryItem => ({
-        id: String(x.id),
-        kind,
-        title: x.name,
-        description: x.description ?? "",
-        tags: x.tags,
-        owner: x.owner.nickname,
-        imports: x.import_count,
-      });
     const tagQ = selectedTag ? `&tag=${encodeURIComponent(selectedTag)}` : "";
-    Promise.all([
+    // allSettled: 한쪽 API가 죽어도 다른 쪽은 계속 보여준다
+    Promise.allSettled([
       call<{ items: ListItem[] }>(`/skills?sort=recent${tagQ}`),
       call<{ items: ListItem[] }>(`/workflows?sort=recent${tagQ}`),
-    ])
-      .then(([s, w]) => {
-        if (ignore) return;
-        setItems([...w.items.map(toItem("workflow")), ...s.items.map(toItem("skill"))]);
-      })
-      .catch((e) => {
-        if (ignore) return;
-        setError(e instanceof ApiError ? e.message : "불러오기 실패");
-      })
-      .finally(() => {
-        if (ignore) return;
-        setLoading(false);
-      });
+    ]).then(([skillsRes, wfRes]) => {
+      if (ignore) return;
+      const pick = (res: PromiseSettledResult<{ items: ListItem[] }>, kind: ItemKind) =>
+        res.status === "fulfilled" ? res.value.items.map((x) => ({ ...x, kind })) : [];
+      // 스킬·워크플로우를 합쳐 created_at 최신순으로 정렬 (단순 concat이면 종류별로 뭉침)
+      const merged = [...pick(skillsRes, "skill"), ...pick(wfRes, "workflow")].sort((a, b) =>
+        b.created_at.localeCompare(a.created_at),
+      );
+      setItems(
+        merged.map((x): GalleryItem => ({
+          id: String(x.id),
+          kind: x.kind,
+          title: x.name,
+          description: x.description ?? "",
+          tags: x.tags,
+          owner: x.owner.nickname,
+          imports: x.import_count,
+        })),
+      );
+      // 둘 다 실패한 경우에만 에러 표시
+      if (skillsRes.status === "rejected" && wfRes.status === "rejected") {
+        setError(skillsRes.reason instanceof ApiError ? skillsRes.reason.message : "불러오기 실패");
+      }
+      setLoading(false);
+    });
     return () => {
       ignore = true;
     };
