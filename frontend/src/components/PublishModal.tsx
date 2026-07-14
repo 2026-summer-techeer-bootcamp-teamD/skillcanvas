@@ -15,8 +15,7 @@ interface PublishModalProps {
   kind: "skill" | "workflow";
   defaultName: string;
   onClose: () => void;
-  onPublish: (payload: PublishPayload) => void;
-}
+  onPublish: (payload: PublishPayload) => void | Promise<void>;
 
 const MAX_TAGS = 5;
 
@@ -27,6 +26,8 @@ export function PublishModal({ open, kind, defaultName, onClose, onPublish }: Pu
   const [tagInput, setTagInput] = useState("");
   const [isPublic, setIsPublic] = useState(true);
   const [done, setDone] = useState<null | { name: string; isPublic: boolean }>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // 열릴 때마다 AI 이름을 기본값으로 다시 채운다.
   useEffect(() => {
@@ -37,6 +38,8 @@ export function PublishModal({ open, kind, defaultName, onClose, onPublish }: Pu
       setTagInput("");
       setIsPublic(true);
       setDone(null);
+      setError(null);
+      setSubmitting(false);
     }
   }, [open, defaultName]);
 
@@ -65,17 +68,25 @@ export function PublishModal({ open, kind, defaultName, onClose, onPublish }: Pu
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) return;
-    onPublish({
-      name: trimmed,
-      description: description.trim() || null,
-      tags,
-      is_public: isPublic,
-    });
-    setDone({ name: trimmed, isPublic });
+    setSubmitting(true);
+    setError(null);
+    try {
+      await onPublish({
+        name: trimmed,
+        description: description.trim() || null,
+        tags,
+        is_public: isPublic,
+      });
+      setDone({ name: trimmed, isPublic });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "저장에 실패했어요");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -174,12 +185,14 @@ export function PublishModal({ open, kind, defaultName, onClose, onPublish }: Pu
               </span>
             </button>
 
+            {error && <p className="pub__optional">{error}</p>}
+
             <div className="pub__actions">
               <button className="pub__ghost" type="button" onClick={onClose}>
                 취소
               </button>
-              <button className="pub__primary" type="submit" disabled={!name.trim()}>
-                {isPublic ? "발행" : "저장"}
+              <button className="pub__primary" type="submit" disabled={!name.trim() || submitting}>
+                {submitting ? "저장 중…" : isPublic ? "발행" : "저장"}
               </button>
             </div>
           </form>

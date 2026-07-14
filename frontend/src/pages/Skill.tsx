@@ -112,7 +112,7 @@ export function Skill({ onNavigate }: SkillProps) {
     output: "출력",
   };
 
-// 블록 배열 → SKILL.md(content_md) 마크다운 문자열로 변환
+  // 블록 배열 → SKILL.md(content_md) 마크다운 문자열로 변환
   const blocksToMarkdown = (d: SkillDraft): string => {
     const lines = [`# ${d.name}`, "", d.summary, "", "## 블록"];
     d.blocks.forEach((b, i) => {
@@ -127,14 +127,10 @@ export function Skill({ onNavigate }: SkillProps) {
   // 저장 = content_md(SKILL.md)에 폼 값을 합쳐 POST /skills
   const handlePublish = async (payload: PublishPayload) => {
     if (!draft) return;
-    try {
-      await call("/skills", {
-        method: "POST",
-        json: { ...payload, content_md: blocksToMarkdown(draft) },
-      });
-    } catch (e) {
-      alert(e instanceof ApiError ? e.message : "저장 실패");
-    }
+    await call("/skills", {
+      method: "POST",
+      json: { ...payload, content_md: blocksToMarkdown(draft) },
+    });
   };
   const reorder = (from: number, to: number) => {
     setDraft((prev) => {
