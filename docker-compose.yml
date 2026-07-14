@@ -1,7 +1,9 @@
 # 로컬 개발용.
 #  기본:        docker compose up        → Postgres만 뜸 (백엔드는 venv로 실행 권장)
 #  전체 Docker: docker compose --profile full up  → 백엔드까지 컨테이너로
-#  모니터링:    docker compose --profile monitoring up  → Prometheus + Grafana
+#  모니터링:    docker compose --profile monitoring up  → Prometheus + Grafana + Loki + Promtail
+#  로그 수집(Loki)은 Docker 컨테이너 로그를 Promtail이 읽는 방식이라, backend도 --profile full로
+#  함께 띄워야 로그가 잡힘 (venv로 띄운 backend는 Promtail이 볼 수 없음).
 
 services:
   postgres:
@@ -75,7 +77,54 @@ services:
       - prometheus
     profiles: ["monitoring"]
 
+  # 로그 저장소. Promtail이 여기로 로그를 push하고 Grafana가 조회.
+  # 인증 기능이 없는 API(loki-config.yml: auth_enabled: false)라 호스트 포트로는 열지 않고
+  # 같은 docker network 안(Grafana·Promtail)에서만 접근하게 함.
+  loki:
+    image: grafana/loki:3.7.3
+    container_name: skillcanvas-loki
+    volumes:
+      - ./monitoring/loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki-data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    profiles: ["monitoring"]
+
+  # promtail이 컨테이너 목록을 조회할 때 쓰는 대상. docker.sock을 promtail에 직접 물리면
+  # 컨테이너 실행/중지 등 전체 Docker API 권한이 넘어가므로, 컨테이너 조회만 허용하는
+  # 프록시를 하나 두고 promtail은 이 프록시만 바라보게 한다.
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:latest
+    container_name: skillcanvas-docker-socket-proxy
+    environment:
+      CONTAINERS: 1
+      NETWORKS: 1
+      LOG_LEVEL: warning
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    profiles: ["monitoring"]
+
+  # Docker 컨테이너 로그를 자동 발견해서 Loki로 전달.
+  # COMPOSE_PROJECT_NAME을 promtail-config.yml에 env로 주입해서, clone 폴더명이 달라지거나
+  # COMPOSE_PROJECT_NAME을 직접 오버라이드해도(-p 옵션 등) 항상 실제 프로젝트명을 따라가게 함
+  # (하드코딩된 "skillcanvas" 문자열이 실제 프로젝트명과 어긋나면 로그가 0건 수집되는 문제 방지).
+  promtail:
+    image: grafana/promtail:3.6.8
+    container_name: skillcanvas-promtail
+    environment:
+      - COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME}
+    volumes:
+      - ./monitoring/promtail/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - promtail-positions:/data
+    command: -config.file=/etc/promtail/config.yml -config.expand-env=true
+    depends_on:
+      - loki
+      - docker-socket-proxy
+    profiles: ["monitoring"]
+
 volumes:
   pgdata:
   prometheus-data:
   grafana-data:
+  loki-data:
+  promtail-positions:
