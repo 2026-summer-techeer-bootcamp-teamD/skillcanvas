@@ -29,6 +29,7 @@ import { useApi, ApiError } from "../lib/api";
 import {
   runFlow,
   approveRun,
+  saveCredential,
   RunnerError,
   type RunResultItem,
   type RunResponse,
@@ -305,17 +306,26 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
     setPhase("builder");
   };
 
-  // Create에서 입력 텍스트를 들고 오면 히어로를 건너뛰고 바로 빌더.
+  // Create에서 텍스트를, MyWorld 노드뷰에서 그래프를 들고 오면 바로 빌더로.
   const location = useLocation();
   const kickedOff = useRef(false);
   useEffect(() => {
-    const initial = (location.state as { text?: string } | null)?.text;
-    if (initial && !kickedOff.current) {
+    const s = location.state as {
+      text?: string;
+      graph?: { nodes: Node<FlowNodeData>[]; edges: Edge[] };
+    } | null;
+    if (kickedOff.current) return;
+    if (s?.graph) {
       kickedOff.current = true;
-      setText(initial);
+      setNodes(s.graph.nodes);
+      setEdges(s.graph.edges);
+      setPhase("builder");
+    } else if (s?.text) {
+      kickedOff.current = true;
+      setText(s.text);
       setPhase("builder");
     }
-  }, [location.state]);
+  }, [location.state, setNodes, setEdges]);
 
   if (phase === "input") {
     return (
@@ -412,7 +422,21 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
                 <div className="af__keyWarn">
                   <p className="af__keyWarnTitle">▨ MCP 키 연결 필요</p>
                   <p className="af__keyWarnBody">이 도구는 본인 키를 붙여넣어야 실행돼요.</p>
-                  <button className="af__keyBtn" type="button">
+                  <button
+                    className="af__keyBtn"
+                    type="button"
+                    onClick={async () => {
+                      const toolKey = selected.data.title;
+                      const secret = window.prompt(`${toolKey} 키를 붙여넣으세요`);
+                      if (!secret) return;
+                      try {
+                        await saveCredential(toolKey, secret);
+                        alert(`${toolKey} 키가 로컬에 저장됐어요.`);
+                      } catch (e) {
+                        alert(e instanceof RunnerError ? e.message : "키 저장 실패");
+                      }
+                    }}
+                  >
                     키 붙여넣기
                   </button>
                 </div>

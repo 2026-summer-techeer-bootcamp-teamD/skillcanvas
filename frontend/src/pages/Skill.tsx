@@ -6,6 +6,7 @@ import { PublishModal, type PublishPayload } from "../components/PublishModal";
 import { ROBOT_BLACK, ROBOT_ORANGE } from "../lib/pixelMaps";
 import type { SkillBlock, SkillDraft, SkillNodeType } from "../lib/recommendSkill";
 import { useApi, ApiError } from "../lib/api";
+import { saveSkill, RunnerError } from "../lib/runner";
 import "./Skill.css";
 
 const EXAMPLES = [
@@ -133,6 +134,29 @@ export function Skill({ onNavigate }: SkillProps) {
       json: { ...payload, content_md: blocksToMarkdown(draft) },
     });
   };
+
+  // 로컬 동기화 = 내 .claude/SKILL.md 로 저장 (본문 보존, POST /save)
+  const slugify = (s: string) =>
+    s
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9가-힣]+/g, "-")
+      .replace(/^-|-$/g, "") || "skill";
+
+  const handleSaveLocal = async () => {
+    if (!draft) return;
+    try {
+      // allowed-tools = 카탈로그 MCP 키(used_mcps). 한글 노드 라벨이 아니라 실제 키여야
+      // GET /graph에서 스킬→mcp 엣지가 생긴다.
+      const tools = draft.mcps ?? [];
+      const description = draft.source?.trim() || draft.summary;
+      // 조립한 블록을 마크다운 본문으로 함께 저장(러너 /save body)
+      await saveSkill(slugify(draft.name), draft.name, description, tools, blocksToMarkdown(draft));
+      alert("로컬 .claude에 저장됐어요.");
+    } catch (e) {
+      alert(e instanceof RunnerError ? e.message : "로컬 저장 실패");
+    }
+  };
   const reorder = (from: number, to: number) => {
     setDraft((prev) => {
       if (!prev) return prev;
@@ -174,6 +198,8 @@ export function Skill({ onNavigate }: SkillProps) {
         name: data.name,
         summary: `${data.nodes.length}개 블록으로 조립했어요.`,
         blocks,
+        mcps: data.used_mcps ?? [],
+        source: prompt,
       });
       setPhase("result");
     } catch (e) {
@@ -332,6 +358,9 @@ export function Skill({ onNavigate }: SkillProps) {
 
             <button className="skill__run" type="button" onClick={() => setPublishOpen(true)}>
               ▶ 실행 / 저장
+            </button>
+            <button className="skill__run" type="button" onClick={handleSaveLocal}>
+              💾 로컬에 저장
             </button>
           </aside>
         </div>

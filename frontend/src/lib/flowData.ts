@@ -88,3 +88,54 @@ export const INITIAL_EDGES: Edge[] = [
   edge("e4", "n3", "n4"),
   edge("e5", "n4", "n5"),
 ];
+
+/** POST /assemble가 돌려주는 노드 하나 (순서대로 온다). */
+export interface AssembledNode {
+  id: string;
+  type: string; // trigger/tool/agent/approve/output
+  label: string;
+  detail: string | null;
+}
+
+const ASSEMBLE_LABEL: Record<string, string> = {
+  trigger: "트리거",
+  agent: "에이전트",
+  tool: "도구",
+  approve: "승인",
+  output: "출력",
+};
+
+/**
+ * /assemble의 순차 노드 목록 → 좌→우 실행 플로우(트리거→…→출력).
+ * assemble은 엣지 없이 순서만 주므로 인접 노드끼리 순차 연결한다.
+ */
+export function assembleToFlow(
+  nodes: AssembledNode[],
+  usedMcps: string[] = [],
+): {
+  nodes: Node<FlowNodeData>[];
+  edges: Edge[];
+} {
+  const rfNodes: Node<FlowNodeData>[] = nodes.map((n, i) => {
+    const kind = (
+      ["trigger", "tool", "agent", "approve", "output"].includes(n.type) ? n.type : "tool"
+    ) as FlowNodeKind;
+    const typeLabel = ASSEMBLE_LABEL[n.type] ?? n.type;
+    // 노드 라벨·설명에 언급된 MCP를 찾아 간결한 태그로 (줄글 대신)
+    const hay = `${n.label} ${n.detail ?? ""}`.toLowerCase();
+    const mcp = usedMcps.find((m) => hay.includes(m.toLowerCase()));
+    return {
+      id: n.id,
+      type: "flow",
+      position: { x: 80 + i * 240, y: 160 },
+      data: {
+        kind,
+        typeLabel,
+        title: n.label,
+        op: mcp ? `${typeLabel} · ◈ ${mcp}` : typeLabel,
+      },
+    };
+  });
+  const rfEdges: Edge[] = nodes.slice(1).map((n, i) => edge(`ae${i}`, nodes[i].id, n.id));
+  return { nodes: rfNodes, edges: rfEdges };
+}

@@ -85,3 +85,43 @@ export function approveRun(runId: string) {
 export function getRunStatus(runId: string) {
   return runnerFetch<RunResponse>(`/run/${runId}/status`);
 }
+
+// ── 부품 창고 (.claude 파일 다루기) ─────────────────────
+export interface RunnerGraphNode {
+  id: string;
+  type: string; // graph: mcp/rule/skill · flow: trigger/tool/agent/output/approve
+  label: string;
+  detail?: string;
+}
+export interface RunnerGraph {
+  nodes: RunnerGraphNode[];
+  edges: { from: string; to: string; kind?: string }[];
+}
+
+/** A-1: 로컬 .claude를 노드 그래프로 조회(부품 시각화). */
+export function getGraph() {
+  return runnerFetch<RunnerGraph>("/graph");
+}
+
+/** A-2: 스킬 구조를 로컬 SKILL.md로 저장(본문 보존). */
+export function saveSkill(
+  skill: string,
+  name: string,
+  description: string,
+  allowedTools: string[],
+  body?: string,
+) {
+  // body 미지정(undefined)이면 JSON에서 빠져 러너가 기존 본문 보존(backward compat)
+  return runnerFetch<RunnerGraph>("/save", {
+    method: "POST",
+    body: JSON.stringify({ skill, name, description, allowed_tools: allowedTools, body }),
+  });
+}
+
+/** A-6: 도구 API 키를 로컬에 저장. */
+export function saveCredential(toolKey: string, secret: string) {
+  return runnerFetch<{ ok: boolean; tool_key: string }>("/credential", {
+    method: "POST",
+    body: JSON.stringify({ tool_key: toolKey, secret }),
+  });
+}
