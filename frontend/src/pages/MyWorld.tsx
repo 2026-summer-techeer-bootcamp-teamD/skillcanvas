@@ -18,13 +18,7 @@ const WORLDS = [
   { name: "Team-Ops", icon: "🛠" },
 ];
 
-const MW_FLOWS = [
-  { title: "메일 비서", desc: "받은 편지함 요약 → Slack·Notion" },
-  { title: "리서치 수집기", desc: "키워드 뉴스 요약 브리핑" },
-  { title: "고객 타겟 분류", desc: "세그먼트 라벨링 자동화" },
-];
-
-interface MySkill {
+interface MyItem {
   id: number;
   name: string;
   description: string | null;
@@ -106,44 +100,83 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
     setOpenMcps([]);
   };
 
-  const [mySkills, setMySkills] = useState<MySkill[]>([]);
+  const [mySkills, setMyItems] = useState<MyItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // GET /skills?mine=true — 내 스킬 (비공개 포함) (5-1)
-  const loadMySkills = useCallback(() => {
+  const loadMyItems = useCallback(() => {
     setLoading(true);
     setError(null);
-    call<{ items: MySkill[] }>("/skills?mine=true")
-      .then((data) => setMySkills(data.items))
+    call<{ items: MyItem[] }>("/skills?mine=true")
+      .then((data) => setMyItems(data.items))
       .catch((e) => setError(e instanceof ApiError ? e.message : "불러오기 실패"))
       .finally(() => setLoading(false));
   }, [call]);
 
   useEffect(() => {
-    loadMySkills();
-  }, [loadMySkills]);
+    loadMyItems();
+  }, [loadMyItems]);
 
   // PATCH /skills/{id} — 이름 수정 (5-4)
-  const handleRename = async (skill: MySkill) => {
+  const handleRename = async (skill: MyItem) => {
     const name = window.prompt("새 이름", skill.name);
     if (!name || name === skill.name) return;
     try {
       await call(`/skills/${skill.id}`, { method: "PATCH", json: { name } });
-      loadMySkills();
+      loadMyItems();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "수정 실패");
     }
   };
 
   // DELETE /skills/{id} — 삭제 (5-5)
-  const handleDelete = async (skill: MySkill) => {
+  const handleDelete = async (skill: MyItem) => {
     if (!window.confirm(`"${skill.name}" 스킬을 삭제할까요?`)) return;
     try {
       await call(`/skills/${skill.id}`, { method: "DELETE" });
-      loadMySkills();
+      loadMyItems();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "삭제 실패");
+    }
+  };
+
+  // ── 내 워크플로우 (GET /workflows?mine, 4-1) — SKILL과 동일 패턴 ──
+  const [myFlows, setMyFlows] = useState<MyItem[]>([]);
+  const [flowsLoading, setFlowsLoading] = useState(true);
+  const [flowsError, setFlowsError] = useState<string | null>(null);
+
+  const loadMyFlows = useCallback(() => {
+    setFlowsLoading(true);
+    setFlowsError(null);
+    call<{ items: MyItem[] }>("/workflows?mine=true")
+      .then((data) => setMyFlows(data.items))
+      .catch((e) => setFlowsError(e instanceof ApiError ? e.message : "불러오기 실패"))
+      .finally(() => setFlowsLoading(false));
+  }, [call]);
+
+  useEffect(() => {
+    loadMyFlows();
+  }, [loadMyFlows]);
+
+  const handleRenameFlow = async (wf: MyItem) => {
+    const name = window.prompt("새 이름", wf.name);
+    if (!name || name === wf.name) return;
+    try {
+      await call(`/workflows/${wf.id}`, { method: "PATCH", json: { name } });
+      loadMyFlows();
+    } catch (e) {
+      setFlowsError(e instanceof ApiError ? e.message : "수정 실패");
+    }
+  };
+
+  const handleDeleteFlow = async (wf: MyItem) => {
+    if (!window.confirm(`"${wf.name}" 워크플로우를 삭제할까요?`)) return;
+    try {
+      await call(`/workflows/${wf.id}`, { method: "DELETE" });
+      loadMyFlows();
+    } catch (e) {
+      setFlowsError(e instanceof ApiError ? e.message : "삭제 실패");
     }
   };
 
@@ -259,13 +292,32 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
           <div className="mw__section">
             <p className="mw__sectionLabel">
               <span className="mw__dot" style={{ background: "var(--sc-accent)" }} />
-              AUTO-FLOW <span className="mw__count">{MW_FLOWS.length}개</span>
+              AUTO-FLOW <span className="mw__count">{myFlows.length}개</span>
             </p>
+
+            {flowsLoading && <p className="mw__sub">불러오는 중…</p>}
+            {flowsError && <p className="mw__sub">에러: {flowsError}</p>}
+            {!flowsLoading && !flowsError && myFlows.length === 0 && (
+              <p className="mw__sub">아직 만든 워크플로우가 없어요.</p>
+            )}
+
             <div className="mw__grid mw__grid--flow">
-              {MW_FLOWS.map((f) => (
-                <article className="mw__flow" key={f.title}>
-                  <h3 className="mw__cardTitle">{f.title}</h3>
-                  <p className="mw__cardDesc">{f.desc}</p>
+              {myFlows.map((f) => (
+                <article className="mw__flow" key={f.id}>
+                  <span className="mw__pill">
+                    <span className="mw__pillDot" style={{ background: "var(--sc-accent)" }} />
+                    {f.is_public ? "공개" : "나만보기"}
+                  </span>
+                  <h3 className="mw__cardTitle">{f.name}</h3>
+                  <p className="mw__cardDesc">{f.description ?? "-"}</p>
+                  <div className="mw__cardActions">
+                    <button type="button" onClick={() => handleRenameFlow(f)}>
+                      수정
+                    </button>
+                    <button type="button" onClick={() => handleDeleteFlow(f)}>
+                      삭제
+                    </button>
+                  </div>
                   <NodeTrail className="mw__flowTrail" />
                 </article>
               ))}
