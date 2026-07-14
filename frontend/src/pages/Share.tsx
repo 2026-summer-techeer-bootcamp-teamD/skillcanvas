@@ -21,51 +21,60 @@ interface ShareProps {
 export function Share({ onNavigate }: ShareProps) {
   const [filter, setFilter] = useState<"all" | ItemKind>("all");
   const call = useApi();
-  const [skills, setSkills] = useState<GalleryItem[]>([]);
+  const [items, setItems] = useState<GalleryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // GET /skills — 공개 스킬 목록 (백엔드 응답 → 화면 GalleryItem으로 변환)
+  // GET /skills + GET /workflows — 공개 목록을 하나의 갤러리로 (백엔드 응답 → GalleryItem)
   useEffect(() => {
-    call<{
-      items: {
-        id: number;
-        name: string;
-        description: string | null;
-        owner: { nickname: string };
-        tags: string[];
-        import_count: number;
-      }[];
-    }>("/skills?sort=recent")
-      .then((data) => {
-        setSkills(
-          data.items.map((s) => ({
-            id: String(s.id),
-            kind: "skill" as const,
-            title: s.name,
-            description: s.description ?? "",
-            tags: s.tags,
-            owner: s.owner.nickname,
-            imports: s.import_count,
-          })),
-        );
-      })
+    type ListItem = {
+      id: number;
+      name: string;
+      description: string | null;
+      owner: { nickname: string };
+      tags: string[];
+      import_count: number;
+    };
+    const toItem =
+      (kind: ItemKind) =>
+      (x: ListItem): GalleryItem => ({
+        id: String(x.id),
+        kind,
+        title: x.name,
+        description: x.description ?? "",
+        tags: x.tags,
+        owner: x.owner.nickname,
+        imports: x.import_count,
+      });
+    Promise.all([
+      call<{ items: ListItem[] }>("/skills?sort=recent"),
+      call<{ items: ListItem[] }>("/workflows?sort=recent"),
+    ])
+      .then(([s, w]) =>
+        setItems([...w.items.map(toItem("workflow")), ...s.items.map(toItem("skill"))]),
+      )
       .catch((e) => setError(e instanceof ApiError ? e.message : "불러오기 실패"))
       .finally(() => setLoading(false));
   }, [call]);
 
-  // 워크플로우는 팀장님 담당 → 지금은 스킬만 표시
-  const items = skills.filter((it) => filter === "all" || it.kind === filter);
+  const shown = items.filter((it) => filter === "all" || it.kind === filter);
 
-  // POST /skills/{id}/import — 가져오기 (5-6)
+  // POST /{skills|workflows}/{id}/import — 종류별로 라우팅해 가져오기
   const handleImport = async (item: GalleryItem) => {
-    if (item.kind !== "skill") return; // 워크플로우는 팀장님 담당
+    // 실제 백엔드 항목만 (피처드 등 목업 카드는 제외)
+    if (!items.some((it) => it.kind === item.kind && it.id === item.id)) {
+      alert("예시 카드예요. 아래 갤러리에서 가져오세요.");
+      return;
+    }
+    const base = item.kind === "workflow" ? "workflows" : "skills";
     try {
-      const data = await call<{ import_count: number }>(`/skills/${item.id}/import`, {
+      const data = await call<{ import_count: number }>(`/${base}/${item.id}/import`, {
         method: "POST",
       });
-      setSkills((prev) =>
-        prev.map((s) => (s.id === item.id ? { ...s, imports: data.import_count } : s)),
+      setItems((prev) =>
+        prev.map((it) =>
+          it.kind === item.kind && it.id === item.id ? { ...it, imports: data.import_count } : it,
+        ),
       );
     } catch (e) {
       alert(e instanceof ApiError ? e.message : "가져오기 실패");
@@ -124,10 +133,11 @@ export function Share({ onNavigate }: ShareProps) {
         {error && <p className="share__sub">에러: {error}</p>}
         {/* 그리드 */}
         <div className="share__grid">
-          {items.map((item) => (
-            <GalleryCard key={item.id} item={item} onImport={handleImport} />
+          {shown.map((item) => (
+            <GalleryCard key={`${item.kind}-${item.id}`} item={item} onImport={handleImport} />
           ))}
         </div>
+        {!loading && shown.length === 0 && <p className="share__sub">아직 공개된 게 없어요.</p>}
       </main>
     </div>
   );
