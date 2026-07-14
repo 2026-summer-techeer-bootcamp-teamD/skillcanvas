@@ -29,6 +29,7 @@ import { useApi, ApiError } from "../lib/api";
 import {
   runFlow,
   approveRun,
+  saveCredential,
   RunnerError,
   type RunResultItem,
   type RunResponse,
@@ -412,7 +413,21 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
                 <div className="af__keyWarn">
                   <p className="af__keyWarnTitle">▨ MCP 키 연결 필요</p>
                   <p className="af__keyWarnBody">이 도구는 본인 키를 붙여넣어야 실행돼요.</p>
-                  <button className="af__keyBtn" type="button">
+                  <button
+                    className="af__keyBtn"
+                    type="button"
+                    onClick={async () => {
+                      const toolKey = selected.data.title;
+                      const secret = window.prompt(`${toolKey} 키를 붙여넣으세요`);
+                      if (!secret) return;
+                      try {
+                        await saveCredential(toolKey, secret);
+                        alert(`${toolKey} 키가 로컬에 저장됐어요.`);
+                      } catch (e) {
+                        alert(e instanceof RunnerError ? e.message : "키 저장 실패");
+                      }
+                    }}
+                  >
                     키 붙여넣기
                   </button>
                 </div>
