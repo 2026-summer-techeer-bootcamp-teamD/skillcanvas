@@ -486,3 +486,10 @@
     animation: none;
   }
 }
+
+.af__loading {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--sc-muted, #9a938a);
+}

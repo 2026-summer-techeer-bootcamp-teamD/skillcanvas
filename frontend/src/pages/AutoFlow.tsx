@@ -23,6 +23,7 @@ import {
   INITIAL_EDGES,
   INITIAL_NODES,
   NODE_COLOR,
+  assembleWorkflowToFlow,
   type FlowNodeData,
   type FlowNodeKind,
 } from "../lib/flowData";
@@ -101,6 +102,10 @@ interface AutoFlowProps {
 export function AutoFlow({ onNavigate }: AutoFlowProps) {
   const [phase, setPhase] = useState<"input" | "builder">("input");
   const [text, setText] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const [genError, setGenError] = useState<string | null>(null);
+  const [flowName, setFlowName] = useState("cs-complaint-handler");
+  const [flowMcps, setFlowMcps] = useState<string[]>([]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(INITIAL_NODES);
   const [edges, setEdges, onEdgesChange] = useEdgesState(INITIAL_EDGES);
@@ -310,9 +315,40 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
     [nodes, deleteNode, runStateById],
   );
 
-  const generate = (prompt: string) => {
-    if (!prompt.trim()) return;
-    setPhase("builder");
+  // 자연어 → 워크플로우 그래프 자동생성 (POST /assemble target=workflow)
+  const generate = async (prompt: string) => {
+    if (!prompt.trim() || generating) return;
+    setText(prompt);
+    setGenerating(true);
+    setGenError(null);
+    try {
+      const data = await call<{
+        name: string;
+        nodes: { id: string; type: string; label: string; detail: string | null }[];
+        edges: { from: string; to: string }[];
+        used_mcps: string[];
+      }>("/assemble", { method: "POST", json: { text: prompt, target: "workflow" } });
+      const { nodes: n, edges: e } = assembleWorkflowToFlow(
+        data.nodes,
+        data.edges ?? [],
+        data.used_mcps ?? [],
+      );
+      setNodes(n);
+      setEdges(e);
+      if (data.name) setFlowName(data.name);
+      setFlowMcps(data.used_mcps ?? []);
+      setPhase("builder");
+    } catch (err) {
+      const msg =
+        err instanceof ApiError
+          ? err.message
+          : err instanceof TypeError
+            ? "백엔드 서버(localhost:8000)에 연결 못 했어요. 백엔드를 켜주세요."
+            : "생성 실패";
+      setGenError(msg);
+    } finally {
+      setGenerating(false);
+    }
   };
 
   // Create에서 텍스트를, MyWorld 노드뷰에서 그래프를 들고 오면 바로 빌더로.
@@ -321,6 +357,7 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
   useEffect(() => {
     const s = location.state as {
       text?: string;
+      name?: string;
       graph?: { nodes: Node<FlowNodeData>[]; edges: Edge[] };
     } | null;
     if (kickedOff.current) return;
@@ -328,12 +365,13 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
       kickedOff.current = true;
       setNodes(s.graph.nodes);
       setEdges(s.graph.edges);
+      if (s.name) setFlowName(s.name); // MyWorld 편집 경로에서 원본 이름 유지(하드코딩 오염 방지)
       setPhase("builder");
     } else if (s?.text) {
       kickedOff.current = true;
-      setText(s.text);
-      setPhase("builder");
+      generate(s.text); // 자연어 → assemble로 그래프 생성 (setText·setPhase는 generate가 함)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state, setNodes, setEdges]);
 
   // 도구 카탈로그 1회 로드 (키 붙여넣기 팝업 메타). 실패해도 폴백 입력으로 동작.
@@ -361,37 +399,52 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
             <PixelArt sprite={ROBOT_BLACK} className="af__mascot af__mascot--2" />
             <PixelArt sprite={ROBOT_ORANGE} className="af__mascot af__mascot--3" />
           </div>
-          <span className="af__badge">✦ 자동화 생성</span>
-          <h1 className="af__title">무엇을 자동화할까요?</h1>
-          <p className="af__subtitle">
-            하고 싶은 자동화를 문장으로 적으면, Claude가 노드 플로우로 조립해 드려요.
-          </p>
 
-          <form
-            className="af__inputRow"
-            onSubmit={(e) => {
-              e.preventDefault();
-              generate(text);
-            }}
-          >
-            <input
-              className="af__input"
-              placeholder="예: 웹훅 들어오면 페이지 가져와 요약해서 Slack 전송"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-            />
-            <button className="af__go" type="submit">
-              입력
-            </button>
-          </form>
+          {generating ? (
+            // 조립 중엔 입력폼 대신 로딩만 (Create 경유 시 입력화면 깜빡임 방지)
+            <p className="af__loading">워크플로우를 조립하는 중…</p>
+          ) : (
+            <>
+              <span className="af__badge">✦ 자동화 생성</span>
+              <h1 className="af__title">무엇을 자동화할까요?</h1>
+              <p className="af__subtitle">
+                하고 싶은 자동화를 문장으로 적으면, Claude가 노드 플로우로 조립해 드려요.
+              </p>
 
-          <div className="af__examples">
-            {EXAMPLES.map((ex) => (
-              <button key={ex} type="button" className="af__example" onClick={() => generate(ex)}>
-                📮 {ex}
-              </button>
-            ))}
-          </div>
+              <form
+                className="af__inputRow"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  generate(text);
+                }}
+              >
+                <input
+                  className="af__input"
+                  placeholder="예: 웹훅 들어오면 페이지 가져와 요약해서 Slack 전송"
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                />
+                <button className="af__go" type="submit" disabled={!text.trim()}>
+                  입력
+                </button>
+              </form>
+
+              {genError && <p className="af__subtitle">에러: {genError}</p>}
+
+              <div className="af__examples">
+                {EXAMPLES.map((ex) => (
+                  <button
+                    key={ex}
+                    type="button"
+                    className="af__example"
+                    onClick={() => generate(ex)}
+                  >
+                    📮 {ex}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </main>
       </div>
     );
@@ -449,7 +502,7 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
                   <button
                     className="af__keyBtn"
                     type="button"
-                    onClick={() => openKeyModal(selected.data.title)}
+                    onClick={() => openKeyModal(selected.data.mcpKey ?? selected.data.title)}
                   >
                     키 붙여넣기
                   </button>
@@ -476,9 +529,12 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
         {/* 가운데: React Flow 캔버스 */}
         <div className="af__canvas">
           <div className="af__toolbar">
-            <span className="af__flowChip">cs-complaint-handler</span>
-            <span className="af__conn">◈ Gmail</span>
-            <span className="af__conn">◈ Slack</span>
+            <span className="af__flowChip">{flowName}</span>
+            {flowMcps.map((m) => (
+              <span key={m} className="af__conn">
+                ◈ {m}
+              </span>
+            ))}
             <div className="af__toolbarRight">
               <button className="af__run" type="button" onClick={handleRun} disabled={running}>
                 {running ? "실행 중…" : "실행"}
@@ -600,7 +656,7 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
         {/* 오른쪽: 자연어 추천 / 라이브러리 패널 */}
         <aside className="af__side">
           <span className="af__sideBadge">✦ 플로우 편집</span>
-          <p className="af__flowName">cs-complaint-handler</p>
+          <p className="af__flowName">{flowName}</p>
           <h2 className="af__sideTitle">어떤 기능을 넣을까요?</h2>
           <textarea
             className="af__sideInput"
@@ -684,6 +740,7 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
                     title: key,
                     op: "mcp.call",
                     needsKey: true,
+                    mcpKey: key,
                   })
                 }
               >
@@ -723,7 +780,7 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
       <PublishModal
         open={publishOpen}
         kind="workflow"
-        defaultName="cs-complaint-handler"
+        defaultName={flowName}
         onClose={() => setPublishOpen(false)}
         onPublish={handlePublish}
       />
