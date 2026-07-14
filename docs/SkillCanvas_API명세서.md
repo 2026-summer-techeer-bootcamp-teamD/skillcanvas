@@ -428,16 +428,29 @@
 - **워크플로우에 가까움**: 여러 단계 순서 흐름 · 자동/스케줄 트리거("매일", "~오면") · 사람 승인 지점 · 외부 도구 여러 개 · 조건 분기/반복
 - **스킬에 가까움**: 단일 작업/능력 · 단발성 · 도구 없거나 하나 · 흐름 없음
 
+**판정 규칙** *(백엔드에서 계산)*
+- Claude가 `skill`·`workflow` 점수(각 0~100, **독립** — 합이 100 아님)를 매긴다.
+- 백엔드가 최종 `closer_to` 판정: 이긴 쪽 점수 `< MIN_CONFIDENCE(60)` **또는** 두 점수 차 `< MIN_MARGIN(20)`이면 → **`neutral`**, 아니면 이긴 쪽.
+- 원칙: **틀린 추천보다 중립.** 두 상수는 튜닝 손잡이(오추천 잦으면 올림).
+
 **Response Body (200 OK)**
 ```json
-{ "closer_to": "workflow" }
+{
+  "closer_to": "workflow",
+  "confidence": 82,
+  "scores": { "skill": 18, "workflow": 82 },
+  "reason": "매일 트리거 + 승인 + 다단계"
+}
 ```
 
 | 필드 | 타입 | 설명 |
 | --- | --- | --- |
-| `closer_to` | String | `skill` / `workflow` — 어느 쪽에 더 가까운지 |
+| `closer_to` | String | `skill` / `workflow` / `neutral` — 추천 방향(애매하면 `neutral`) |
+| `confidence` | Integer | 이긴 쪽 점수 (0~100) |
+| `scores` | Object | `{ skill, workflow }` 각 0~100(독립). 튜닝·디버깅용 |
+| `reason` | String / null | 한 줄 근거(관측용). **프론트는 미표시** |
 
-**비고**: 이진 판단만 반환(숫자 점수 없음). 실패 시 프론트는 중립(두 버튼 동일)으로 폴백한다.
+**비고**: 프론트는 `closer_to`만 읽어 해당 버튼을 강조(넛지), `neutral`이면 두 버튼 동등. **실패(422/502)든 `neutral`이든 프론트는 "두 버튼 동등"으로 폴백** — 오추천보다 안전.
 
 **Error Codes**
 
