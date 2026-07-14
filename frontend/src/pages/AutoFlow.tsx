@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useRef, useState, type DragEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
+import { useLocation } from "react-router-dom";
 import ReactFlow, {
   Background,
   BackgroundVariant,
@@ -206,6 +207,18 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
     if (!prompt.trim()) return;
     setPhase("builder");
   };
+
+  // Create에서 입력 텍스트를 들고 오면 히어로를 건너뛰고 바로 빌더.
+  const location = useLocation();
+  const kickedOff = useRef(false);
+  useEffect(() => {
+    const initial = (location.state as { text?: string } | null)?.text;
+    if (initial && !kickedOff.current) {
+      kickedOff.current = true;
+      setText(initial);
+      setPhase("builder");
+    }
+  }, [location.state]);
 
   if (phase === "input") {
     return (

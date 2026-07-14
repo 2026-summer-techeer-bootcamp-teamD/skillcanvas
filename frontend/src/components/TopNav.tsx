@@ -4,9 +4,16 @@ import { PixelArt } from "./PixelArt";
 import { BLOCK_MARK, ROBOT_MUTED } from "../lib/pixelMaps";
 import "./TopNav.css";
 
-export type NavTab = "START" | "SKILL" | "AUTO-FLOW" | "MY WORLD" | "SHARE";
+export type NavTab = "START" | "CREATE" | "SKILL" | "AUTO-FLOW" | "MY WORLD" | "SHARE";
 
-const TABS: NavTab[] = ["START", "SKILL", "AUTO-FLOW", "MY WORLD", "SHARE"];
+const TABS: NavTab[] = ["START", "CREATE", "SKILL", "AUTO-FLOW", "MY WORLD", "SHARE"];
+
+// SKILL·AUTO-FLOW 탭은 그 편집 페이지에 있을 때만 활성. 그 외(Create 등)에선 비활성.
+// = Create에서 선택해 페이지로 들어가야 그 탭이 켜진다.
+function isTabDisabled(tab: NavTab, active?: NavTab): boolean {
+  if (tab === "SKILL" || tab === "AUTO-FLOW") return tab !== active;
+  return false;
+}
 
 const NICK_KEY = "sc_nickname";
 
@@ -74,16 +81,28 @@ export function TopNav({ active, onNavigate }: TopNavProps) {
       </button>
 
       <nav className="nav__tabs">
-        {TABS.map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            className={tab === active ? "nav__tab nav__tab--active" : "nav__tab"}
-            onClick={() => onNavigate?.(tab)}
-          >
-            {tab}
-          </button>
-        ))}
+        {TABS.map((tab) => {
+          const disabled = isTabDisabled(tab, active);
+          const cls = [
+            "nav__tab",
+            tab === active ? "nav__tab--active" : "",
+            disabled ? "nav__tab--disabled" : "",
+          ]
+            .filter(Boolean)
+            .join(" ");
+          return (
+            <button
+              key={tab}
+              type="button"
+              className={cls}
+              disabled={disabled}
+              aria-disabled={disabled}
+              onClick={() => !disabled && onNavigate?.(tab)}
+            >
+              {tab}
+            </button>
+          );
+        })}
       </nav>
 
       <div className="nav__profile" ref={profileRef}>

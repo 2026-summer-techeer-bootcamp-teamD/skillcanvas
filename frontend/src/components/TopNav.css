@@ -57,6 +57,13 @@
   color: var(--sc-ink);
   background: #f0eee7;
 }
+.nav__tab--disabled {
+  color: #c4bbac;
+  cursor: not-allowed;
+}
+.nav__tab--disabled:hover {
+  background: none;
+}
 
 .nav__profile {
   position: relative;
