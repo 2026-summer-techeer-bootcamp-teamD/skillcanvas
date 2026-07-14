@@ -274,3 +274,23 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+.mw__mcpRow {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+  flex-wrap: wrap;
+}
+.mw__mcpLabel {
+  font-size: 0.72rem;
+  color: var(--sc-muted, #9a938a);
+}
+.mw__mcpChip {
+  font-size: 0.72rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--sc-node-tool) 18%, transparent);
+  color: var(--sc-ink, #2b2620);
+  border: 1px solid color-mix(in srgb, var(--sc-node-tool) 40%, transparent);
+}

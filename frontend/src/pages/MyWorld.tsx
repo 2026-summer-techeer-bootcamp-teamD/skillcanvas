@@ -48,6 +48,8 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
   const [flow, setFlow] = useState<{ nodes: Node<FlowNodeData>[]; edges: Edge[] } | null>(null);
   const [flowLoading, setFlowLoading] = useState(false);
   const [flowError, setFlowError] = useState<string | null>(null);
+  // 열린 스킬이 쓰는 MCP 도구들 (graph의 skill→mcp 엣지 = SKILL.md allowed-tools)
+  const [openMcps, setOpenMcps] = useState<string[]>([]);
 
   const localSkills = graph?.nodes.filter((n) => n.type === "skill") ?? null;
 
@@ -69,15 +71,29 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
     setFlow(null);
     setFlowError(null);
     setFlowLoading(true);
+    // 이 스킬이 쓰는 MCP = graph의 skill→mcp(uses) 엣지 (SKILL.md allowed-tools)
+    const mcps = (graph?.edges ?? [])
+      .filter((e) => e.from === node.id && e.kind === "uses")
+      .map((e) => e.to.replace(/^mcp:/, ""));
+    setOpenMcps(mcps);
     try {
       const seed = node.detail?.trim() || node.label;
       const data = await call<{ nodes: AssembledNode[] }>("/assemble", {
         method: "POST",
         json: { text: seed, target: "skill" },
       });
-      setFlow(assembleToFlow(data.nodes));
+      setFlow(assembleToFlow(data.nodes, mcps));
     } catch (e) {
-      setFlowError(e instanceof ApiError ? e.message : "플로우 생성 실패");
+      // fetch 자체 실패(서버 미기동/CORS)는 ApiError가 아니라 TypeError로 온다
+      const msg =
+        e instanceof ApiError
+          ? e.message
+          : e instanceof TypeError
+            ? "백엔드 서버(localhost:8000)에 연결 못 했어요. 백엔드를 켜주세요."
+            : e instanceof Error
+              ? e.message
+              : "플로우 생성 실패";
+      setFlowError(msg);
     } finally {
       setFlowLoading(false);
     }
@@ -87,6 +103,7 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
     setOpenSkill(null);
     setFlow(null);
     setFlowError(null);
+    setOpenMcps([]);
   };
 
   return (
@@ -208,6 +225,16 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
               <div>
                 <p className="mw__modalKicker">로컬 스킬 · 실행 플로우 (AI)</p>
                 <h3 className="mw__modalTitle">{openSkill.label}</h3>
+                {openMcps.length > 0 && (
+                  <div className="mw__mcpRow">
+                    <span className="mw__mcpLabel">쓰는 MCP</span>
+                    {openMcps.map((m) => (
+                      <span className="mw__mcpChip" key={m}>
+                        ◈ {m}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="mw__modalActions">
                 <button
