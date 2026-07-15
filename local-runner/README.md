@@ -29,7 +29,7 @@ uvicorn app.main:app --port 4737 --reload
 | 변수 | 기본값 | 설명 |
 | --- | --- | --- |
 | `RUNNER_BASE_DIR` | (sandbox) | `~` 로 지정하면 **내 진짜 홈 `.claude`**를 다룬다. 기본은 `sandbox/`(샘플). |
-| `RUNNER_CORS_ORIGINS` | `localhost:5173,3000` | 배포 시 Vercel 도메인 추가. 콤마 구분. |
+| `RUNNER_CORS_ORIGINS` | `localhost:5173,3000` + `skillcanvas.store`(+www) | 기본값에 배포 도메인 포함 → 그냥 uvicorn만. 다른 배포처는 이 env로 대체. |
 
 > 기본은 **`sandbox/.claude`(샘플 스킬: meeting-notes 등)**를 다룬다. 내 실제 스킬로 하려면 `RUNNER_BASE_DIR=~`.
 
