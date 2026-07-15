@@ -1,0 +1,37 @@
+# 프로덕션 오버라이드 — 배포 서버(EC2)에서 사용.
+#   COMPOSE_PROJECT_NAME=skillcanvas \
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile full --profile monitoring up -d
+#
+# 로컬 개발엔 쓰지 않음(기본 docker-compose.yml만). 이 파일은 운영 전용 차이만 담는다:
+#  - backend: --reload 제거, 재시작 정책, CORS=운영 도메인
+#  - prometheus: extra_hosts로 host.docker.internal→호스트게이트웨이 (컨테이너 백엔드 스크랩; prometheus.yml 안 건드림)
+#  - 전체 서비스 restart: unless-stopped (서버 재부팅 시 자동 복구)
+services:
+  postgres:
+    restart: unless-stopped
+
+  backend:
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    restart: unless-stopped
+    environment:
+      # 보안: 커밋된 설정이 직접 강제 (호스트 .env에 의존하지 않게 — 인증 스텁 차단)
+      - APP_ENV=production
+      - AUTH_DEV_MODE=false
+      - CORS_ORIGINS=https://skillcanvas.store
+
+  prometheus:
+    restart: unless-stopped
+    # 리눅스 서버에서 prometheus.yml의 host.docker.internal:8000이 호스트(백엔드 컨테이너 published 8000)를 가리키게
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  grafana:
+    restart: unless-stopped
+  loki:
+    restart: unless-stopped
+  promtail:
+    restart: unless-stopped
+  postgres-exporter:
+    restart: unless-stopped
+  docker-socket-proxy:
+    restart: unless-stopped

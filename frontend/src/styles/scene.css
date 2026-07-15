@@ -1,0 +1,87 @@
+/* 페이지 공용 씬 — 도트 배경 + 노드 모티프 + 상단 바 */
+
+.sc-scene {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  background-color: var(--sc-bg);
+  background-image: radial-gradient(var(--sc-dot) 0.1rem, transparent 0.1rem);
+  background-size: 3.25rem 3.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 노드 모티프 (SVG) */
+.sc-motif {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.sc-motif__line {
+  stroke: #ded3c3;
+  stroke-width: 1.5;
+}
+.sc-motif__dash {
+  stroke: var(--sc-accent);
+  stroke-width: 2.5;
+  stroke-dasharray: 0.5 9;
+  stroke-linecap: round;
+}
+
+/* 상단 바 */
+.sc-nav {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4rem;
+  padding: 0 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 2;
+}
+.sc-nav__logo {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  color: var(--sc-ink);
+  text-decoration: none;
+}
+.sc-nav__mark {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+.sc-nav__brand {
+  font-weight: 800;
+  font-size: 1.0625rem;
+  letter-spacing: -0.01em;
+}
+
+/* 건너뛰기 등 고스트 액션 버튼 */
+.sc-skip {
+  border: 1px solid var(--sc-line);
+  background: transparent;
+  color: var(--sc-muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0.5rem 1.125rem;
+  border-radius: 0.5625rem;
+  transition: border-color 0.16s ease;
+}
+.sc-skip:hover {
+  border-color: #d8ccbb;
+}
+
+@media (max-width: 40rem) {
+  .sc-motif {
+    display: none;
+  }
+  .sc-nav {
+    padding: 0 1.25rem;
+  }
+}

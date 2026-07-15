@@ -1,0 +1,17 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # 백엔드는 평소 venv(uvicorn --reload)로 띄우므로 호스트 기준으로 스크랩.
+  # backend를 --profile full 로 컨테이너로 띄운 경우엔 아래를 "backend:8000" 으로 바꾸기.
+  - job_name: "skillcanvas-backend"
+    static_configs:
+      - targets: ["host.docker.internal:8000"]
+
+  - job_name: "postgres-exporter"
+    static_configs:
+      - targets: ["postgres-exporter:9187"]

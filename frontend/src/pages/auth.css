@@ -1,0 +1,201 @@
+/* 로그인·회원가입 공용 카드 씬 (공용 씬/네비/모티프는 scene.css) */
+
+.auth__center {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 0 1.5rem;
+}
+
+.auth__title {
+  margin: 0;
+  font-size: 1.875rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--sc-ink);
+}
+.auth__subtitle {
+  margin: 0.5rem 0 1.625rem;
+  font-size: 0.9375rem;
+  font-weight: 400;
+  color: var(--sc-muted);
+}
+
+/* 인증 카드 */
+.auth__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 23.75rem;
+  max-width: 100%;
+  padding: 1.75rem 1.75rem 1.625rem;
+  background: #ffffff;
+  border: 1px solid var(--sc-line);
+  border-radius: 1.125rem;
+  box-shadow: 0 0.875rem 2.25rem -0.5rem rgba(120, 79, 20, 0.12);
+}
+
+.auth__cardMascot {
+  width: 2.625rem;
+  height: 2.625rem;
+}
+.auth__cardTitle {
+  margin: 0.25rem 0 1rem;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--sc-ink);
+}
+
+.auth__input {
+  width: 100%;
+  padding: 0.8125rem 0.875rem;
+  margin-bottom: 0.625rem;
+  font-family: inherit;
+  font-size: 0.875rem;
+  color: var(--sc-ink);
+  background: #faf7f2;
+  border: 1.5px solid var(--sc-line);
+  border-radius: 0.6875rem;
+  transition: border-color 0.14s ease;
+}
+.auth__input:last-of-type {
+  margin-bottom: 1.125rem;
+}
+.auth__input::placeholder {
+  color: #a89a86;
+}
+.auth__input:focus {
+  outline: none;
+  border-color: var(--sc-accent);
+}
+
+.auth__error {
+  width: 100%;
+  margin: 0 0 0.75rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: #c0392b;
+  text-align: left;
+}
+
+.auth__submit {
+  width: 100%;
+  padding: 0.9375rem;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #ffffff;
+  background: var(--sc-accent);
+  border: none;
+  border-radius: 0.875rem;
+  transition: filter 0.16s ease;
+}
+.auth__submit:hover {
+  filter: brightness(1.05);
+}
+.auth__submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.auth__alt {
+  margin-top: 1rem;
+  padding: 0;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--sc-accent-dark);
+  background: none;
+  border: none;
+}
+.auth__altAccent {
+  font-weight: 700;
+}
+
+/* 우측에 서 있는 검은 로봇 */
+.auth__buddy {
+  position: absolute;
+  right: 8vw;
+  top: 56%;
+  transform: translateY(-50%);
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.auth__buddyArt {
+  width: 7.5rem;
+  height: 7.5rem;
+  animation: auth-float 3.4s ease-in-out infinite;
+  will-change: transform;
+}
+.auth__buddyShadow {
+  margin-top: 0.4rem;
+  width: 5.25rem;
+  height: 0.95rem;
+  border-radius: 50%;
+  background: rgba(42, 38, 32, 0.1);
+  filter: blur(0.25rem);
+  animation: auth-shadow 3.4s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+@keyframes auth-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-0.55rem);
+  }
+}
+@keyframes auth-shadow {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.86);
+    opacity: 0.6;
+  }
+}
+
+/* 진입 시 순차 등장 */
+@keyframes auth-enter {
+  from {
+    opacity: 0;
+    transform: translateY(0.9rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.auth__enter {
+  animation: auth-enter 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+.auth__enter--1 {
+  animation-delay: 0.05s;
+}
+.auth__enter--2 {
+  animation-delay: 0.14s;
+}
+.auth__enter--3 {
+  animation-delay: 0.24s;
+}
+
+@media (max-width: 60rem) {
+  .auth__buddy {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth__enter,
+  .auth__buddyArt,
+  .auth__buddyShadow {
+    animation: none;
+  }
+}

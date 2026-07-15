@@ -13,6 +13,7 @@
 """
 
 from fastapi import APIRouter, Depends, HTTPException
+from prometheus_client import Counter
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
@@ -32,6 +33,9 @@ from app.schemas.workflow import (
 )
 
 router = APIRouter(prefix="/workflows", tags=["워크플로우"])
+
+# 비즈니스 지표 (Grafana에서 "오늘 발행 수" 등에 사용)
+WORKFLOW_PUBLISHED = Counter("workflow_published_total", "발행된 워크플로우 수")
 
 
 # ── 헬퍼: 태그 ────────────────────────────────────────
@@ -76,6 +80,7 @@ def _list_item(db: Session, wf: Workflow) -> dict:
         "owner": wf.owner,
         "tags": _tag_names(db, wf.id),
         "import_count": wf.import_count,
+        "is_public": wf.is_public,  # 목록에서도 공개/비공개 배지 판단 가능하게(내 워크플로우 뷰)
         "created_at": wf.created_at,
     }
 
@@ -174,6 +179,8 @@ def create_workflow(
     _sync_tags(db, wf.id, payload.tags)
     db.commit()
     db.refresh(wf)
+    if wf.is_public:
+        WORKFLOW_PUBLISHED.inc()
     return _summary(db, wf)
 
 
@@ -195,6 +202,8 @@ def update_workflow(
     if wf.users_id != user.id:
         raise HTTPException(403, {"code": "WORKFLOW_FORBIDDEN", "message": "소유자가 아닙니다"})
 
+    was_public = wf.is_public
+
     if payload.name is not None:
         wf.name = payload.name
     if payload.description is not None:
@@ -207,6 +216,8 @@ def update_workflow(
 
     db.commit()
     db.refresh(wf)
+    if wf.is_public and not was_public:
+        WORKFLOW_PUBLISHED.inc()
     return _summary(db, wf)
 
 
@@ -231,7 +242,9 @@ def delete_workflow(
 
 
 # ── 4-6. 가져오기 ─────────────────────────────────────
-@router.post("/{workflow_id}/import", response_model=WorkflowImportOut, summary="워크플로우 가져오기")
+@router.post(
+    "/{workflow_id}/import", response_model=WorkflowImportOut, summary="워크플로우 가져오기"
+)
 def import_workflow(
     workflow_id: int,
     db: Session = Depends(get_db),

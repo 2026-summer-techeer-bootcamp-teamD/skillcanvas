@@ -1,0 +1,37 @@
+/* SkillCanvas 디자인 토큰 — "검은 마스코트" 컨셉 (Figma Colors 변수 대응) */
+:root {
+  /* base */
+  --sc-bg: #faf8f4;
+  --sc-card: #ffffff;
+  --sc-ink: #232019;
+  --sc-muted: #7d7367;
+  --sc-line: #e6ddd0;
+
+  /* brand */
+  --sc-accent: #e8843c;
+  --sc-accent-dark: #c9752e;
+
+  /* mascot */
+  --sc-black: #2a2620;
+  --sc-cream: #faf8f4;
+
+  /* surface */
+  --sc-input: #faf7f2;
+  --sc-badge-bg: #faf2ea;
+  --sc-badge-border: #f1dcc9;
+
+  /* node types (auto-flow 모티프용) */
+  --sc-node-trigger: #b7791f;
+  --sc-node-tool: #2a5db0;
+  --sc-node-agent: #7a4fd6;
+  --sc-node-approve: #e8843c;
+  --sc-node-output: #1f8a4c;
+
+  /* dot 배경 */
+  --sc-dot: #ddd7c7;
+
+  /* font */
+  --sc-font-sans:
+    "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --sc-font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
