@@ -7,7 +7,17 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from app.core.access_log import AccessLogMiddleware
 from app.core.config import settings
 from app.core.logging_config import configure_logging
-from app.routers import assemble, health, recommend, skills, tags, tool_catalog, users, workflows
+from app.routers import (
+    assemble,
+    classify,
+    health,
+    recommend,
+    skills,
+    tags,
+    tool_catalog,
+    users,
+    workflows,
+)
 
 
 @asynccontextmanager
@@ -52,4 +62,5 @@ app.include_router(tags.router, prefix="/api/v1")
 app.include_router(tool_catalog.router, prefix="/api/v1")
 app.include_router(recommend.router, prefix="/api/v1")
 app.include_router(assemble.router, prefix="/api/v1")
+app.include_router(classify.router, prefix="/api/v1")  # 등록 추가
 # ─────────────────────────────────────────────
