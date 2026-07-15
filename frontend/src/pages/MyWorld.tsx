@@ -349,7 +349,10 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
                   type="button"
                   className="mw__modalEdit"
                   disabled={!flow}
-                  onClick={() => flow && navigate("/auto-flow", { state: { graph: flow } })}
+                  onClick={() =>
+                    flow &&
+                    navigate("/auto-flow", { state: { graph: flow, name: openSkill.label } })
+                  }
                 >
                   ✏️ AUTO-FLOW에서 편집
                 </button>
