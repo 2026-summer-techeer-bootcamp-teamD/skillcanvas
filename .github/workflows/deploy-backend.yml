@@ -36,6 +36,10 @@ jobs:
             export COMPOSE_PROJECT_NAME=skillcanvas
             C="docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile full --profile monitoring"
             $C up -d --build
+            # ⑥ prometheus.yml은 바인드 마운트라 파일은 갱신되지만 Prometheus가 다시 읽지 않고,
+            #    up -d는 compose 정의가 바뀐 서비스만 재생성하므로 prometheus 컨테이너는 살아남는다.
+            #    → 스크랩 잡을 추가해도 반영이 안 되므로 명시적으로 재시작(데이터는 prometheus-data 볼륨에 보존).
+            $C restart prometheus
             $C exec -T backend alembic upgrade head
             $C exec -T backend python -m app.seed_tools
             # ① HTTP 200 + db_connected:true 둘 다 확인 (200만으론 DB 죽어도 통과)
