@@ -1,0 +1,38 @@
+name: Deploy Backend (EC2)
+
+# main에 백엔드/인프라 변경이 푸시되면 EC2에 SSH로 배포.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "docker-compose.yml"
+      - "docker-compose.prod.yml"
+      - "monitoring/**"
+      - ".github/workflows/deploy-backend.yml"
+  workflow_dispatch: {} # 수동 실행 버튼
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH로 EC2 배포
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            cd ~/skillcanvas
+            git fetch origin
+            git checkout main
+            git pull origin main
+            export COMPOSE_PROJECT_NAME=skillcanvas
+            C="docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile full --profile monitoring"
+            $C up -d --build
+            # 마이그레이션 + 시드 (리뷰 지적: 배포 구성에 포함)
+            $C exec -T backend alembic upgrade head
+            $C exec -T backend python -m app.seed_tools
+            # 헬스 확인 (실패 시 워크플로우 실패)
+            curl -sf http://localhost:8000/api/v1/health
