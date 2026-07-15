@@ -65,7 +65,7 @@ export function Share({ onNavigate }: ShareProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 상세보기 모달 — URL(/share/:kind/:id)과 동기화해 딥링크·뒤로가기가 되게 한다.
+  // 상세보기 모달 — URL(/share/:kind/:id)과 동기화해 딥링크·공유 링크가 되게 한다.
   const rawKind = params.kind ?? null;
   const rawId = params.id ?? null;
   const detailKind: ItemKind | null =
@@ -82,8 +82,9 @@ export function Share({ onNavigate }: ShareProps) {
       setDetailLoading(false);
       return;
     }
-    if (!detailKind) {
-      // :kind가 skill/workflow가 아닌 잘못된 링크 — 조용히 무시하지 않고 에러로 보여준다.
+    if (!detailKind || !/^\d+$/.test(rawId)) {
+      // :kind가 skill/workflow가 아니거나 :id가 숫자가 아닌 잘못된 링크.
+      // 그대로 API에 보내면 :id는 422 검증 에러 원문이 노출되니 여기서 미리 막는다.
       setDetail(null);
       setDetailLoading(false);
       setDetailError("지원하지 않는 링크예요.");
@@ -193,8 +194,9 @@ export function Share({ onNavigate }: ShareProps) {
     }
   };
 
-  // 카드 클릭 → /share/{kind}/{id}로 이동해 상세 모달을 연다 (뒤로가기·공유 링크 가능)
-  // 열기/닫기 모두 replace — 카드를 여러 개 열었다 닫아도 히스토리 스택이 쌓이지 않는다.
+  // 카드 클릭 → /share/{kind}/{id}로 이동해 상세 모달을 연다 (딥링크·공유 링크 가능)
+  // 열기/닫기 모두 replace — 히스토리 스택이 안 쌓이는 대신, 뒤로가기는 모달을 닫는 게 아니라
+  // 갤러리 진입 전 페이지로 바로 나간다. Esc·닫기 버튼·바깥 클릭이 모달을 닫는 실제 수단이다.
   const openDetail = (item: GalleryItem) => {
     if (!isRealItem(item)) {
       alert("예시 카드예요. 아래 갤러리에서 가져오세요.");
@@ -204,6 +206,14 @@ export function Share({ onNavigate }: ShareProps) {
   };
 
   const closeDetail = () => navigate("/share", { replace: true });
+
+  // Esc로 닫기 — TopNav.tsx의 팝오버 Esc 처리와 동일한 패턴
+  useEffect(() => {
+    if (!rawKind || !rawId) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && closeDetail();
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [rawKind, rawId]);
 
   const handleDetailImport = async () => {
     if (!detail || !detailKind) return;
@@ -317,7 +327,13 @@ export function Share({ onNavigate }: ShareProps) {
 
       {rawKind && rawId && (
         <div className="share__modalBackdrop" onClick={closeDetail}>
-          <div className="share__modal" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="share__modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="share-modal-title"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* 닫기 버튼은 로딩/에러 상태에서도 항상 보여야 한다 */}
             <header className="share__modalHead">
               <div>
@@ -326,7 +342,9 @@ export function Share({ onNavigate }: ShareProps) {
                     <p className="share__modalKicker">
                       {detailKind === "workflow" ? "워크플로우" : "스킬"} · @{detail.owner.nickname}
                     </p>
-                    <h3 className="share__modalTitle">{detail.name}</h3>
+                    <h3 className="share__modalTitle" id="share-modal-title">
+                      {detail.name}
+                    </h3>
                     {detail.description && <p className="share__modalDesc">{detail.description}</p>}
                     {detail.tags.length > 0 && (
                       <div className="share__modalTags">
@@ -339,7 +357,7 @@ export function Share({ onNavigate }: ShareProps) {
                     )}
                   </>
                 ) : (
-                  <p className="share__modalKicker">
+                  <p className="share__modalKicker" id="share-modal-title">
                     {detailKind === "workflow"
                       ? "워크플로우"
                       : detailKind === "skill"
