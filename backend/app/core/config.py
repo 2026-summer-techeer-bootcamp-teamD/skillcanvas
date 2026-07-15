@@ -20,7 +20,9 @@ class Settings(BaseSettings):
     # Claude(Anthropic) — 백엔드 AI 기능(assemble/recommend/map-node)용 개발자 공용키.
     # Max 구독과 별개(종량제). 팀장이 발급해 .env로 공유. 없으면 AI 호출 시 502.
     anthropic_api_key: str = ""
-    anthropic_model: str = "claude-haiku-4-5"  # 기본=빠르고 쌈. assemble은 sonnet 권장
+    anthropic_model: str = "claude-haiku-4-5"  # 기본=빠르고 쌈 (recommend/map-node/classify)
+    # assemble(자연어→구조화 그래프)은 품질이 중요해 기본 sonnet. 비용 절감하려면 .env로 haiku 지정.
+    anthropic_assemble_model: str = "claude-sonnet-5"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
