@@ -150,7 +150,7 @@ export default function App() {
         }
       />
       <Route
-        path="/share"
+        path="/share/:kind?/:id?"
         element={
           <RequireAuth>
             <ShareRoute />
