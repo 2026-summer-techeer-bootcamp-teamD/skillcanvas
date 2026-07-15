@@ -43,6 +43,12 @@ jobs:
             #    - promtail은 -server.enable-runtime-reload가 없어 SIGHUP 리로드도 불가 → 재시작이 유일한 수단
             #    - grafana 대시보드 JSON은 updateIntervalSeconds:30으로 자동 반영되지만 datasource는 기동 시에만 읽음
             #    데이터는 모두 명명 볼륨(prometheus-data 등)에 있어 재시작해도 보존된다.
+            #
+            # ⑦ ⑥이 만든 새 실패 모드 차단. prometheus.yml에 문법 오류가 들어오면 예전엔 옛 설정으로
+            #    계속 살아있었지만, 이제 재시작하므로 크래시 루프에 빠진다. 그런데 restart는 이후
+            #    컨테이너가 죽어도 exit 0이고 아래 헬스체크는 backend만 보므로 배포는 초록불이 된다.
+            #    → 재시작 전에 검증해 set -e로 배포를 세운다(같은 바인드 마운트를 그대로 물고 검사).
+            $C run --rm --no-deps --entrypoint promtool prometheus check config /etc/prometheus/prometheus.yml
             $C restart prometheus promtail loki grafana
             $C exec -T backend alembic upgrade head
             $C exec -T backend python -m app.seed_tools
