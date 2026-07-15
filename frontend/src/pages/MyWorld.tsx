@@ -12,13 +12,7 @@ import "./MyWorld.css";
 
 const nodeTypes = { flow: FlowNode };
 
-const MW_FLOWS = [
-  { title: "메일 비서", desc: "받은 편지함 요약 → Slack·Notion" },
-  { title: "리서치 수집기", desc: "키워드 뉴스 요약 브리핑" },
-  { title: "고객 타겟 분류", desc: "세그먼트 라벨링 자동화" },
-];
-
-interface MySkill {
+interface MyItem {
   id: number;
   name: string;
   description: string | null;
@@ -99,44 +93,83 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
     setOpenMcps([]);
   };
 
-  const [mySkills, setMySkills] = useState<MySkill[]>([]);
+  const [mySkills, setMyItems] = useState<MyItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // GET /skills?mine=true — 내 스킬 (비공개 포함) (5-1)
-  const loadMySkills = useCallback(() => {
+  const loadMyItems = useCallback(() => {
     setLoading(true);
     setError(null);
-    call<{ items: MySkill[] }>("/skills?mine=true")
-      .then((data) => setMySkills(data.items))
+    call<{ items: MyItem[] }>("/skills?mine=true")
+      .then((data) => setMyItems(data.items))
       .catch((e) => setError(e instanceof ApiError ? e.message : "불러오기 실패"))
       .finally(() => setLoading(false));
   }, [call]);
 
   useEffect(() => {
-    loadMySkills();
-  }, [loadMySkills]);
+    loadMyItems();
+  }, [loadMyItems]);
 
   // PATCH /skills/{id} — 이름 수정 (5-4)
-  const handleRename = async (skill: MySkill) => {
+  const handleRename = async (skill: MyItem) => {
     const name = window.prompt("새 이름", skill.name);
     if (!name || name === skill.name) return;
     try {
       await call(`/skills/${skill.id}`, { method: "PATCH", json: { name } });
-      loadMySkills();
+      loadMyItems();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "수정 실패");
     }
   };
 
   // DELETE /skills/{id} — 삭제 (5-5)
-  const handleDelete = async (skill: MySkill) => {
+  const handleDelete = async (skill: MyItem) => {
     if (!window.confirm(`"${skill.name}" 스킬을 삭제할까요?`)) return;
     try {
       await call(`/skills/${skill.id}`, { method: "DELETE" });
-      loadMySkills();
+      loadMyItems();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "삭제 실패");
+    }
+  };
+
+  // ── 내 워크플로우 (GET /workflows?mine, 4-1) — SKILL과 동일 패턴 ──
+  const [myFlows, setMyFlows] = useState<MyItem[]>([]);
+  const [flowsLoading, setFlowsLoading] = useState(true);
+  const [flowsError, setFlowsError] = useState<string | null>(null);
+
+  const loadMyFlows = useCallback(() => {
+    setFlowsLoading(true);
+    setFlowsError(null);
+    call<{ items: MyItem[] }>("/workflows?mine=true")
+      .then((data) => setMyFlows(data.items))
+      .catch((e) => setFlowsError(e instanceof ApiError ? e.message : "불러오기 실패"))
+      .finally(() => setFlowsLoading(false));
+  }, [call]);
+
+  useEffect(() => {
+    loadMyFlows();
+  }, [loadMyFlows]);
+
+  const handleRenameFlow = async (wf: MyItem) => {
+    const name = window.prompt("새 이름", wf.name);
+    if (!name || name === wf.name) return;
+    try {
+      await call(`/workflows/${wf.id}`, { method: "PATCH", json: { name } });
+      loadMyFlows();
+    } catch (e) {
+      setFlowsError(e instanceof ApiError ? e.message : "수정 실패");
+    }
+  };
+
+  const handleDeleteFlow = async (wf: MyItem) => {
+    if (!window.confirm(`"${wf.name}" 워크플로우를 삭제할까요?`)) return;
+    try {
+      await call(`/workflows/${wf.id}`, { method: "DELETE" });
+      loadMyFlows();
+    } catch (e) {
+      setFlowsError(e instanceof ApiError ? e.message : "삭제 실패");
     }
   };
 
@@ -150,103 +183,119 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
           <p className="mw__sub">내가 만든 스킬과 자동화를 한 곳에서 관리해요.</p>
         </div>
 
-          <div className="mw__section">
-            <p className="mw__sectionLabel">
-              <span className="mw__dot" style={{ background: "var(--sc-node-tool)" }} />내 로컬 스킬
-              {localSkills && <span className="mw__count">{localSkills.length}개</span>}
-              <button
-                type="button"
-                className="mw__newWorld"
-                style={{ marginLeft: "auto" }}
-                onClick={loadLocalSkills}
-                disabled={localLoading}
-              >
-                {localLoading ? "불러오는 중…" : "💻 로컬 불러오기"}
-              </button>
-            </p>
-            {localMsg && <p className="mw__cardMeta">{localMsg}</p>}
-            {localSkills &&
-              (localSkills.length === 0 ? (
-                <p className="mw__cardMeta">로컬 .claude에 스킬이 없어요.</p>
-              ) : (
-                <div className="mw__grid">
-                  {localSkills.map((s) => (
-                    <article
-                      className="mw__skill"
-                      key={s.id}
-                      style={{ cursor: "pointer" }}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => openLocalSkill(s)}
-                      onKeyDown={(e) => e.key === "Enter" && openLocalSkill(s)}
-                    >
-                      <span className="mw__pill">
-                        <span
-                          className="mw__pillDot"
-                          style={{ background: "var(--sc-node-tool)" }}
-                        />
-                        로컬
-                      </span>
-                      <h3 className="mw__cardTitle">{s.label}</h3>
-                      <p className="mw__cardMeta">{s.detail || ".claude/skills"}</p>
-                      <p className="mw__cardMeta" style={{ opacity: 0.7 }}>
-                        클릭 → 실행 플로우 보기
-                      </p>
-                    </article>
-                  ))}
+        <div className="mw__section">
+          <p className="mw__sectionLabel">
+            <span className="mw__dot" style={{ background: "var(--sc-node-tool)" }} />내 로컬 스킬
+            {localSkills && <span className="mw__count">{localSkills.length}개</span>}
+            <button
+              type="button"
+              className="mw__newWorld"
+              style={{ marginLeft: "0.75rem" }}
+              onClick={loadLocalSkills}
+              disabled={localLoading}
+            >
+              {localLoading ? "불러오는 중…" : "💻 로컬 불러오기"}
+            </button>
+          </p>
+          {localMsg && <p className="mw__cardMeta">{localMsg}</p>}
+          {localSkills &&
+            (localSkills.length === 0 ? (
+              <p className="mw__cardMeta">로컬 .claude에 스킬이 없어요.</p>
+            ) : (
+              <div className="mw__grid">
+                {localSkills.map((s) => (
+                  <article
+                    className="mw__skill"
+                    key={s.id}
+                    style={{ cursor: "pointer" }}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openLocalSkill(s)}
+                    onKeyDown={(e) => e.key === "Enter" && openLocalSkill(s)}
+                  >
+                    <span className="mw__pill">
+                      <span className="mw__pillDot" style={{ background: "var(--sc-node-tool)" }} />
+                      로컬
+                    </span>
+                    <h3 className="mw__cardTitle">{s.label}</h3>
+                    <p className="mw__cardMeta">{s.detail || ".claude/skills"}</p>
+                    <p className="mw__cardMeta" style={{ opacity: 0.7 }}>
+                      클릭 → 실행 플로우 보기
+                    </p>
+                  </article>
+                ))}
+              </div>
+            ))}
+        </div>
+
+        <div className="mw__section">
+          <p className="mw__sectionLabel">
+            <span className="mw__dot" style={{ background: "var(--sc-node-agent)" }} />
+            SKILL <span className="mw__count">{mySkills.length}개</span>
+          </p>
+
+          {loading && <p className="mw__sub">불러오는 중…</p>}
+          {error && <p className="mw__sub">에러: {error}</p>}
+          {!loading && !error && mySkills.length === 0 && (
+            <p className="mw__sub">아직 만든 스킬이 없어요.</p>
+          )}
+
+          <div className="mw__grid">
+            {mySkills.map((s) => (
+              <article className="mw__skill" key={s.id}>
+                <span className="mw__pill">
+                  <span className="mw__pillDot" style={{ background: "var(--sc-node-agent)" }} />
+                  {s.is_public ? "공개" : "나만보기"}
+                </span>
+                <h3 className="mw__cardTitle">{s.name}</h3>
+                <p className="mw__cardMeta">{s.description ?? "-"}</p>
+                <div className="mw__cardActions">
+                  <button type="button" onClick={() => handleRename(s)}>
+                    수정
+                  </button>
+                  <button type="button" onClick={() => handleDelete(s)}>
+                    삭제
+                  </button>
                 </div>
-              ))}
+              </article>
+            ))}
           </div>
+        </div>
 
-          <div className="mw__section">
-            <p className="mw__sectionLabel">
-              <span className="mw__dot" style={{ background: "var(--sc-node-agent)" }} />
-              SKILL <span className="mw__count">{mySkills.length}개</span>
-            </p>
+        <div className="mw__section">
+          <p className="mw__sectionLabel">
+            <span className="mw__dot" style={{ background: "var(--sc-accent)" }} />
+            AUTO-FLOW <span className="mw__count">{myFlows.length}개</span>
+          </p>
 
-            {loading && <p className="mw__sub">불러오는 중…</p>}
-            {error && <p className="mw__sub">에러: {error}</p>}
-            {!loading && !error && mySkills.length === 0 && (
-              <p className="mw__sub">아직 만든 스킬이 없어요.</p>
-            )}
+          {flowsLoading && <p className="mw__sub">불러오는 중…</p>}
+          {flowsError && <p className="mw__sub">에러: {flowsError}</p>}
+          {!flowsLoading && !flowsError && myFlows.length === 0 && (
+            <p className="mw__sub">아직 만든 워크플로우가 없어요.</p>
+          )}
 
-            <div className="mw__grid">
-              {mySkills.map((s) => (
-                <article className="mw__skill" key={s.id}>
-                  <span className="mw__pill">
-                    <span className="mw__pillDot" style={{ background: "var(--sc-node-agent)" }} />
-                    {s.is_public ? "공개" : "나만보기"}
-                  </span>
-                  <h3 className="mw__cardTitle">{s.name}</h3>
-                  <p className="mw__cardMeta">{s.description ?? "-"}</p>
-                  <div className="mw__cardActions">
-                    <button type="button" onClick={() => handleRename(s)}>
-                      수정
-                    </button>
-                    <button type="button" onClick={() => handleDelete(s)}>
-                      삭제
-                    </button>
-                  </div>
-                </article>
-              ))}
-            </div>
+          <div className="mw__grid mw__grid--flow">
+            {myFlows.map((f) => (
+              <article className="mw__flow" key={f.id}>
+                <span className="mw__pill">
+                  <span className="mw__pillDot" style={{ background: "var(--sc-accent)" }} />
+                  {f.is_public ? "공개" : "나만보기"}
+                </span>
+                <h3 className="mw__cardTitle">{f.name}</h3>
+                <p className="mw__cardDesc">{f.description ?? "-"}</p>
+                <div className="mw__cardActions">
+                  <button type="button" onClick={() => handleRenameFlow(f)}>
+                    수정
+                  </button>
+                  <button type="button" onClick={() => handleDeleteFlow(f)}>
+                    삭제
+                  </button>
+                </div>
+                <NodeTrail className="mw__flowTrail" />
+              </article>
+            ))}
           </div>
-
-          <div className="mw__section">
-            <p className="mw__sectionLabel">
-              <span className="mw__dot" style={{ background: "var(--sc-accent)" }} />
-              AUTO-FLOW <span className="mw__count">{MW_FLOWS.length}개</span>
-            </p>
-            <div className="mw__grid mw__grid--flow">
-              {MW_FLOWS.map((f) => (
-                <article className="mw__flow" key={f.title}>
-                  <h3 className="mw__cardTitle">{f.title}</h3>
-                  <p className="mw__cardDesc">{f.desc}</p>
-                  <NodeTrail className="mw__flowTrail" />
-                </article>
-              ))}
-            </div>
-          </div>
+        </div>
       </main>
 
       {openSkill && (
@@ -272,7 +321,10 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
                   type="button"
                   className="mw__modalEdit"
                   disabled={!flow}
-                  onClick={() => flow && navigate("/auto-flow", { state: { graph: flow } })}
+                  onClick={() =>
+                    flow &&
+                    navigate("/auto-flow", { state: { graph: flow, name: openSkill.label } })
+                  }
                 >
                   ✏️ AUTO-FLOW에서 편집
                 </button>
