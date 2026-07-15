@@ -12,6 +12,11 @@ on:
       - ".github/workflows/deploy-backend.yml"
   workflow_dispatch: {} # 수동 실행 버튼
 
+# ④ 연달아 머지해도 배포는 하나씩 (같은 폴더 동시 빌드 방지). 진행 중 배포는 끝까지.
+concurrency:
+  group: deploy-backend
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -22,17 +27,16 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
+          command_timeout: 20m # ② 기본 10분 초과 시 액션만 끝나고 EC2는 계속 빌드하는 혼란 방지
           script: |
             set -e
             cd ~/skillcanvas
             git fetch origin
-            git checkout main
-            git pull origin main
+            git reset --hard origin/main   # ⑤ 워킹트리 상태 무관하게 main과 강제 일치
             export COMPOSE_PROJECT_NAME=skillcanvas
             C="docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile full --profile monitoring"
             $C up -d --build
-            # 마이그레이션 + 시드 (리뷰 지적: 배포 구성에 포함)
             $C exec -T backend alembic upgrade head
             $C exec -T backend python -m app.seed_tools
-            # 헬스 확인 (실패 시 워크플로우 실패)
-            curl -sf http://localhost:8000/api/v1/health
+            # ① HTTP 200 + db_connected:true 둘 다 확인 (200만으론 DB 죽어도 통과)
+            curl -sf http://localhost:8000/api/v1/health | grep -q '"db_connected":true'
