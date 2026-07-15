@@ -190,7 +190,7 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
             <button
               type="button"
               className="mw__newWorld"
-              style={{ marginLeft: "auto" }}
+              style={{ marginLeft: "0.75rem" }}
               onClick={loadLocalSkills}
               disabled={localLoading}
             >
