@@ -120,7 +120,11 @@ def ask_claude(
         AI_CALL_DURATION.labels(model=used_model, status=status).observe(
             time.perf_counter() - start
         )
-        AI_CALL_TOTAL.labels(model=used_model, status=status).inc()
+        # success는 여기서 세지 않는다 — ask_claude_json()이 JSON 파싱까지 끝난
+        # 최종 결과(success/parse_error)를 보고 1건만 집계한다(이중 집계 방지).
+        # error는 파싱 단계까지 갈 수 없는 경우라 여기서 확정 집계.
+        if status == "error":
+            AI_CALL_TOTAL.labels(model=used_model, status=status).inc()
 
 
 def ask_claude_json(
@@ -143,8 +147,8 @@ def ask_claude_json(
     try:
         data = json.loads(_strip_fence(text))
     except (json.JSONDecodeError, ValueError) as e:
-        # Claude API 호출 자체는 성공(ask_claude가 이미 status=success로 기록)했지만
-        # 응답을 못 써먹은 경우이므로 별도 status로 남겨 success에 묻히지 않게 한다.
+        # Claude API 호출 자체는 성공했지만 응답을 못 써먹은 경우. ask_claude()는
+        # 이 시점엔 아직 success를 집계하지 않았으므로 parse_error 1건만 남는다.
         AI_CALL_TOTAL.labels(model=used_model, status="parse_error").inc()
         raise HTTPException(
             422, {"code": fail_code, "message": "AI 응답을 해석하지 못했습니다"}
@@ -154,4 +158,6 @@ def ask_claude_json(
     if not isinstance(data, dict):
         AI_CALL_TOTAL.labels(model=used_model, status="parse_error").inc()
         raise HTTPException(422, {"code": fail_code, "message": "AI 응답을 해석하지 못했습니다"})
+    # 여기까지 왔다면 호출부터 파싱까지 완전히 성공한 논리적 요청 1건 → 여기서만 집계.
+    AI_CALL_TOTAL.labels(model=used_model, status="success").inc()
     return data

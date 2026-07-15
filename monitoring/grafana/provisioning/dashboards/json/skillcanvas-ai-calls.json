@@ -43,15 +43,15 @@
     {
       "id": 2,
       "type": "stat",
-      "title": "AI 호출 실패율 (%, 최근 5분)",
-      "description": "status=error(Claude 호출 실패, 502) + parse_error(JSON 파싱 실패, 422) 합산 비율",
+      "title": "AI 호출 실패율 (%, 최근 5분, status별)",
+      "description": "status=error(Claude 호출 자체 실패, 502)와 parse_error(JSON 파싱 실패, 422)를 각각 별도 값으로 표시(#103)",
       "gridPos": { "h": 6, "w": 6, "x": 6, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
           "refId": "A",
-          "expr": "100 * sum(rate(ai_call_total{status!=\"success\"}[5m])) / sum(rate(ai_call_total[5m]))",
-          "legendFormat": "fail rate"
+          "expr": "100 * sum by (status) (rate(ai_call_total{status!=\"success\"}[5m])) / scalar(sum(rate(ai_call_total[5m])))",
+          "legendFormat": "{{status}}"
         }
       ],
       "fieldConfig": {
