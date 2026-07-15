@@ -9,7 +9,12 @@ const RUN_STYLE: Record<NonNullable<FlowNodeData["runState"]>, { color: string; 
   stopped: { color: "#9a938a", badge: "⛔" },
 };
 
-export function FlowNode({ id, data, selected }: NodeProps<FlowNodeData>) {
+interface FlowNodeProps extends NodeProps<FlowNodeData> {
+  /** 갤러리 상세 미리보기 등 읽기 전용 캔버스에서는 삭제/편집 컨트롤을 숨긴다. */
+  readOnly?: boolean;
+}
+
+export function FlowNode({ id, data, selected, readOnly = false }: FlowNodeProps) {
   const run = data.runState ? RUN_STYLE[data.runState] : null;
   return (
     <div
@@ -51,23 +56,27 @@ export function FlowNode({ id, data, selected }: NodeProps<FlowNodeData>) {
           <p className="afn__title">{data.title}</p>
           <p className="afn__op">{data.op}</p>
         </div>
-        <button
-          className="afn__del"
-          type="button"
-          aria-label="노드 삭제"
-          onClick={(e) => {
-            e.stopPropagation();
-            data.onDelete?.(id);
-          }}
-        >
-          ×
-        </button>
+        {!readOnly && (
+          <button
+            className="afn__del"
+            type="button"
+            aria-label="노드 삭제"
+            onClick={(e) => {
+              e.stopPropagation();
+              data.onDelete?.(id);
+            }}
+          >
+            ×
+          </button>
+        )}
       </div>
 
-      <div className="afn__edit">
-        <span aria-hidden="true">✎</span>
-        <input className="afn__editInput" placeholder="편집" />
-      </div>
+      {!readOnly && (
+        <div className="afn__edit">
+          <span aria-hidden="true">✎</span>
+          <input className="afn__editInput" placeholder="편집" />
+        </div>
+      )}
 
       <Handle type="source" position={Position.Right} className="afn__handle" />
     </div>
