@@ -14,6 +14,7 @@ from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.db import get_db
 from app.core.deps import get_current_user
 from app.core.llm import ask_claude_json
@@ -67,7 +68,7 @@ def assemble(
         system,
         user_message,
         fail_code="ASSEMBLE_FAILED",
-        model="claude-sonnet-5",
+        model=settings.anthropic_assemble_model,
     )
 
     try:
