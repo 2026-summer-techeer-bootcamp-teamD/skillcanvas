@@ -25,6 +25,9 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # 공개 HTTPS 사이트(배포 프론트) → localhost 러너 호출 시 Chrome이 보내는
+    # Private Network Access 프리플라이트에 응답(없으면 오리진 허용해도 크롬이 차단).
+    allow_private_network=True,
 )
 
 app.include_router(health.router)
