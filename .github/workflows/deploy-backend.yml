@@ -36,10 +36,14 @@ jobs:
             export COMPOSE_PROJECT_NAME=skillcanvas
             C="docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile full --profile monitoring"
             $C up -d --build
-            # ⑥ prometheus.yml은 바인드 마운트라 파일은 갱신되지만 Prometheus가 다시 읽지 않고,
-            #    up -d는 compose 정의가 바뀐 서비스만 재생성하므로 prometheus 컨테이너는 살아남는다.
-            #    → 스크랩 잡을 추가해도 반영이 안 되므로 명시적으로 재시작(데이터는 prometheus-data 볼륨에 보존).
-            $C restart prometheus
+            # ⑥ monitoring/ 설정은 전부 바인드 마운트라 git reset --hard로 파일은 갱신되지만, 프로세스가
+            #    설정을 다시 읽지 않고 up -d도 compose 정의가 바뀐 서비스만 재생성하므로 컨테이너가 옛 설정
+            #    그대로 살아남는다 → 배포는 초록불인데 반영만 안 되는 사일런트 실패. 해당 4개를 명시적 재시작.
+            #      prometheus.yml / loki-config.yml / promtail-config.yml / grafana provisioning
+            #    - promtail은 -server.enable-runtime-reload가 없어 SIGHUP 리로드도 불가 → 재시작이 유일한 수단
+            #    - grafana 대시보드 JSON은 updateIntervalSeconds:30으로 자동 반영되지만 datasource는 기동 시에만 읽음
+            #    데이터는 모두 명명 볼륨(prometheus-data 등)에 있어 재시작해도 보존된다.
+            $C restart prometheus promtail loki grafana
             $C exec -T backend alembic upgrade head
             $C exec -T backend python -m app.seed_tools
             # ① HTTP 200 + db_connected:true 둘 다 확인 (200만으론 DB 죽어도 통과)
