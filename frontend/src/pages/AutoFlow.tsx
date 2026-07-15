@@ -499,7 +499,11 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
                 const meta = selected.data.mcpKey
                   ? catalog.find((t) => t.key === selected.data.mcpKey)
                   : undefined;
-                const showKeyPanel = !!meta?.key_required && meta.auth_owner === "user";
+                const showKeyPanel = selected.data.mcpKey
+                  ? meta
+                    ? meta.key_required && meta.auth_owner === "user"
+                    : true
+                  : false;
                 if (!showKeyPanel) return null;
                 return (
                   <div className="af__keyWarn">
@@ -746,6 +750,7 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
                     typeLabel: "MCP",
                     title: key,
                     op: "mcp.call",
+                    mcpKey: key,
                   })
                 }
               >
