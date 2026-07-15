@@ -47,6 +47,7 @@ interface SkillNodeProps {
   onDragStart: () => void;
   onDragEnter: () => void;
   onDragEnd: () => void;
+  onDelete: () => void;
 }
 
 function SkillNode({
@@ -57,6 +58,7 @@ function SkillNode({
   onDragStart,
   onDragEnter,
   onDragEnd,
+  onDelete,
 }: SkillNodeProps) {
   const className = [
     "skill__node",
@@ -84,6 +86,17 @@ function SkillNode({
         </p>
         {selected && <p className="skill__nodeDesc">{block.desc}</p>}
       </div>
+      <button
+        className="skill__nodeDel"
+        type="button"
+        aria-label="블록 삭제"
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete();
+        }}
+      >
+        ×
+      </button>
       <span className="skill__nodeHandle" aria-hidden="true">
         ⠿
       </span>
@@ -172,6 +185,11 @@ export function Skill({ onNavigate }: SkillProps) {
     if (dragIndex === null || dragIndex === index) return;
     reorder(dragIndex, index);
     setDragIndex(index);
+  };
+
+  const deleteBlock = (id: string) => {
+    setDraft((prev) => (prev ? { ...prev, blocks: prev.blocks.filter((b) => b.id !== id) } : prev));
+    setSelectedId((prev) => (prev === id ? null : prev));
   };
 
   const generate = async (prompt: string) => {
@@ -377,6 +395,7 @@ export function Skill({ onNavigate }: SkillProps) {
                   onDragStart={() => setDragIndex(i)}
                   onDragEnter={() => handleDragEnter(i)}
                   onDragEnd={() => setDragIndex(null)}
+                  onDelete={() => deleteBlock(block.id)}
                 />
               ))}
               <button className="skill__addBlock" type="button">
