@@ -47,7 +47,11 @@ app.add_middleware(
 app.add_middleware(AccessLogMiddleware)
 
 # Prometheus가 스크랩할 /metrics 노출 (Swagger 목록에는 안 뜨게 숨김)
-Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
+# should_group_status_codes=False: 상태코드를 "4xx"/"5xx"로 뭉개지 않고 "404", "500", "502"처럼
+# 원본 그대로 노출 — 대시보드에서 401 vs 403 vs 404, 500 vs 502를 구분하기 위함(#103)
+Instrumentator(should_group_status_codes=False).instrument(app).expose(
+    app, endpoint="/metrics", include_in_schema=False
+)
 
 # 뼈대 확인용 (환경 세팅 됐는지 테스트)
 app.include_router(health.router, prefix="/api/v1")
