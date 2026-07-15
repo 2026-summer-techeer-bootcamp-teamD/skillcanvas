@@ -376,7 +376,7 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
 
   // 도구 카탈로그 1회 로드 (키 붙여넣기 팝업 메타). 실패해도 폴백 입력으로 동작.
   useEffect(() => {
-    call<{ items: ToolCatalogItem[] }>("/tool-catalog")
+    call<{ items: ToolCatalogItem[] }>("/tool-catalog?limit=100")
       .then((d) => setCatalog(d.items))
       .catch(() => {});
   }, [call]);
@@ -495,19 +495,30 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
                 <input className="af__fieldInput" defaultValue={selected.data.op} />
               </label>
 
-              {selected.data.needsKey && (
-                <div className="af__keyWarn">
-                  <p className="af__keyWarnTitle">▨ MCP 키 연결 필요</p>
-                  <p className="af__keyWarnBody">이 도구는 본인 키를 붙여넣어야 실행돼요.</p>
-                  <button
-                    className="af__keyBtn"
-                    type="button"
-                    onClick={() => openKeyModal(selected.data.mcpKey ?? selected.data.title)}
-                  >
-                    키 붙여넣기
-                  </button>
-                </div>
-              )}
+              {(() => {
+                const meta = selected.data.mcpKey
+                  ? catalog.find((t) => t.key === selected.data.mcpKey)
+                  : undefined;
+                const showKeyPanel = selected.data.mcpKey
+                  ? meta
+                    ? meta.key_required && meta.auth_owner === "user"
+                    : true
+                  : false;
+                if (!showKeyPanel) return null;
+                return (
+                  <div className="af__keyWarn">
+                    <p className="af__keyWarnTitle">▨ MCP 키 연결 필요</p>
+                    <p className="af__keyWarnBody">이 도구는 본인 키를 붙여넣어야 실행돼요.</p>
+                    <button
+                      className="af__keyBtn"
+                      type="button"
+                      onClick={() => openKeyModal(selected.data.mcpKey ?? selected.data.title)}
+                    >
+                      키 붙여넣기
+                    </button>
+                  </div>
+                );
+              })()}
             </>
           ) : (
             <>
@@ -739,7 +750,6 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
                     typeLabel: "MCP",
                     title: key,
                     op: "mcp.call",
-                    needsKey: true,
                     mcpKey: key,
                   })
                 }

@@ -61,7 +61,7 @@ export const INITIAL_NODES: Node<FlowNodeData>[] = [
       typeLabel: "출력",
       title: "Slack",
       op: "slack.post",
-      needsKey: true,
+      mcpKey: "slack",
     },
   },
 ];
@@ -184,7 +184,7 @@ export function assembleWorkflowToFlow(
         typeLabel: ASSEMBLE_LABEL[n.type] ?? n.type,
         title: n.label,
         op: n.detail ?? "",
-        ...(isMcp ? { needsKey: true, mcpKey: n.detail ?? undefined } : {}),
+        ...(isMcp ? { mcpKey: n.detail ?? undefined } : {}),
       },
     };
   });

@@ -1,6 +1,13 @@
 import { useCallback } from "react";
 import { useAuth } from "@clerk/clerk-react";
 
+// 프로덕션 빌드에서 VITE_API_BASE_URL이 없으면 localhost가 번들에 박혀 전 API가 실패한다.
+// (Clerk 키처럼) 빌드/로드 시 크게 터뜨려 조용한 배포 사고를 막는다. 로컬 dev만 fallback 허용.
+if (import.meta.env.PROD && !import.meta.env.VITE_API_BASE_URL) {
+  throw new Error(
+    "VITE_API_BASE_URL이 설정되지 않았습니다. 배포(Vercel 등) 환경변수를 확인하세요.",
+  );
+}
 const BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1";
 
 export class ApiError extends Error {
