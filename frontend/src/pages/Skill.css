@@ -269,6 +269,22 @@
   color: #c7bdae;
   cursor: grab;
 }
+.skill__nodeDel {
+  flex-shrink: 0;
+  width: 1.375rem;
+  height: 1.375rem;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--sc-muted);
+  background: none;
+  border: none;
+  border-radius: 0.25rem;
+  cursor: pointer;
+}
+.skill__nodeDel:hover {
+  background: #f0ede6;
+  color: var(--sc-ink);
+}
 
 .skill__addBlock {
   padding: 0.9375rem;
