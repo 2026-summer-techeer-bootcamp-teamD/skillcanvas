@@ -273,11 +273,11 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
     [setEdges],
   );
 
-  const updateSelectedTitle = (title: string) => {
+  const updateSelectedData = (patch: Partial<FlowNodeData>) => {
     if (!selected) return;
-    setSelected({ ...selected, data: { ...selected.data, title } });
+    setSelected({ ...selected, data: { ...selected.data, ...patch } });
     setNodes((nds) =>
-      nds.map((n) => (n.id === selected.id ? { ...n, data: { ...n.data, title } } : n)),
+      nds.map((n) => (n.id === selected.id ? { ...n, data: { ...n.data, ...patch } } : n)),
     );
   };
 
@@ -486,29 +486,46 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
                 <input
                   className="af__fieldInput"
                   value={selected.data.title}
-                  onChange={(e) => updateSelectedTitle(e.target.value)}
+                  onChange={(e) => updateSelectedData({ title: e.target.value })}
                 />
               </label>
 
               <label className="af__field">
                 상세
-                <input className="af__fieldInput" defaultValue={selected.data.op} />
+                {/* defaultValue만 있고 onChange가 없어 입력이 저장되지 않았다(바로 위 '라벨'은
+                    controlled인데 여기만 빠짐). 실행기로 detail로 넘어가는 값이라, 스마트택배처럼
+                    파라미터를 detail로 받는 도구는 UI에서 고칠 방법 자체가 없었다. */}
+                <input
+                  className="af__fieldInput"
+                  value={selected.data.op ?? ""}
+                  onChange={(e) => updateSelectedData({ op: e.target.value })}
+                  placeholder={
+                    selected.data.mcpKey === "sweettracker"
+                      ? "t_code=04&t_invoice=송장번호"
+                      : undefined
+                  }
+                />
               </label>
 
               {(() => {
                 const meta = selected.data.mcpKey
                   ? catalog.find((t) => t.key === selected.data.mcpKey)
                   : undefined;
+                // 판단 기준은 key_required 하나. auth_owner는 '누가 발급하는가'이지
+                // '안 넣어도 된다'가 아니다 — discord·telegram이 developer면서 봇 토큰이
+                // 필요한데, auth_owner를 같이 보면 이 패널이 통째로 사라져 키를 넣을
+                // UI 자체가 없어진다(openKeyModal 호출부가 이 버튼 하나뿐).
+                // KeyModal.tsx의 noKeyNeeded와 반드시 같은 기준을 써야 한다.
                 const showKeyPanel = selected.data.mcpKey
                   ? meta
-                    ? meta.key_required && meta.auth_owner === "user"
+                    ? meta.key_required
                     : true
                   : false;
                 if (!showKeyPanel) return null;
                 return (
                   <div className="af__keyWarn">
                     <p className="af__keyWarnTitle">▨ MCP 키 연결 필요</p>
-                    <p className="af__keyWarnBody">이 도구는 본인 키를 붙여넣어야 실행돼요.</p>
+                    <p className="af__keyWarnBody">이 도구는 키를 붙여넣어야 실행돼요.</p>
                     <button
                       className="af__keyBtn"
                       type="button"

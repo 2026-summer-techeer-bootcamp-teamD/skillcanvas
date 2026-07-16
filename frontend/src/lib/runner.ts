@@ -62,6 +62,9 @@ export function toRunnerGraph(nodes: Node<FlowNodeData>[], edges: Edge[]) {
       type: n.data.kind, // trigger/tool/agent/output/approve
       label: n.data.title,
       detail: n.data.op,
+      // 실행기가 어느 키를 꺼낼지 알아야 한다(카탈로그 key). detail은 노드를 만든 경로에
+      // 따라 "discord"(assemble)일 수도 "mcp.call"(추천패널)일 수도 있어 신뢰 불가.
+      ...(n.data.mcpKey ? { mcp_key: n.data.mcpKey } : {}),
     })),
     edges: edges.map((e) => ({ from: e.source, to: e.target })),
   };

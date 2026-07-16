@@ -37,9 +37,11 @@ function loadNickname(): string {
 interface TopNavProps {
   active?: NavTab;
   onNavigate?: (tab: NavTab) => void;
+  /** 닉네임이 조회/수정으로 바뀔 때마다 호출 — TopNav를 감싸는 페이지가 자체 상태(예: 프로필 보드)를 동기화할 때 씀 */
+  onNicknameChange?: (nickname: string) => void;
 }
 
-export function TopNav({ active, onNavigate }: TopNavProps) {
+export function TopNav({ active, onNavigate, onNicknameChange }: TopNavProps) {
   const { signOut } = useClerk();
   const call = useApi();
   const [nickname, setNickname] = useState(loadNickname);
@@ -56,6 +58,7 @@ export function TopNav({ active, onNavigate }: TopNavProps) {
       .then((me) => {
         if (cancelled) return;
         setNickname(me.nickname);
+        onNicknameChange?.(me.nickname);
         try {
           localStorage.setItem(NICK_KEY, me.nickname);
         } catch {
@@ -68,6 +71,7 @@ export function TopNav({ active, onNavigate }: TopNavProps) {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [call]);
 
   // 바깥 클릭 / Esc 로 닫기
@@ -102,6 +106,7 @@ export function TopNav({ active, onNavigate }: TopNavProps) {
     try {
       const me = await call<UserMe>("/users/me", { method: "PATCH", json: { nickname: trimmed } });
       setNickname(me.nickname);
+      onNicknameChange?.(me.nickname);
       try {
         localStorage.setItem(NICK_KEY, me.nickname);
       } catch {

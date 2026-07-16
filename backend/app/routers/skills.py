@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.core.deps import get_current_user, get_optional_user
+from app.core.llm import ask_claude_json
 from app.models.master_tag import MasterTag
 from app.models.skill import Skill
 from app.models.skill_tag import SkillTag
@@ -36,6 +37,26 @@ router = APIRouter(prefix="/skills", tags=["스킬"])
 # 비즈니스 지표 (Grafana에서 "오늘 생성/가져오기 수" 등에 사용)
 SKILL_CREATED = Counter("skill_created_total", "생성된 스킬 수")
 SKILL_IMPORTED = Counter("skill_imported_total", "가져온 스킬 수")
+# ── 헬퍼: description 자동 요약 (#116) ─────────────────
+_SUMMARY_SYSTEM = (
+    "너는 스킬 설명을 한 문장으로 요약한다. "
+    "주어진 스킬 본문(SKILL.md)을 읽고, 이 스킬이 무엇을 하는지 "
+    "한국어 한 문장(50자 이내)으로 요약한다.\n"
+    '반드시 JSON만 답한다: {"summary": "한 문장 요약"}'
+)
+
+
+def _auto_description(content_md: str) -> str | None:
+    """description이 비어있을 때 content_md로 한 줄 요약 생성.
+    요약 실패해도 발행 자체는 막지 않는다(description만 비워둠)."""
+    try:
+        data = ask_claude_json(_SUMMARY_SYSTEM, content_md, fail_code="SUMMARY_FAILED")
+    except HTTPException:
+        return None
+    summary = data.get("summary")
+    if not isinstance(summary, str) or not summary.strip():
+        return None
+    return summary.strip()[:500]
 
 
 # ── 헬퍼: 태그 ────────────────────────────────────────
@@ -166,10 +187,14 @@ def create_skill(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    description = payload.description
+    if not description or not description.strip():
+        description = _auto_description(payload.content_md)
+
     sk = Skill(
         users_id=user.id,  # 소유자 = 토큰 유저 (요청으로 안 받음)
         name=payload.name,
-        description=payload.description,
+        description=description,
         content_md=payload.content_md,  # ★ 워크플로우는 graph_json
         is_public=payload.is_public,
     )

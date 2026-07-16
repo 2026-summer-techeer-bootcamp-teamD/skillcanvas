@@ -18,22 +18,53 @@ TOOLS = [
         "auth_owner": "user",  # 유저 본인이 앱 비밀번호 붙여넣기
         "key_required": True,
         "key_issue_url": "https://myaccount.google.com/apppasswords",
-        "description": "메일 읽기·발송",
+        "description": "메일 읽기·발송 (IMAP+SMTP)",
+        # fields의 name = MCP 서버(@codefuturist/email-mcp)에 넘길 환경변수명.
+        # IMAP/SMTP 호스트는 상수라 mcp.py의 static_env에 박아둠 — 유저는 2개만 넣는다.
         "metadata_json": {
-            "field": "GMAIL_APP_PASSWORD",
-            "help": "2단계 인증 후 앱 비밀번호 생성",
-            "placeholder": "16자리 앱 비밀번호",
+            "guide": [
+                "Google 계정에 2단계 인증을 먼저 켜세요 ← 안 켜면 앱 비밀번호 메뉴가 안 보입니다",
+                "myaccount.google.com/apppasswords 접속",
+                "앱 이름 아무거나 입력 → 만들기 → 16자리 비밀번호 복사",
+                "계정 비밀번호가 아니라 이 16자리를 아래에 붙여넣으세요",
+            ],
+            "fields": [
+                {
+                    "name": "MCP_EMAIL_ADDRESS",
+                    "label": "메일 주소",
+                    "placeholder": "you@gmail.com",
+                },
+                {
+                    "name": "MCP_EMAIL_PASSWORD",
+                    "label": "앱 비밀번호",
+                    "placeholder": "16자리 앱 비밀번호",
+                    "help": "계정 비밀번호가 아니라 앱 비밀번호입니다",
+                },
+            ],
         },
     },
     {
         "key": "sweettracker",
         "name": "스마트택배 (배송조회)",
         "type": "api",
-        "auth_owner": "developer",  # 우리 공용키 — 유저는 붙여넣을 게 없음
+        # 우리 공용키 — 유저는 붙여넣을 게 없다(key_required=False라 키 모달도 안 뜬다).
+        # 대신 팀이 실행기마다 한 번 주입한다:
+        #   curl -X POST localhost:4737/credential -H 'Content-Type: application/json' \
+        #        -d '{"tool_key":"sweettracker","secret":"발급받은키"}'
+        # MCP 서버가 없는 REST API라 실행기가 직접 호출한다(local-runner/app/core/api_tools.py).
+        "auth_owner": "developer",
         "key_required": False,
         "key_issue_url": "https://info.sweettracker.co.kr/apidoc",
         "description": "택배 배송 상태 조회 (한국 택배사)",
-        "metadata_json": None,
+        "metadata_json": {
+            "fields": [
+                {
+                    "name": "SWEETTRACKER_API_KEY",
+                    "label": "API 키",
+                    "placeholder": "발급받은 API KEY",
+                }
+            ]
+        },
     },
     {
         "key": "slack",
@@ -43,10 +74,30 @@ TOOLS = [
         "key_required": True,
         "key_issue_url": "https://api.slack.com/apps",
         "description": "슬랙 메시지 전송",
+        # fields의 name = @modelcontextprotocol/server-slack 에 넘길 환경변수명.
+        # mcp.py의 MCP_SERVERS["slack"].env_fields 와 일치해야 한다 — 하나라도 비면 no_key로 막힌다.
         "metadata_json": {
-            "field": "SLACK_BOT_TOKEN",
-            "help": "봇 토큰 생성 후 붙여넣기",
-            "placeholder": "xoxb-...",
+            "guide": [
+                "api.slack.com/apps → Create New App → From scratch",
+                "좌측 OAuth & Permissions → Bot Token Scopes에 chat:write 추가",
+                "같은 화면 상단 Install to Workspace → 설치 승인",
+                "Bot User OAuth Token (xoxb-로 시작) 복사 → 아래에 붙여넣기",
+                "Team ID는 슬랙 웹 주소 app.slack.com/client/T01234567/... 의 T로 시작하는 부분",
+            ],
+            "fields": [
+                {
+                    "name": "SLACK_BOT_TOKEN",
+                    "label": "봇 토큰",
+                    "placeholder": "xoxb-...",
+                    "help": "OAuth & Permissions의 Bot User OAuth Token",
+                },
+                {
+                    "name": "SLACK_TEAM_ID",
+                    "label": "워크스페이스 ID",
+                    "placeholder": "T01234567",
+                    "help": "슬랙 웹 주소에서 T로 시작하는 워크스페이스 ID",
+                },
+            ],
         },
     },
     {
@@ -112,7 +163,56 @@ TOOLS = [
         "key_required": True,
         "key_issue_url": "https://discord.com/developers/applications",
         "description": "채널 메시지 송수신",
-        "metadata_json": None,
+        # fields의 name = MCP 서버에 넘길 환경변수명. local-runner/app/core/mcp.py 의
+        # MCP_SERVERS["discord"].env_fields 와 반드시 일치해야 한다.
+        "metadata_json": {
+            "guide": [
+                "Developer Portal → New Application (이름 아무거나)",
+                "좌측 Bot 탭 → Reset Token → 복사 (한 번만 보입니다)",
+                "좌측 OAuth2 → URL Generator → Scopes에 bot 체크",
+                "Bot Permissions에 Send Messages · Read Message History 체크",
+                "아래 생성된 URL을 브라우저로 열어 내 서버에 봇 초대 ← 이걸 빼먹으면 토큰이 맞아도 발송 실패",
+                "서버가 없으면 디스코드 좌측 맨 아래 + → 직접 만들기 로 하나 만드세요",
+            ],
+            "fields": [
+                {
+                    "name": "DISCORD_BOT_TOKEN",
+                    "label": "봇 토큰",
+                    "placeholder": "봇 토큰",
+                    "help": "Bot 탭의 Reset Token 값",
+                }
+            ],
+        },
+    },
+    {
+        "key": "telegram",
+        "name": "Telegram",
+        "type": "mcp",
+        "auth_owner": "developer",  # @BotFather 발급 봇 토큰
+        "key_required": True,
+        # 딥링크 — 누르면 텔레그램 앱의 BotFather 대화가 바로 열린다(문서 페이지보다 빠름).
+        "key_issue_url": "https://t.me/BotFather",
+        "description": "봇으로 채널·대화방에 메시지 발송",
+        # 실제로는 토큰 + chat_id 2개가 필요하지만 **입력칸은 토큰 하나뿐**이다.
+        # chat_id는 발급 화면 어디에도 없고 유저가 getUpdates JSON을 열어 찾아야 하는 값이라,
+        # 저장 시점에 실행기가 대신 조회해 채운다(local-runner/app/core/resolvers.py).
+        "metadata_json": {
+            "guide": [
+                "텔레그램에서 @BotFather 검색 → /newbot 입력",
+                "봇 이름 입력 (아무거나, 예: SkillCanvas Demo)",
+                "username 입력 — 반드시 bot 으로 끝나야 함 (예: skillcanvas_demo_bot)",
+                "만든 봇을 검색해 /start 를 한 번 누르기 ← 이걸 해야 봇이 나에게 보낼 수 있습니다",
+                "@BotFather 가 준 토큰을 아래에 붙여넣기 (받을 대화는 자동으로 찾습니다)",
+            ],
+            "fields": [
+                {
+                    "name": "BOT_TELEGRAM_TOKEN",
+                    "label": "봇 토큰",
+                    "placeholder": "123456789:AA...",
+                    "help": "@BotFather 가 /newbot 끝에 알려주는 값",
+                },
+            ],
+        },
     },
     {
         "key": "github",
@@ -136,12 +236,15 @@ TOOLS = [
     },
     {
         "key": "web-search",
-        "name": "Web Search (Brave)",
+        "name": "Web Search",
         "type": "mcp",
-        "auth_owner": "developer",  # 팀 공용 API 키
-        "key_required": True,
-        "key_issue_url": "https://brave.com/search/api/",
-        "description": "웹 검색",
+        # 원래 Brave API 팀 공용키를 사려 했으나, 실행기가 쓰는 claude -p 는 Claude Code CLI라
+        # WebSearch가 내장돼 있다. --allowed-tools 로 열어주면 키 없이 실제 검색이 된다.
+        # → 팀 공용키 불필요. (local-runner/app/core/mcp.py 의 BUILTIN_TOOLS)
+        "auth_owner": "developer",
+        "key_required": False,
+        "key_issue_url": None,
+        "description": "웹 검색 (키 불필요 — Claude 내장)",
         "metadata_json": None,
     },
     {
