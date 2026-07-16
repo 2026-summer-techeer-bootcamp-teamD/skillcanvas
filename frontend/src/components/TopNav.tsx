@@ -206,7 +206,15 @@ export function TopNav({ active, onNavigate, onNicknameChange }: TopNavProps) {
             <button
               className="nav__popLogout"
               type="button"
-              onClick={() => signOut({ redirectUrl: "/" })}
+              onClick={() => {
+                // 계정 전환 후 재로그인 시 이전 계정 닉네임이 잠깐 보이지 않도록 캐시도 지운다
+                try {
+                  localStorage.removeItem(NICK_KEY);
+                } catch {
+                  /* 무시 */
+                }
+                signOut({ redirectUrl: "/" });
+              }}
             >
               로그아웃
             </button>

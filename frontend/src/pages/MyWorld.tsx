@@ -153,29 +153,13 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
     setOpenMcps([]);
   };
 
-  // GET /users/me — 상단 프로필 보드용 (TopNav와 동일한 엔드포인트).
-  // 캐시된 닉네임으로 먼저 채워서 "@…" 같은 빈 상태 없이 바로 로그인한 사람 정보를 보여준다.
-  const cachedNickname = loadCachedNickname();
-  const [me, setMe] = useState<UserMe | null>(cachedNickname ? { nickname: cachedNickname } : null);
-  useEffect(() => {
-    let cancelled = false;
-    call<UserMe>("/users/me")
-      .then((data) => {
-        if (cancelled) return;
-        setMe(data);
-        try {
-          localStorage.setItem(NICK_KEY, data.nickname);
-        } catch {
-          /* 무시 */
-        }
-      })
-      .catch(() => {
-        /* 프로필 보드는 부가 정보 — 실패해도 나머지는 계속 보여준다 */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [call]);
+  // 상단 프로필 보드용 닉네임. 별도로 /users/me를 다시 부르지 않고, 아래에서 렌더하는
+  // TopNav가 이미 같은 요청을 하고 있으므로 그 결과를 onNicknameChange 콜백으로 받는다
+  // (초기값은 캐시로 채워서 "@…" 같은 빈 상태 없이 바로 보여준다).
+  const [me, setMe] = useState<UserMe | null>(() => {
+    const cached = loadCachedNickname();
+    return cached ? { nickname: cached } : null;
+  });
 
   // 상단 태그 필터 — 전체/스킬/오토플로우/로컬 스킬 중 하나만 골라 아래 섹션을 보여준다
   const [worldFilter, setWorldFilter] = useState<WorldFilter>("all");
