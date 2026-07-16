@@ -1,0 +1,10 @@
+# prettier를 frontend/ 에서 돌리면 레포 루트 .gitignore 는 안 읽는다
+# (여기의 .gitignore / .prettierignore 만 찾는다) → dist 가 검사 대상에 들어온다.
+dist
+build
+coverage
+node_modules
+
+# 자동 생성물 — 포맷 대상 아님
+*.min.js
+*.min.css

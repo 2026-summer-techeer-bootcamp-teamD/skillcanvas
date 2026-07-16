@@ -97,3 +97,72 @@ def test_import_private_blocked_404(client, auth):
     wf = _create(client, auth, user="alice", is_public=False)
     r = client.post(f"{BASE}/{wf['id']}/import", headers=auth("bob"))
     assert r.status_code == 404
+
+
+# ── used_mcps 추출 (이슈 #115) ───────────────────────
+def _seed_catalog(db_session, *keys: str) -> None:
+    from app.models.tool_catalog import ToolCatalog
+
+    for key in keys:
+        db_session.add(
+            ToolCatalog(
+                key=key,
+                name=key,
+                description=None,
+                key_required=False,
+                key_issue_url=None,
+                metadata_json=None,
+                type="mcp",
+                auth_owner="developer",
+            )
+        )
+    db_session.commit()
+
+
+def test_list_includes_used_mcps_from_graph(client, auth, db_session):
+    # graph_json 노드의 data.mcpKey가 목록에서 used_mcps로 중복 없이 추출된다
+    _seed_catalog(db_session, "__test_slack__", "__test_notion__")
+    graph = {
+        "nodes": [
+            {"id": "n1", "data": {"mcpKey": "__test_slack__"}},
+            {"id": "n2", "data": {"mcpKey": "__test_notion__"}},
+            {"id": "n3", "data": {"mcpKey": "__test_slack__"}},  # 중복
+            {"id": "n4", "data": {}},  # mcpKey 없음
+        ],
+        "edges": [],
+    }
+    r = client.post(
+        BASE,
+        json={**_payload(name="mcp-wf"), "graph_json": graph},
+        headers=auth("alice"),
+    )
+    assert r.status_code == 201, r.text
+    wf_id = r.json()["id"]
+
+    items = client.get(f"{BASE}?mine=true", headers=auth("alice")).json()["items"]
+    item = next(i for i in items if i["id"] == wf_id)
+    assert item["used_mcps"] == ["__test_slack__", "__test_notion__"]
+
+
+def test_list_filters_out_spoofed_mcp_key(client, auth, db_session):
+    # graph_json은 검증 없이 저장되므로(자유 형식 dict), 카탈로그에 없는 mcpKey를
+    # 임의로 심어도 used_mcps에는 반영되지 않아야 한다 (이슈 #115 워크플로우 스푸핑 수정).
+    _seed_catalog(db_session, "__test_real__")
+    graph = {
+        "nodes": [
+            {"id": "n1", "data": {"mcpKey": "__test_real__"}},
+            {"id": "n2", "data": {"mcpKey": "__totally_made_up_tool__"}},
+        ],
+        "edges": [],
+    }
+    r = client.post(
+        BASE,
+        json={**_payload(name="spoof-wf"), "graph_json": graph},
+        headers=auth("alice"),
+    )
+    assert r.status_code == 201, r.text
+    wf_id = r.json()["id"]
+
+    items = client.get(f"{BASE}?mine=true", headers=auth("alice")).json()["items"]
+    item = next(i for i in items if i["id"] == wf_id)
+    assert item["used_mcps"] == ["__test_real__"]

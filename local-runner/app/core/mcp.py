@@ -28,6 +28,8 @@ MCP_SERVERS: dict[str, dict] = {
         "command": "npx",
         "args": ["-y", "@codefuturist/email-mcp@0.2.3"],
         "env_fields": ["MCP_EMAIL_ADDRESS", "MCP_EMAIL_PASSWORD"],
+        # 읽기(IMAP)·발송(SMTP) 둘 다 하는 도구 — 노드 라벨을 보고 판단하게 한다
+        "role": "auto",
         # 호스트는 키가 아니라 상수다 — 유저에게 물을 이유가 없어서 여기 박는다.
         # IMAP+SMTP 둘 다 되는 서버라 CS 시나리오의 '컴플레인 읽기'와 '사과메일 발송'을
         # 하나로 커버한다.
@@ -40,25 +42,30 @@ MCP_SERVERS: dict[str, dict] = {
         "command": "npx",
         "args": ["-y", "@modelcontextprotocol/server-slack@2025.4.25"],
         "env_fields": ["SLACK_BOT_TOKEN", "SLACK_TEAM_ID"],
+        "role": "send",
     },
     "discord": {
         "command": "npx",
         "args": ["-y", "discord-mcp@2.4.0"],
         "env_fields": ["DISCORD_BOT_TOKEN"],
+        "role": "send",
     },
     "telegram": {
         "command": "npx",
         "args": ["-y", "mcp-telegram-agent@0.6.1"],
         "env_fields": ["BOT_TELEGRAM_TOKEN", "BOT_TELEGRAM_CHAT_ID"],
+        "role": "send",
     },
 }
 
 # MCP 서버 없이 Claude Code 내장 도구로 처리하는 것들 — **키가 필요 없다.**
 # web-search는 원래 Brave API 팀 공용키를 사려 했지만(카탈로그 주석), claude -p 가
 # Claude Code CLI라 WebSearch가 내장돼 있어 키 없이 실제 검색이 된다(측정 41초).
-BUILTIN_TOOLS: dict[str, str] = {
-    "web-search": "WebSearch,WebFetch",
-    "fetch": "WebFetch",
+# role: 프롬프트를 발송용/수집용 중 뭘로 줄지 결정한다(engine/nodes.py의 _tool_prompt).
+# 둘 다 **수집** 도구다 — 발송 전제로 프롬프트를 주면 AI가 "왜 안 보냈는지"를 해명한다.
+BUILTIN_TOOLS: dict[str, dict] = {
+    "web-search": {"tools": "WebSearch,WebFetch", "role": "fetch"},
+    "fetch": {"tools": "WebFetch", "role": "fetch"},
 }
 
 
