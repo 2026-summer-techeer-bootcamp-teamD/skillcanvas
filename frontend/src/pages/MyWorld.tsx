@@ -5,9 +5,16 @@ import "reactflow/dist/style.css";
 import { TopNav, type NavTab } from "../components/TopNav";
 import { NodeTrail } from "../components/NodeTrail";
 import { FlowNode } from "../components/flow/FlowNode";
-import { getGraph, RunnerError, type RunnerGraph, type RunnerGraphNode } from "../lib/runner";
+import {
+  getGraph,
+  getCredentials,
+  RunnerError,
+  type RunnerGraph,
+  type RunnerGraphNode,
+} from "../lib/runner";
 import { useApi, ApiError } from "../lib/api";
 import { assembleToFlow, type AssembledNode, type FlowNodeData } from "../lib/flowData";
+import type { ToolCatalogItem } from "../lib/toolCatalog";
 import "./MyWorld.css";
 
 const nodeTypes = { flow: FlowNode };
@@ -37,6 +44,30 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
   const [flowError, setFlowError] = useState<string | null>(null);
   // 열린 스킬이 쓰는 MCP 도구들 (graph의 skill→mcp 엣지 = SKILL.md allowed-tools)
   const [openMcps, setOpenMcps] = useState<string[]>([]);
+
+  // ── 내 MCP 키 현황 (카탈로그 전체 × 러너에 등록된 키) ──
+  const [catalog, setCatalog] = useState<ToolCatalogItem[]>([]);
+  const [registeredKeys, setRegisteredKeys] = useState<string[] | null>(null);
+  const [keyStatusMsg, setKeyStatusMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    call<{ items: ToolCatalogItem[] }>("/tool-catalog?limit=100")
+      .then((data) => setCatalog(data.items))
+      .catch(() => {
+        /* 카탈로그 실패 시 섹션에서 조용히 생략 */
+      });
+  }, [call]);
+
+  const loadKeyStatus = async () => {
+    setKeyStatusMsg(null);
+    try {
+      const data = await getCredentials();
+      setRegisteredKeys(data.tool_keys);
+    } catch (e) {
+      setRegisteredKeys(null);
+      setKeyStatusMsg(e instanceof RunnerError ? e.message : "불러올 수 없음");
+    }
+  };
 
   const localSkills = graph?.nodes.filter((n) => n.type === "skill") ?? null;
 
@@ -226,40 +257,74 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
                 ))}
               </div>
             ))}
+
+          <div className="mw__section">
+            <p className="mw__sectionLabel">
+              <span className="mw__dot" style={{ background: "var(--sc-node-agent)" }} />
+              SKILL <span className="mw__count">{mySkills.length}개</span>
+            </p>
+
+            {loading && <p className="mw__sub">불러오는 중…</p>}
+            {error && <p className="mw__sub">에러: {error}</p>}
+            {!loading && !error && mySkills.length === 0 && (
+              <p className="mw__sub">아직 만든 스킬이 없어요.</p>
+            )}
+
+            <div className="mw__grid">
+              {mySkills.map((s) => (
+                <article className="mw__skill" key={s.id}>
+                  <span className="mw__pill">
+                    <span className="mw__pillDot" style={{ background: "var(--sc-node-agent)" }} />
+                    {s.is_public ? "공개" : "나만보기"}
+                  </span>
+                  <h3 className="mw__cardTitle">{s.name}</h3>
+                  <p className="mw__cardMeta">{s.description ?? "-"}</p>
+                  <div className="mw__cardActions">
+                    <button type="button" onClick={() => handleRename(s)}>
+                      수정
+                    </button>
+                    <button type="button" onClick={() => handleDelete(s)}>
+                      삭제
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
         </div>
 
         <div className="mw__section">
           <p className="mw__sectionLabel">
-            <span className="mw__dot" style={{ background: "var(--sc-node-agent)" }} />
-            SKILL <span className="mw__count">{mySkills.length}개</span>
+            <span className="mw__dot" style={{ background: "var(--sc-node-tool)" }} />내 MCP 키 현황
+            <button
+              type="button"
+              className="mw__newWorld"
+              style={{ marginLeft: "0.75rem" }}
+              onClick={loadKeyStatus}
+            >
+              🔑 현황 불러오기
+            </button>
           </p>
-
-          {loading && <p className="mw__sub">불러오는 중…</p>}
-          {error && <p className="mw__sub">에러: {error}</p>}
-          {!loading && !error && mySkills.length === 0 && (
-            <p className="mw__sub">아직 만든 스킬이 없어요.</p>
+          {keyStatusMsg && <p className="mw__cardMeta">{keyStatusMsg}</p>}
+          {registeredKeys && (
+            <div className="mw__mcpRow" style={{ flexWrap: "wrap" }}>
+              {catalog.map((tool) => {
+                const registered = registeredKeys.includes(tool.key);
+                const needsKey = tool.key_required && tool.auth_owner === "user";
+                const label = !needsKey ? "키 불필요" : registered ? "등록됨" : "미등록";
+                const color = !needsKey ? "#999" : registered ? "#3b8a4c" : "#c94f4f";
+                return (
+                  <span
+                    className="mw__mcpChip"
+                    key={tool.key}
+                    style={{ borderColor: color, color }}
+                  >
+                    ◈ {tool.key} · {label}
+                  </span>
+                );
+              })}
+            </div>
           )}
-
-          <div className="mw__grid">
-            {mySkills.map((s) => (
-              <article className="mw__skill" key={s.id}>
-                <span className="mw__pill">
-                  <span className="mw__pillDot" style={{ background: "var(--sc-node-agent)" }} />
-                  {s.is_public ? "공개" : "나만보기"}
-                </span>
-                <h3 className="mw__cardTitle">{s.name}</h3>
-                <p className="mw__cardMeta">{s.description ?? "-"}</p>
-                <div className="mw__cardActions">
-                  <button type="button" onClick={() => handleRename(s)}>
-                    수정
-                  </button>
-                  <button type="button" onClick={() => handleDelete(s)}>
-                    삭제
-                  </button>
-                </div>
-              </article>
-            ))}
-          </div>
         </div>
 
         <div className="mw__section">
