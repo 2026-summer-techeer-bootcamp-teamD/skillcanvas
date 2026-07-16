@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { ToolCatalogItem } from "../lib/toolCatalog";
 import "./PublishModal.css"; // 스크림·카드 스타일 재사용
+import "./KeyModal.css"; // 발급 절차 안내·필드 힌트
 
 interface KeyModalProps {
   open: boolean;
@@ -19,13 +20,13 @@ interface KeyModalProps {
  * 저장은 호출부가 로컬 실행기(POST /credential)로 넘긴다.
  */
 export function KeyModal({ open, toolKey, tool, onClose, onSave }: KeyModalProps) {
-  const [secret, setSecret] = useState("");
+  const [values, setValues] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
-      setSecret("");
+      setValues({});
       setError(null);
       setSaving(false);
     }
@@ -35,16 +36,33 @@ export function KeyModal({ open, toolKey, tool, onClose, onSave }: KeyModalProps
 
   const meta = tool?.metadata_json ?? null;
   const name = tool?.name ?? toolKey;
-  // 공용키(developer)거나 키 불필요면 붙여넣을 게 없음
-  const noKeyNeeded = tool !== null && (tool.auth_owner === "developer" || !tool.key_required);
+
+  // 입력칸 목록. fields가 있으면 그대로, 없으면 예전 단일 field 형식으로 폴백.
+  const fields = meta?.fields?.length
+    ? meta.fields
+    : [{ name: meta?.field ?? "API 키", placeholder: meta?.placeholder, help: meta?.help }];
+
+  // 붙여넣을 게 없는 건 key_required로만 판단한다.
+  // auth_owner는 '누가 발급하는가'(developer=개발자/관리자 발급)이지 '안 넣어도 된다'가 아니다.
+  // discord·telegram이 developer면서 봇 토큰이 필요한데, 예전 로직은 이걸 '키 불필요'로 처리해
+  // 입력칸을 아예 안 그렸다 → 모달로는 토큰을 넣을 방법이 없었다.
+  const noKeyNeeded = tool !== null && !tool.key_required;
+
+  const filled = fields.every((f) => (values[f.name] ?? "").trim());
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!secret.trim()) return;
+    if (!filled) return;
     setSaving(true);
     setError(null);
     try {
-      await onSave(secret.trim());
+      // 칸이 하나면 값 그대로, 여러 개면 JSON으로 묶는다.
+      // 실행기(core/mcp.py)가 두 형식을 다 읽는다.
+      const secret =
+        fields.length === 1
+          ? values[fields[0].name].trim()
+          : JSON.stringify(Object.fromEntries(fields.map((f) => [f.name, values[f.name].trim()])));
+      await onSave(secret);
     } catch (err) {
       setError(err instanceof Error ? err.message : "키 저장 실패");
     } finally {
@@ -76,30 +94,45 @@ export function KeyModal({ open, toolKey, tool, onClose, onSave }: KeyModalProps
         ) : (
           <form onSubmit={handleSubmit}>
             {tool?.description && <p className="pub__optional">{tool.description}</p>}
+
+            {/* 발급 절차. 링크만 던지면 어디서 뭘 눌러야 하는지 몰라 헤맨다. */}
+            {meta?.guide?.length ? (
+              <ol className="key__guide">
+                {meta.guide.map((step, i) => (
+                  <li key={i}>{step}</li>
+                ))}
+              </ol>
+            ) : null}
+
             {tool?.key_issue_url && (
               <p className="pub__optional">
                 <a href={tool.key_issue_url} target="_blank" rel="noreferrer">
-                  여기서 발급 →
+                  발급하러 가기 →
                 </a>
               </p>
             )}
-            <label className="pub__field">
-              {meta?.field ?? "API 키"}
-              <input
-                className="pub__input"
-                value={secret}
-                onChange={(e) => setSecret(e.target.value)}
-                placeholder={meta?.placeholder ?? "키를 붙여넣으세요"}
-                autoFocus
-              />
-            </label>
-            {meta?.help && <p className="pub__optional">{meta.help}</p>}
+
+            {fields.map((f, i) => (
+              <label className="pub__field" key={f.name}>
+                {/* 환경변수 원문(MCP_EMAIL_ADDRESS)이 그대로 보이면 사용자에겐 암호문이다 */}
+                {f.label ?? f.name}
+                <input
+                  className="pub__input"
+                  value={values[f.name] ?? ""}
+                  onChange={(e) => setValues((v) => ({ ...v, [f.name]: e.target.value }))}
+                  placeholder={f.placeholder ?? "값을 붙여넣으세요"}
+                  autoFocus={i === 0}
+                />
+                {f.help && <span className="key__hint">{f.help}</span>}
+              </label>
+            ))}
+
             {error && <p className="pub__optional">{error}</p>}
             <div className="pub__actions">
               <button className="pub__ghost" type="button" onClick={onClose}>
                 취소
               </button>
-              <button className="pub__primary" type="submit" disabled={!secret.trim() || saving}>
+              <button className="pub__primary" type="submit" disabled={!filled || saving}>
                 {saving ? "저장 중…" : "로컬에 저장"}
               </button>
             </div>
