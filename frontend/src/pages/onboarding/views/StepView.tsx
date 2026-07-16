@@ -31,7 +31,17 @@ export default function StepView({ step, stepIndex, totalSteps, onNext }: StepVi
         maxWidth: 1080,
       }}
     >
-      <div style={{ flex: 1, minWidth: 280, maxWidth: 420, display: "flex", flexDirection: "column", alignItems: "flex-start", textAlign: "left" }}>
+      <div
+        style={{
+          flex: 1,
+          minWidth: 280,
+          maxWidth: 420,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "flex-start",
+          textAlign: "left",
+        }}
+      >
         <div
           style={{
             borderRadius: 999,
@@ -44,7 +54,9 @@ export default function StepView({ step, stepIndex, totalSteps, onNext }: StepVi
           }}
         >
           <Mascot size={15} />
-          <span style={{ fontWeight: 700, fontSize: 12.5, color: tokens.badgeText }}>{step.pill}</span>
+          <span style={{ fontWeight: 700, fontSize: 12.5, color: tokens.badgeText }}>
+            {step.pill}
+          </span>
         </div>
         <div style={{ height: 20 }} />
         <Headline parts={step.parts} />
@@ -59,14 +71,18 @@ export default function StepView({ step, stepIndex, totalSteps, onNext }: StepVi
           onClick={onNext}
           style={{
             border: "none",
-            borderRadius: 14,
+            borderRadius: 12,
             background: tokens.ink,
-            padding: "16px 40px",
+            padding: "15px 20px",
             fontWeight: 700,
-            fontSize: 17,
+            fontSize: 15,
             color: "rgb(255,255,255)",
             fontFamily: "inherit",
             cursor: "pointer",
+            width: 148,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
           }}
         >
           {step.cta}
@@ -96,7 +112,13 @@ export default function StepView({ step, stepIndex, totalSteps, onNext }: StepVi
           loop
           muted
           playsInline
-          style={{ width: "100%", height: 340, objectFit: "cover", borderRadius: 12, boxShadow: `inset 0 0 0 1px ${tokens.line}` }}
+          style={{
+            width: "100%",
+            height: 340,
+            objectFit: "cover",
+            borderRadius: 12,
+            boxShadow: `inset 0 0 0 1px ${tokens.line}`,
+          }}
         />
       </div>
     </div>
