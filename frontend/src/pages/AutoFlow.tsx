@@ -592,94 +592,94 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
               <Controls showInteractive={false} />
             </ReactFlow>
           </div>
-        </div>
 
-        {/* 실행 결과 오버레이 (로컬 실행기 응답) */}
-        {(running || runStatus || runError) && (
-          <div
-            style={{
-              position: "fixed",
-              right: 20,
-              bottom: 20,
-              width: 380,
-              maxHeight: "44vh",
-              overflow: "auto",
-              background: "#fff",
-              border: "1px solid #e5e0d2",
-              borderRadius: 12,
-              padding: "12px 14px",
-              boxShadow: "0 8px 24px rgba(0,0,0,.12)",
-              zIndex: 50,
-            }}
-          >
+          {/* 실행 결과 오버레이 (로컬 실행기 응답) */}
+          {(running || runStatus || runError) && (
             <div
               style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 8,
+                position: "absolute",
+                right: 20,
+                bottom: 20,
+                width: "min(380px, calc(100% - 40px))",
+                maxHeight: "44vh",
+                overflow: "auto",
+                background: "#fff",
+                border: "1px solid #e5e0d2",
+                borderRadius: 12,
+                padding: "12px 14px",
+                boxShadow: "0 8px 24px rgba(0,0,0,.12)",
+                zIndex: 50,
               }}
             >
-              <strong>실행 결과</strong>
-              <span style={{ fontSize: 13, color: "#8a8375" }}>
-                {running
-                  ? "▶ 실행 중…"
-                  : runStatus === "done"
-                    ? "✅ 완료"
-                    : runStatus === "awaiting_approval"
-                      ? "🚨 승인 대기"
-                      : runStatus === "stopped"
-                        ? "⛔ 중단(중복)"
-                        : ""}
-              </span>
-            </div>
-            {runError && (
-              <p style={{ color: "#c0392b", fontSize: 13, margin: "4px 0" }}>⚠ {runError}</p>
-            )}
-            <ol
-              style={{
-                margin: 0,
-                paddingLeft: 18,
-                fontSize: 13,
-                lineHeight: 1.7,
-                color: "#4a4636",
-              }}
-            >
-              {runResults.map((r, i) => (
-                <li key={`${r.id}-${i}`}>{r.result}</li>
-              ))}
-            </ol>
-            {runPending && (
               <div
                 style={{
-                  marginTop: 10,
-                  padding: "10px 12px",
-                  background: "#fff4ec",
-                  border: "1px solid #f2c9a8",
-                  borderRadius: 8,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 8,
                 }}
               >
-                <p style={{ margin: "0 0 8px", fontSize: 13 }}>🚨 {runPending.message}</p>
-                <button
-                  type="button"
-                  onClick={handleApprove}
-                  disabled={running}
+                <strong>실행 결과</strong>
+                <span style={{ fontSize: 13, color: "#8a8375" }}>
+                  {running
+                    ? "▶ 실행 중…"
+                    : runStatus === "done"
+                      ? "✅ 완료"
+                      : runStatus === "awaiting_approval"
+                        ? "🚨 승인 대기"
+                        : runStatus === "stopped"
+                          ? "⛔ 중단(중복)"
+                          : ""}
+                </span>
+              </div>
+              {runError && (
+                <p style={{ color: "#c0392b", fontSize: 13, margin: "4px 0" }}>⚠ {runError}</p>
+              )}
+              <ol
+                style={{
+                  margin: 0,
+                  paddingLeft: 18,
+                  fontSize: 13,
+                  lineHeight: 1.7,
+                  color: "#4a4636",
+                }}
+              >
+                {runResults.map((r, i) => (
+                  <li key={`${r.id}-${i}`}>{r.result}</li>
+                ))}
+              </ol>
+              {runPending && (
+                <div
                   style={{
-                    padding: "6px 14px",
-                    background: "#e8843c",
-                    color: "#fff",
-                    border: "none",
-                    borderRadius: 6,
-                    cursor: "pointer",
-                    fontWeight: 600,
+                    marginTop: 10,
+                    padding: "10px 12px",
+                    background: "#fff4ec",
+                    border: "1px solid #f2c9a8",
+                    borderRadius: 8,
                   }}
                 >
-                  승인하고 계속
-                </button>
-              </div>
-            )}
-          </div>
-        )}
+                  <p style={{ margin: "0 0 8px", fontSize: 13 }}>🚨 {runPending.message}</p>
+                  <button
+                    type="button"
+                    onClick={handleApprove}
+                    disabled={running}
+                    style={{
+                      padding: "6px 14px",
+                      background: "#e8843c",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: 6,
+                      cursor: "pointer",
+                      fontWeight: 600,
+                    }}
+                  >
+                    승인하고 계속
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* 오른쪽: 자연어 추천 / 라이브러리 패널 */}
         <aside className="af__side">
