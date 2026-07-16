@@ -96,3 +96,12 @@ def get_credential(tool_key: str) -> str | None:
         return row[0] if row else None
     finally:
         conn.close()
+
+def list_credential_keys() -> list[str]:
+    """등록된 도구 키 목록(현황 조회용). secret은 절대 포함하지 않는다."""
+    conn = _connect()
+    try:
+        rows = conn.execute("SELECT tool_key FROM credentials ORDER BY tool_key").fetchall()
+        return [r[0] for r in rows]
+    finally:
+        conn.close()
