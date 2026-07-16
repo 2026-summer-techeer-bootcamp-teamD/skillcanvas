@@ -80,7 +80,7 @@ def mock_claude(monkeypatch):
                 raise raise_exc
             return return_value
 
-        for mod in ("app.routers.recommend", "app.routers.assemble"):
+        for mod in ("app.routers.recommend", "app.routers.assemble", "app.routers.skills"):
             monkeypatch.setattr(f"{mod}.ask_claude_json", fake, raising=False)
 
     return _set
