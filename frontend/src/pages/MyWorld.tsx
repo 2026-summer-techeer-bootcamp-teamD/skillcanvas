@@ -373,11 +373,7 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
               ))}
             </div>
             {worldFilter === "all" && mySkills.length > SECTION_LIMIT && (
-              <button
-                type="button"
-                className="mw__showAll"
-                onClick={() => setWorldFilter("skill")}
-              >
+              <button type="button" className="mw__showAll" onClick={() => setWorldFilter("skill")}>
                 전체보기 ({mySkills.length}개)
               </button>
             )}
