@@ -18,4 +18,20 @@ jobs:
       - run: pip install ruff black
       - run: ruff check .
       - run: black --check .
-    # 프론트 lint는 프론트 세팅 완료 후 추가 예정
+
+  frontend-lint:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      # prettier는 frontend/ 에서 도므로 레포 루트 .gitignore 를 못 읽는다
+      # (여기의 .gitignore / .prettierignore 만 찾음) → frontend/.prettierignore 로 dist 제외
+      - run: npx prettier --check .
