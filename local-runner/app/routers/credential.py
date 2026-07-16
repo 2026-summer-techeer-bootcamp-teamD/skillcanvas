@@ -38,4 +38,10 @@ def save_credential(payload: CredentialIn) -> dict:
 
 @router.get("/credentials", summary="등록된 도구 키 목록 (secret 미포함)")
 def list_credentials() -> dict:
+    """프론트가 '키가 이미 들어갔는지'를 알기 위한 조회.
+
+    이게 없으면 저장 후에도 "키 연결 필요" 패널이 그대로 떠 있어 넣었는지 확인이 안 된다.
+    MyWorld(키 현황)와 AutoFlow(노드 편집 패널)가 이 API를 공유한다.
+    secret은 절대 내보내지 않는다 — key 목록만.
+    """
     return {"tool_keys": db.list_credential_keys()}

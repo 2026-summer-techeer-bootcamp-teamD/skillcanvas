@@ -86,6 +86,22 @@ def set_credential(tool_key: str, secret: str) -> None:
         conn.close()
 
 
+def list_credential_keys() -> list[str]:
+    """등록된 도구 key 목록(secret은 절대 안 내보낸다).
+
+    프론트가 '이 도구 키가 이미 들어갔나'를 알 방법이 POST 밖에 없어서, 저장하고 나서도
+    "키 연결 필요" 패널이 그대로 떠 있었다 → 넣었는지 안 넣었는지 확인 불가.
+    """
+    conn = _connect()
+    try:
+        rows = conn.execute(
+            "SELECT tool_key FROM credentials WHERE secret IS NOT NULL AND TRIM(secret) != ''"
+        ).fetchall()
+        return [r[0] for r in rows]
+    finally:
+        conn.close()
+
+
 def get_credential(tool_key: str) -> str | None:
     """저장된 도구 키 조회(실행 시 MCP 주입용). 없으면 None."""
     conn = _connect()
