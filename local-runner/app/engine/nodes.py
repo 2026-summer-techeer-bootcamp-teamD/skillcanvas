@@ -103,7 +103,10 @@ def exec_node(node: dict, ctx: dict, history: list[dict] | None = None) -> dict:
     if t == "dedup":  # 하네스: 이미 처리한 건이면 중단 (SQLite 조회)
         key = ctx.get("item_key")
         if key and db.is_processed(key):
-            return {"result": f"🔁 중복체크: 이미 처리한 건({key}) → 실행 중단", "stop": True}
+            return {
+                "result": f"🔁 중복체크: 이미 처리한 건({key}) → 실행 중단",
+                "stop": True,
+            }
         return {"result": f"🔁 중복체크: 신규 건({key}) → 통과"}
 
     if t == "verify":  # 하네스: 가드레일
@@ -118,13 +121,24 @@ def exec_node(node: dict, ctx: dict, history: list[dict] | None = None) -> dict:
         #  - 추천 패널로 추가한 노드는 detail이 "mcp.call"이고 label이 key
         key = _mcp_key(node)
 
-        # 연결된 MCP 서버가 없는 도구는 **시나리오 스텁**이다. CS 데모(cs_demo.py)의
-        # tool 노드가 그 예로, detail에 시나리오 데이터를 담아두고("받은 메일: ...")
-        # 그걸 결과로 흘려보내면 다음 agent 노드가 history로 읽어 판단한다.
-        # 즉 여기서 mock은 버그가 아니라 데모의 작동 원리라 반드시 유지해야 한다.
+        # ① MCP 서버 없이 Claude Code 내장 도구로 되는 것(web-search 등) — 키 불필요.
+        if key in mcp.BUILTIN_TOOLS:
+            r = claude_call(
+                _tool_prompt(label, detail, history),
+                allowed_tools=mcp.BUILTIN_TOOLS[key],
+            )
+            if "error" in r:
+                return {"result": "🔌 ⚠ " + r["error"]}
+            return {"result": "🔌 " + _clean(r["text"])}
+
+        # ② 연결된 MCP 서버가 없는 도구는 **시나리오 스텁**이다. CS 데모(cs_demo.py)의
+        #    tool 노드가 그 예로, detail에 시나리오 데이터를 담아두고("받은 메일: ...")
+        #    그걸 결과로 흘려보내면 다음 agent 노드가 history로 읽어 판단한다.
+        #    즉 여기서 mock은 버그가 아니라 데모의 작동 원리라 반드시 유지해야 한다.
         if key not in mcp.MCP_SERVERS:
             return {"result": "🔌 도구 실행: " + label + (f" — {detail}" if detail else "")}
 
+        # ③ MCP 연결 도구 — 키가 있어야 실제 호출. 없으면 가짜로 때우지 않고 명확히 실패.
         with mcp.mcp_config_for(key) as (cfg_path, reason):
             if reason == "no_key":
                 need = mcp.missing_fields_hint(key)

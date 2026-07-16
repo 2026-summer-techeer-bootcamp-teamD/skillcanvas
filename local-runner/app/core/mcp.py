@@ -21,6 +21,23 @@ from app.core import db
 # env_fields 는 카탈로그 metadata_json.fields 의 name 과 일치해야 한다
 # (프론트 키 모달이 그 이름으로 입력칸을 만들고, 여기서 그대로 env 에 넣는다).
 MCP_SERVERS: dict[str, dict] = {
+    "gmail": {
+        "command": "npx",
+        "args": ["-y", "@codefuturist/email-mcp"],
+        "env_fields": ["MCP_EMAIL_ADDRESS", "MCP_EMAIL_PASSWORD"],
+        # 호스트는 키가 아니라 상수다 — 유저에게 물을 이유가 없어서 여기 박는다.
+        # IMAP+SMTP 둘 다 되는 서버라 CS 시나리오의 '컴플레인 읽기'와 '사과메일 발송'을
+        # 하나로 커버한다.
+        "static_env": {
+            "MCP_EMAIL_IMAP_HOST": "imap.gmail.com",
+            "MCP_EMAIL_SMTP_HOST": "smtp.gmail.com",
+        },
+    },
+    "slack": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-slack"],
+        "env_fields": ["SLACK_BOT_TOKEN", "SLACK_TEAM_ID"],
+    },
     "discord": {
         "command": "npx",
         "args": ["-y", "discord-mcp@latest"],
@@ -31,6 +48,14 @@ MCP_SERVERS: dict[str, dict] = {
         "args": ["-y", "mcp-telegram-agent"],
         "env_fields": ["BOT_TELEGRAM_TOKEN", "BOT_TELEGRAM_CHAT_ID"],
     },
+}
+
+# MCP 서버 없이 Claude Code 내장 도구로 처리하는 것들 — **키가 필요 없다.**
+# web-search는 원래 Brave API 팀 공용키를 사려 했지만(카탈로그 주석), claude -p 가
+# Claude Code CLI라 WebSearch가 내장돼 있어 키 없이 실제 검색이 된다(측정 41초).
+BUILTIN_TOOLS: dict[str, str] = {
+    "web-search": "WebSearch,WebFetch",
+    "fetch": "WebFetch",
 }
 
 
@@ -74,6 +99,7 @@ def mcp_config_for(tool_key: str):
         yield None, "no_key"
         return
 
+    env = {**spec.get("static_env", {}), **env}  # 상수 호스트 등 + 유저 키
     cfg = {"mcpServers": {tool_key: {"command": spec["command"], "args": spec["args"], "env": env}}}
     fd, path = tempfile.mkstemp(prefix=f"mcp-{tool_key}-", suffix=".json")
     try:

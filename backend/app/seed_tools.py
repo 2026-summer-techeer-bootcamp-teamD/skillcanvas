@@ -18,11 +18,22 @@ TOOLS = [
         "auth_owner": "user",  # 유저 본인이 앱 비밀번호 붙여넣기
         "key_required": True,
         "key_issue_url": "https://myaccount.google.com/apppasswords",
-        "description": "메일 읽기·발송",
+        "description": "메일 읽기·발송 (IMAP+SMTP)",
+        # fields의 name = MCP 서버(@codefuturist/email-mcp)에 넘길 환경변수명.
+        # IMAP/SMTP 호스트는 상수라 mcp.py의 static_env에 박아둠 — 유저는 2개만 넣는다.
         "metadata_json": {
-            "field": "GMAIL_APP_PASSWORD",
-            "help": "2단계 인증 후 앱 비밀번호 생성",
-            "placeholder": "16자리 앱 비밀번호",
+            "fields": [
+                {
+                    "name": "MCP_EMAIL_ADDRESS",
+                    "placeholder": "you@gmail.com",
+                    "help": "메일 주소",
+                },
+                {
+                    "name": "MCP_EMAIL_PASSWORD",
+                    "placeholder": "16자리 앱 비밀번호",
+                    "help": "2단계 인증 후 앱 비밀번호 생성 (계정 비밀번호 아님)",
+                },
+            ]
         },
     },
     {
@@ -170,12 +181,15 @@ TOOLS = [
     },
     {
         "key": "web-search",
-        "name": "Web Search (Brave)",
+        "name": "Web Search",
         "type": "mcp",
-        "auth_owner": "developer",  # 팀 공용 API 키
-        "key_required": True,
-        "key_issue_url": "https://brave.com/search/api/",
-        "description": "웹 검색",
+        # 원래 Brave API 팀 공용키를 사려 했으나, 실행기가 쓰는 claude -p 는 Claude Code CLI라
+        # WebSearch가 내장돼 있다. --allowed-tools 로 열어주면 키 없이 실제 검색이 된다.
+        # → 팀 공용키 불필요. (local-runner/app/core/mcp.py 의 BUILTIN_TOOLS)
+        "auth_owner": "developer",
+        "key_required": False,
+        "key_issue_url": None,
+        "description": "웹 검색 (키 불필요 — Claude 내장)",
         "metadata_json": None,
     },
     {
