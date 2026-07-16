@@ -1,6 +1,6 @@
-from sqlalchemy import BigInteger, Boolean, String, Text
+from sqlalchemy import BigInteger, Boolean, String, Text, select
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from app.core.db import Base
 from app.models.mixins import TimestampMixin
@@ -25,3 +25,12 @@ class ToolCatalog(TimestampMixin, Base):
     metadata_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     type: Mapped[str] = mapped_column(String(20), nullable=False)
     auth_owner: Mapped[str] = mapped_column(String(20), nullable=False)
+
+
+def list_catalog_keys(db: Session) -> list[str]:
+    """전체 카탈로그 key 목록 (assemble/skills/workflows 라우터가 공유하는 단일 소스).
+
+    "실제 존재하는 도구인가"를 검증하는 모든 곳(AI 프롬프트 제약, 발행 시 used_mcps
+    필터링, 목록 조회 시 스푸핑 방지)이 이 하나의 쿼리 결과를 기준으로 판단한다.
+    """
+    return list(db.scalars(select(ToolCatalog.key).order_by(ToolCatalog.key)))

@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 from app.core.db import get_db
 from app.core.deps import get_current_user, get_optional_user
 from app.models.master_tag import MasterTag
+from app.models.tool_catalog import list_catalog_keys
 from app.models.user import User
 from app.models.workflow import Workflow
 from app.models.workflow_tag import WorkflowTag
@@ -71,8 +72,28 @@ def _sync_tags(db: Session, workflow_id: int, tag_names: list[str]) -> None:
             db.add(WorkflowTag(workflows_id=workflow_id, master_tags_id=tag.id))
 
 
+# ── 헬퍼: MCP 추출 ────────────────────────────────────
+def _used_mcps(graph_json: dict, catalog_keys: set[str]) -> list[str]:
+    """graph_json 노드의 data.mcpKey를 등장 순서대로 중복 없이 모은다.
+
+    graph_json은 클라이언트가 보낸 대로 검증 없이 저장되는 자유 형식 dict이므로
+    (schemas/workflow.py: graph_json: dict), mcpKey도 실제 카탈로그 key인지 여기서
+    반드시 다시 확인한다 — 아니면 임의 문자열이 '검증된 MCP'처럼 칩으로 노출된다.
+    """
+    nodes = graph_json.get("nodes") if isinstance(graph_json, dict) else None
+    if not isinstance(nodes, list):
+        return []
+    keys: list[str] = []
+    for node in nodes:
+        data = node.get("data") if isinstance(node, dict) else None
+        key = data.get("mcpKey") if isinstance(data, dict) else None
+        if isinstance(key, str) and key in catalog_keys and key not in keys:
+            keys.append(key)
+    return keys
+
+
 # ── 헬퍼: 응답 조립 ───────────────────────────────────
-def _list_item(db: Session, wf: Workflow) -> dict:
+def _list_item(db: Session, wf: Workflow, catalog_keys: set[str]) -> dict:
     return {
         "id": wf.id,
         "name": wf.name,
@@ -81,6 +102,7 @@ def _list_item(db: Session, wf: Workflow) -> dict:
         "tags": _tag_names(db, wf.id),
         "import_count": wf.import_count,
         "is_public": wf.is_public,  # 목록에서도 공개/비공개 배지 판단 가능하게(내 워크플로우 뷰)
+        "used_mcps": _used_mcps(wf.graph_json, catalog_keys),
         "created_at": wf.created_at,
     }
 
@@ -136,8 +158,9 @@ def list_workflows(
     total = db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
     order = Workflow.import_count.desc() if sort == "popular" else Workflow.created_at.desc()
     rows = db.scalars(stmt.order_by(order).limit(limit).offset(offset)).all()
+    catalog_keys = set(list_catalog_keys(db))
     return {
-        "items": [_list_item(db, wf) for wf in rows],
+        "items": [_list_item(db, wf, catalog_keys) for wf in rows],
         "total": total,
         "limit": limit,
         "offset": offset,

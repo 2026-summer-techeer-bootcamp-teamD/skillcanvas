@@ -11,7 +11,9 @@
   - 에러는 HTTPException(status, detail={code, message}).
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+import re
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from prometheus_client import Counter
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
@@ -22,6 +24,7 @@ from app.core.llm import ask_claude_json
 from app.models.master_tag import MasterTag
 from app.models.skill import Skill
 from app.models.skill_tag import SkillTag
+from app.models.tool_catalog import list_catalog_keys
 from app.models.user import User
 from app.schemas.skill import (
     SkillCreate,
@@ -92,8 +95,27 @@ def _sync_tags(db: Session, skill_id: int, tag_names: list[str]) -> None:
             db.add(SkillTag(skills_id=skill_id, master_tags_id=tag.id))
 
 
+# ── 헬퍼: MCP 추출 ────────────────────────────────────
+def _used_mcps_from_text(content_md: str, catalog_keys: list[str]) -> list[str]:
+    """content_md 안에 등장하는 카탈로그 key만 추출 (레거시 폴백 전용).
+
+    발행 시 used_mcps를 저장하지 않은 예전 스킬만을 위한 근사치 — 자유 텍스트 매칭이라
+    위양성(카탈로그 key와 같은 흔한 단어)·위음성(LLM이 key 대신 라벨을 씀) 여지가 있다.
+    새로 발행되는 스킬은 create_skill에서 검증 후 저장한 sk.used_mcps를 그대로 쓴다.
+    """
+    return [k for k in catalog_keys if re.search(rf"\b{re.escape(k)}\b", content_md, re.I)]
+
+
+def _used_mcps(db: Session, sk: Skill, catalog_keys: list[str]) -> list[str]:
+    # None = 마이그레이션 이전 레거시 스킬(값 자체가 없음) → regex 폴백.
+    # []는 "발행 시 MCP를 안 씀"이 저장된 유효한 값이므로 falsy로 오판해 폴백하면 안 된다.
+    if sk.used_mcps is not None:
+        return sk.used_mcps
+    return _used_mcps_from_text(sk.content_md, catalog_keys)
+
+
 # ── 헬퍼: 응답 조립 ───────────────────────────────────
-def _list_item(db: Session, sk: Skill) -> dict:
+def _list_item(db: Session, sk: Skill, catalog_keys: list[str]) -> dict:
     return {
         "id": sk.id,
         "name": sk.name,
@@ -102,6 +124,7 @@ def _list_item(db: Session, sk: Skill) -> dict:
         "tags": _tag_names(db, sk.id),
         "import_count": sk.import_count,
         "is_public": sk.is_public,  # 목록에서도 공개/비공개 배지 판단 가능하게(내 스킬 뷰)
+        "used_mcps": _used_mcps(db, sk, catalog_keys),
         "created_at": sk.created_at,
     }
 
@@ -131,8 +154,10 @@ def list_skills(
     sort: str = "recent",
     mine: bool = False,
     owner_id: int | None = None,
-    limit: int = 20,
-    offset: int = 0,
+    # 상한 없으면 공개(비인증) 목록에서도 limit만큼 content_md 전체를 regex 스캔하는
+    # used_mcps 계산 비용이 그대로 증폭된다(이슈 #115) — 100으로 캡.
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
     user: User | None = Depends(get_optional_user),
 ):
@@ -158,8 +183,9 @@ def list_skills(
     total = db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
     order = Skill.import_count.desc() if sort == "popular" else Skill.created_at.desc()
     rows = db.scalars(stmt.order_by(order).limit(limit).offset(offset)).all()
+    catalog_keys = list_catalog_keys(db)
     return {
-        "items": [_list_item(db, sk) for sk in rows],
+        "items": [_list_item(db, sk, catalog_keys) for sk in rows],
         "total": total,
         "limit": limit,
         "offset": offset,
@@ -187,6 +213,11 @@ def create_skill(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    # 클라이언트가 보낸 used_mcps도 카탈로그에 실제 존재하는 key인지 서버에서 다시 검증
+    # (assemble.py가 /assemble 응답에서 하는 것과 동일한 방어 — 임의 문자열 저장 방지).
+    catalog_set = set(list_catalog_keys(db))
+    used_mcps = [m for m in payload.used_mcps if m in catalog_set]
+
     description = payload.description
     if not description or not description.strip():
         description = _auto_description(payload.content_md)
@@ -197,6 +228,7 @@ def create_skill(
         description=description,
         content_md=payload.content_md,  # ★ 워크플로우는 graph_json
         is_public=payload.is_public,
+        used_mcps=used_mcps,
     )
     db.add(sk)
     db.flush()  # id 확보
