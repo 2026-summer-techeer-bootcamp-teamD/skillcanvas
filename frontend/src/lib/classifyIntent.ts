@@ -5,4 +5,3 @@
  * "neutral" = 판단 애매 → 사용자가 직접 고름.
  */
 export type Intent = "skill" | "workflow" | "neutral";
-

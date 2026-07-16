@@ -29,7 +29,10 @@ def test_list_no_auth_required(client, db_session):
     db_session.add(_make("__test_slack__"))
     db_session.commit()
 
-    r = client.get(BASE)
+    # limit을 명시한다. 기본 limit=20이라, 시드(python -m app.seed_tools)를 돌린 로컬 DB에선
+    # 카탈로그가 20개를 채워 21번째인 __test_slack__ 이 첫 페이지에서 잘려 실패했다.
+    # (CI는 매번 빈 DB라 통과했지만, 시드를 돌린 팀원은 누구나 밟는 함정)
+    r = client.get(BASE, params={"limit": 100})
     assert r.status_code == 200
     body = r.json()
     assert body["total"] >= 1
