@@ -108,7 +108,7 @@
       "gridPos": { "h": 6, "w": 4, "x": 12, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "refId": "A", "expr": "100 * sum(pg_stat_database_numbackends) / clamp_min(max(pg_settings_max_connections), 1)", "legendFormat": "usage" }
+        { "refId": "A", "expr": "100 * (sum(pg_stat_database_numbackends) or vector(0)) / clamp_min((max(pg_settings_max_connections) or vector(0)), 1)", "legendFormat": "usage" }
       ],
       "fieldConfig": {
         "defaults": {
@@ -142,7 +142,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "100 * (sum(rate(pg_stat_database_blks_hit{datname!~\"template.*|postgres\"}[$__rate_interval])) or vector(0)) / clamp_min(sum(rate(pg_stat_database_blks_hit{datname!~\"template.*|postgres\"}[$__rate_interval])) + sum(rate(pg_stat_database_blks_read{datname!~\"template.*|postgres\"}[$__rate_interval])), 1e-9)",
+          "expr": "100 * (sum(rate(pg_stat_database_blks_hit{datname!~\"template.*|postgres\"}[$__rate_interval])) or vector(0)) / clamp_min((sum(rate(pg_stat_database_blks_hit{datname!~\"template.*|postgres\"}[$__rate_interval])) + sum(rate(pg_stat_database_blks_read{datname!~\"template.*|postgres\"}[$__rate_interval])) or vector(0)), 1e-9)",
           "legendFormat": "cache hit"
         }
       ],
@@ -402,7 +402,7 @@
           "targets": [
             {
               "refId": "A",
-              "expr": "100 * pg_stat_user_tables_n_dead_tup{datname=\"skillcanvas\"} / clamp_min(pg_stat_user_tables_n_live_tup{datname=\"skillcanvas\"} + pg_stat_user_tables_n_dead_tup{datname=\"skillcanvas\"}, 1)",
+              "expr": "100 * (pg_stat_user_tables_n_dead_tup{datname=\"skillcanvas\"} or vector(0)) / clamp_min((pg_stat_user_tables_n_live_tup{datname=\"skillcanvas\"} + pg_stat_user_tables_n_dead_tup{datname=\"skillcanvas\"} or vector(0)), 1)",
               "legendFormat": "{{relname}}"
             }
           ],
