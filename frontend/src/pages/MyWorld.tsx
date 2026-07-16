@@ -237,7 +237,11 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
 
   return (
     <div className="mw">
-      <TopNav active="MY WORLD" onNavigate={onNavigate} />
+      <TopNav
+        active="MY WORLD"
+        onNavigate={onNavigate}
+        onNicknameChange={(nickname) => setMe({ nickname })}
+      />
 
       <main className="mw__main">
         <div className="mw__head">
@@ -266,7 +270,7 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
                 <strong>{myFlows.length}</strong> 오토플로우
               </span>
               <span className="mw__profileStat">
-                <strong>{localSkills?.length ?? 0}</strong> 로컬 스킬
+                <strong>{localSkills ? localSkills.length : "—"}</strong> 로컬 스킬
               </span>
             </div>
           </div>
@@ -323,7 +327,10 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
                         onKeyDown={(e) => e.key === "Enter" && openLocalSkill(s)}
                       >
                         <span className="mw__pill">
-                          <span className="mw__pillDot" style={{ background: "var(--sc-node-tool)" }} />
+                          <span
+                            className="mw__pillDot"
+                            style={{ background: "var(--sc-node-tool)" }}
+                          />
                           로컬
                         </span>
                         <h3 className="mw__cardTitle">{s.label}</h3>
@@ -424,7 +431,11 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
               ))}
             </div>
             {worldFilter === "all" && myFlows.length > SECTION_LIMIT && (
-              <button type="button" className="mw__showAll" onClick={() => setWorldFilter("autoflow")}>
+              <button
+                type="button"
+                className="mw__showAll"
+                onClick={() => setWorldFilter("autoflow")}
+              >
                 전체보기 ({myFlows.length}개)
               </button>
             )}
