@@ -86,7 +86,9 @@ def _used_mcps_from_text(content_md: str, catalog_keys: list[str]) -> list[str]:
 
 
 def _used_mcps(db: Session, sk: Skill, catalog_keys: list[str]) -> list[str]:
-    if sk.used_mcps:  # 발행 시 저장된 값이 있으면 그게 진실(더 이상 regex 추측이 아님)
+    # None = 마이그레이션 이전 레거시 스킬(값 자체가 없음) → regex 폴백.
+    # []는 "발행 시 MCP를 안 씀"이 저장된 유효한 값이므로 falsy로 오판해 폴백하면 안 된다.
+    if sk.used_mcps is not None:
         return sk.used_mcps
     return _used_mcps_from_text(sk.content_md, catalog_keys)
 
