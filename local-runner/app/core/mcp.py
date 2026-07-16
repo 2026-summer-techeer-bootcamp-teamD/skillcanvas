@@ -18,12 +18,15 @@ from contextlib import contextmanager
 from app.core import db
 
 # 카탈로그 key → MCP 서버 실행 방법.
+# ⚠️ 버전을 반드시 핀한다. npx는 버전을 안 쓰면 latest를 받아오므로, 데모 당일 upstream이
+#    breaking change를 내면 그대로 터진다(우리 코드는 그대로인데 재현이 안 되는 최악의 형태).
+#    올릴 땐 의도적으로 올리고 실제로 돌려본 뒤 커밋할 것.
 # env_fields 는 카탈로그 metadata_json.fields 의 name 과 일치해야 한다
 # (프론트 키 모달이 그 이름으로 입력칸을 만들고, 여기서 그대로 env 에 넣는다).
 MCP_SERVERS: dict[str, dict] = {
     "gmail": {
         "command": "npx",
-        "args": ["-y", "@codefuturist/email-mcp"],
+        "args": ["-y", "@codefuturist/email-mcp@0.2.3"],
         "env_fields": ["MCP_EMAIL_ADDRESS", "MCP_EMAIL_PASSWORD"],
         # 호스트는 키가 아니라 상수다 — 유저에게 물을 이유가 없어서 여기 박는다.
         # IMAP+SMTP 둘 다 되는 서버라 CS 시나리오의 '컴플레인 읽기'와 '사과메일 발송'을
@@ -35,17 +38,17 @@ MCP_SERVERS: dict[str, dict] = {
     },
     "slack": {
         "command": "npx",
-        "args": ["-y", "@modelcontextprotocol/server-slack"],
+        "args": ["-y", "@modelcontextprotocol/server-slack@2025.4.25"],
         "env_fields": ["SLACK_BOT_TOKEN", "SLACK_TEAM_ID"],
     },
     "discord": {
         "command": "npx",
-        "args": ["-y", "discord-mcp@latest"],
+        "args": ["-y", "discord-mcp@2.4.0"],
         "env_fields": ["DISCORD_BOT_TOKEN"],
     },
     "telegram": {
         "command": "npx",
-        "args": ["-y", "mcp-telegram-agent"],
+        "args": ["-y", "mcp-telegram-agent@0.6.1"],
         "env_fields": ["BOT_TELEGRAM_TOKEN", "BOT_TELEGRAM_CHAT_ID"],
     },
 }
@@ -59,11 +62,16 @@ BUILTIN_TOOLS: dict[str, str] = {
 }
 
 
-def _env_for(tool_key: str, spec: dict) -> dict[str, str] | None:
-    """저장된 secret → MCP 서버에 넘길 env dict. 필드가 하나라도 비면 None."""
+def _env_for(tool_key: str, spec: dict) -> tuple[dict[str, str] | None, str | None]:
+    """저장된 secret → (env dict, 실패사유).
+
+    실패사유를 구분하는 이유: 값이 여러 개인 도구(gmail 등)를 예전 단일 필드 시절에
+    평문으로 저장해 뒀다면, 키가 분명히 있는데도 못 쓴다. 그때 "키 미등록"이라고만 하면
+    이미 넣은 유저가 왜 안 되는지 알 수 없다 → "다시 저장해 주세요"로 안내한다.
+    """
     secret = db.get_credential(tool_key)
     if not secret:
-        return None
+        return None, "no_key"
 
     fields: list[str] = spec["env_fields"]
     try:
@@ -73,30 +81,32 @@ def _env_for(tool_key: str, spec: dict) -> dict[str, str] | None:
 
     if isinstance(parsed, dict):
         env = {f: str(parsed[f]).strip() for f in fields if str(parsed.get(f, "")).strip()}
-    elif len(fields) == 1:
-        env = {fields[0]: secret.strip()}  # 평문 단일 키(기존 저장분)
-    else:
-        return None
-
-    return env if len(env) == len(fields) else None  # 필드 누락 → 못 씀
+        # JSON인데 필드가 빈다 = 저장 당시와 요구 필드가 달라진 것
+        return (env, None) if len(env) == len(fields) else (None, "stale_format")
+    if len(fields) == 1:
+        v = secret.strip()
+        return ({fields[0]: v}, None) if v else (None, "no_key")
+    # 필드가 여러 개인데 평문 한 덩어리 = 단일 필드 시절에 저장된 값
+    return None, "stale_format"
 
 
 @contextmanager
 def mcp_config_for(tool_key: str):
     """(config_path, reason) 를 내준다. 끝나면 임시 파일을 지운다.
 
-    - 정상       : (경로, None)
-    - 미지원 도구 : (None, "unsupported")
-    - 키 없음/부족: (None, "no_key")
+    - 정상        : (경로, None)
+    - 미지원 도구  : (None, "unsupported")
+    - 키 없음      : (None, "no_key")
+    - 옛 형식으로 저장 : (None, "stale_format")  ← 키는 있는데 못 씀. 다시 저장해야 함
     """
     spec = MCP_SERVERS.get(tool_key)
     if not spec:
         yield None, "unsupported"
         return
 
-    env = _env_for(tool_key, spec)
+    env, reason = _env_for(tool_key, spec)
     if not env:
-        yield None, "no_key"
+        yield None, reason
         return
 
     env = {**spec.get("static_env", {}), **env}  # 상수 호스트 등 + 유저 키

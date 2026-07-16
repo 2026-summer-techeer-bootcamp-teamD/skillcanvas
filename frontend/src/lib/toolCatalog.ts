@@ -4,6 +4,8 @@
  *  (local-runner/app/core/mcp.py 의 MCP_SERVERS[*].env_fields). */
 export interface ToolMetaField {
   name: string;
+  /** 화면에 보일 이름. 없으면 name(환경변수 원문)을 그대로 쓴다 */
+  label?: string;
   placeholder?: string;
   help?: string;
 }

@@ -160,6 +160,13 @@ def exec_node(node: dict, ctx: dict, history: list[dict] | None = None) -> dict:
             if reason == "no_key":
                 need = mcp.missing_fields_hint(key)
                 return {"result": f"🔌 ⚠ {label}: 키 미등록 — 노드를 클릭해 {need} 를 넣어주세요"}
+            if reason == "stale_format":
+                # 키가 분명히 있는데 못 쓰는 경우 — "미등록"이라고 하면 유저가 갇힌다.
+                need = mcp.missing_fields_hint(key)
+                return {
+                    "result": f"🔌 ⚠ {label}: 저장된 키가 예전 형식입니다 — "
+                    f"노드를 클릭해 {need} 를 다시 저장해 주세요"
+                }
             r = claude_call(
                 _tool_prompt(label, detail, history),
                 allowed_tools=f"mcp__{key}",  # 이 서버의 도구만 허용

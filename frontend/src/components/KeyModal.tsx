@@ -38,10 +38,9 @@ export function KeyModal({ open, toolKey, tool, onClose, onSave }: KeyModalProps
   const name = tool?.name ?? toolKey;
 
   // 입력칸 목록. fields가 있으면 그대로, 없으면 예전 단일 field 형식으로 폴백.
-  const fields =
-    meta?.fields?.length
-      ? meta.fields
-      : [{ name: meta?.field ?? "API 키", placeholder: meta?.placeholder, help: meta?.help }];
+  const fields = meta?.fields?.length
+    ? meta.fields
+    : [{ name: meta?.field ?? "API 키", placeholder: meta?.placeholder, help: meta?.help }];
 
   // 붙여넣을 게 없는 건 key_required로만 판단한다.
   // auth_owner는 '누가 발급하는가'(developer=개발자/관리자 발급)이지 '안 넣어도 된다'가 아니다.
@@ -62,9 +61,7 @@ export function KeyModal({ open, toolKey, tool, onClose, onSave }: KeyModalProps
       const secret =
         fields.length === 1
           ? values[fields[0].name].trim()
-          : JSON.stringify(
-              Object.fromEntries(fields.map((f) => [f.name, values[f.name].trim()])),
-            );
+          : JSON.stringify(Object.fromEntries(fields.map((f) => [f.name, values[f.name].trim()])));
       await onSave(secret);
     } catch (err) {
       setError(err instanceof Error ? err.message : "키 저장 실패");
@@ -117,7 +114,8 @@ export function KeyModal({ open, toolKey, tool, onClose, onSave }: KeyModalProps
 
             {fields.map((f, i) => (
               <label className="pub__field" key={f.name}>
-                {f.name}
+                {/* 환경변수 원문(MCP_EMAIL_ADDRESS)이 그대로 보이면 사용자에겐 암호문이다 */}
+                {f.label ?? f.name}
                 <input
                   className="pub__input"
                   value={values[f.name] ?? ""}

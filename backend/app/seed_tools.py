@@ -31,13 +31,14 @@ TOOLS = [
             "fields": [
                 {
                     "name": "MCP_EMAIL_ADDRESS",
+                    "label": "메일 주소",
                     "placeholder": "you@gmail.com",
-                    "help": "메일 주소",
                 },
                 {
                     "name": "MCP_EMAIL_PASSWORD",
+                    "label": "앱 비밀번호",
                     "placeholder": "16자리 앱 비밀번호",
-                    "help": "2단계 인증 후 앱 비밀번호 생성 (계정 비밀번호 아님)",
+                    "help": "계정 비밀번호가 아니라 앱 비밀번호입니다",
                 },
             ],
         },
@@ -56,7 +57,13 @@ TOOLS = [
         "key_issue_url": "https://info.sweettracker.co.kr/apidoc",
         "description": "택배 배송 상태 조회 (한국 택배사)",
         "metadata_json": {
-            "fields": [{"name": "SWEETTRACKER_API_KEY", "placeholder": "발급받은 API KEY"}]
+            "fields": [
+                {
+                    "name": "SWEETTRACKER_API_KEY",
+                    "label": "API 키",
+                    "placeholder": "발급받은 API KEY",
+                }
+            ]
         },
     },
     {
@@ -80,11 +87,13 @@ TOOLS = [
             "fields": [
                 {
                     "name": "SLACK_BOT_TOKEN",
+                    "label": "봇 토큰",
                     "placeholder": "xoxb-...",
                     "help": "OAuth & Permissions의 Bot User OAuth Token",
                 },
                 {
                     "name": "SLACK_TEAM_ID",
+                    "label": "워크스페이스 ID",
                     "placeholder": "T01234567",
                     "help": "슬랙 웹 주소에서 T로 시작하는 워크스페이스 ID",
                 },
@@ -168,6 +177,7 @@ TOOLS = [
             "fields": [
                 {
                     "name": "DISCORD_BOT_TOKEN",
+                    "label": "봇 토큰",
                     "placeholder": "봇 토큰",
                     "help": "Bot 탭의 Reset Token 값",
                 }
@@ -197,6 +207,7 @@ TOOLS = [
             "fields": [
                 {
                     "name": "BOT_TELEGRAM_TOKEN",
+                    "label": "봇 토큰",
                     "placeholder": "123456789:AA...",
                     "help": "@BotFather 가 /newbot 끝에 알려주는 값",
                 },
