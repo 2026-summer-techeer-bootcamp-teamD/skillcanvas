@@ -493,3 +493,18 @@
   font-weight: 600;
   color: var(--sc-muted, #9a938a);
 }
+
+/* 키가 이미 등록된 도구 — 경고(주황)가 아니라 완료(초록)로 보여준다.
+   예전엔 저장 후에도 "키 연결 필요"가 그대로 떠서 넣었는지 확인이 안 됐다. */
+.af__keyWarn--done {
+  border-color: #1f9d55;
+  background: #f0fbf4;
+}
+.af__keyWarn--done .af__keyWarnTitle {
+  color: #1f7a43;
+}
+.af__keyWarn--done .af__keyBtn {
+  background: transparent;
+  color: #1f7a43;
+  border: 1px solid #1f9d55;
+}

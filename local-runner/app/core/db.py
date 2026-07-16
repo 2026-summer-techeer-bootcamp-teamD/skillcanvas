@@ -96,3 +96,20 @@ def get_credential(tool_key: str) -> str | None:
         return row[0] if row else None
     finally:
         conn.close()
+
+
+def list_credential_keys() -> list[str]:
+    """등록된 도구 키 목록(현황 조회용). secret은 절대 포함하지 않는다.
+
+    빈/공백 secret은 제외한다 — 실행 시 그런 키는 못 쓰는데(no_key) 목록에 뜨면
+    "연결됨"으로 잘못 보인다.
+    """
+    conn = _connect()
+    try:
+        rows = conn.execute(
+            "SELECT tool_key FROM credentials "
+            "WHERE secret IS NOT NULL AND TRIM(secret) != '' ORDER BY tool_key"
+        ).fetchall()
+        return [r[0] for r in rows]
+    finally:
+        conn.close()

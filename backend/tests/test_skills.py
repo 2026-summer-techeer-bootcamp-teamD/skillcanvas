@@ -7,6 +7,9 @@
 워크플로우와 차이: graph_json(dict) → content_md(str)
 """
 
+from app.models.skill import Skill
+from app.models.tool_catalog import ToolCatalog
+
 BASE = "/api/v1/skills"
 
 
@@ -87,6 +90,12 @@ def test_list_shows_public_only_by_default(client, auth):
     assert "pub" in names and "priv" not in names
 
 
+# ── limit 상한 (이슈 #115: used_mcps regex 스캔 비용 무제한 증폭 방지) ──
+def test_list_limit_is_capped(client):
+    assert client.get(BASE, params={"limit": 100}).status_code == 200
+    assert client.get(BASE, params={"limit": 101}).status_code == 422
+
+
 # ── 가져오기(import) ─────────────────────────────────
 def test_import_increments_count(client, auth):
     sk = _create(client, auth, user="alice", is_public=True)
@@ -99,3 +108,107 @@ def test_import_private_blocked_404(client, auth):
     sk = _create(client, auth, user="alice", is_public=False)
     r = client.post(f"{BASE}/{sk['id']}/import", headers=auth("bob"))
     assert r.status_code == 404
+
+
+# ── used_mcps 추출 (이슈 #115) ───────────────────────
+def test_list_includes_used_mcps_from_content(client, auth, db_session):
+    # 레거시(마이그레이션 이전) 스킬 = used_mcps 컬럼이 NULL인 행.
+    # POST /skills는 항상 리스트(기본값 [])를 저장하므로 API로는 이 상태를 재현할 수
+    # 없다 — DB에 직접 NULL 행을 만들어 "content_md 텍스트에서 regex로 추출" 폴백 경로만
+    # 검증한다(리뷰 PR #119: used_mcps=[]는 falsy로 오판해 폴백하면 안 되는 유효값).
+    db_session.add(
+        ToolCatalog(
+            key="__test_notion__",
+            name="notion",
+            description=None,
+            key_required=False,
+            key_issue_url=None,
+            metadata_json=None,
+            type="mcp",
+            auth_owner="developer",
+        )
+    )
+    db_session.commit()
+
+    r = client.post(BASE, json=_payload(name="mcp-skill"), headers=auth("alice"))
+    assert r.status_code == 201, r.text
+    sk_id = r.json()["id"]
+
+    sk = db_session.get(Skill, sk_id)
+    sk.content_md = "1. **노션에 저장** (도구 · __test_notion__)"
+    sk.used_mcps = None  # 레거시 상태 재현
+    db_session.commit()
+
+    items = client.get(f"{BASE}?mine=true", headers=auth("alice")).json()["items"]
+    item = next(i for i in items if i["id"] == sk_id)
+    assert item["used_mcps"] == ["__test_notion__"]
+
+
+def test_publish_stores_validated_used_mcps(client, auth, db_session):
+    # POST /skills의 used_mcps는 카탈로그에 실제 존재하는 key만 필터링되어 저장되고,
+    # 목록에서는 content_md 재추출(레거시 폴백) 대신 저장된 값을 그대로 돌려준다.
+    db_session.add(
+        ToolCatalog(
+            key="__test_slack__",
+            name="slack",
+            description=None,
+            key_required=False,
+            key_issue_url=None,
+            metadata_json=None,
+            type="mcp",
+            auth_owner="developer",
+        )
+    )
+    db_session.commit()
+
+    r = client.post(
+        BASE,
+        json={
+            **_payload(name="stored-mcp-skill"),
+            "content_md": "1. **아무 도구도 언급 안 함**",  # 본문엔 key가 전혀 등장하지 않음
+            "used_mcps": ["__test_slack__", "__fake_not_in_catalog__"],
+        },
+        headers=auth("alice"),
+    )
+    assert r.status_code == 201, r.text
+    sk_id = r.json()["id"]
+
+    items = client.get(f"{BASE}?mine=true", headers=auth("alice")).json()["items"]
+    item = next(i for i in items if i["id"] == sk_id)
+    # 카탈로그에 없는 키는 걸러지고, 저장된 값이 content_md 내용과 무관하게 그대로 반환된다
+    assert item["used_mcps"] == ["__test_slack__"]
+
+
+def test_publish_with_empty_used_mcps_does_not_fall_back_to_regex(client, auth, db_session):
+    # used_mcps=[]("발행 시 MCP를 안 씀")도 유효한 저장값이라, falsy라고 오판해
+    # content_md 레거시 regex 폴백으로 새지 않아야 한다(리뷰 PR #119 지적 사항).
+    db_session.add(
+        ToolCatalog(
+            key="__test_notion__",
+            name="notion",
+            description=None,
+            key_required=False,
+            key_issue_url=None,
+            metadata_json=None,
+            type="mcp",
+            auth_owner="developer",
+        )
+    )
+    db_session.commit()
+
+    r = client.post(
+        BASE,
+        json={
+            **_payload(name="no-mcp-skill"),
+            # content_md엔 카탈로그 key가 리터럴로 등장하지만, MCP를 실제로는 안 씀
+            "content_md": "1. **참고: __test_notion__ 은 쓰지 않음**",
+            "used_mcps": [],
+        },
+        headers=auth("alice"),
+    )
+    assert r.status_code == 201, r.text
+    sk_id = r.json()["id"]
+
+    items = client.get(f"{BASE}?mine=true", headers=auth("alice")).json()["items"]
+    item = next(i for i in items if i["id"] == sk_id)
+    assert item["used_mcps"] == []

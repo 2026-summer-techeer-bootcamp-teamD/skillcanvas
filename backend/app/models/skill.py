@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from sqlalchemy import BigInteger, Boolean, ForeignKey, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base
@@ -30,5 +31,8 @@ class Skill(TimestampMixin, Base):
     content_md: Mapped[str] = mapped_column(Text, nullable=False)
     import_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     is_public: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    # 발행 시점에 /assemble이 검증해 둔 카탈로그 key 목록. NULL = 레거시 스킬(발행 당시 미저장) →
+    # 목록 조회 시 content_md에서 regex로 추출하는 예전 방식으로 폴백(routers/skills.py 참고).
+    used_mcps: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
 
     owner: Mapped[User] = relationship(back_populates="skills")

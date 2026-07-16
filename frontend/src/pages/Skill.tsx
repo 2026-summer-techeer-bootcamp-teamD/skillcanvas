@@ -146,11 +146,13 @@ export function Skill({ onNavigate }: SkillProps) {
   };
 
   // 저장 = content_md(SKILL.md)에 폼 값을 합쳐 POST /skills
+  // used_mcps = /assemble이 이미 카탈로그 대비 검증해 둔 draft.mcps 그대로 전달
+  // (MyWorld의 MCP 칩이 content_md 재추출 대신 이 값을 신뢰할 수 있게 — 이슈 #115)
   const handlePublish = async (payload: PublishPayload) => {
     if (!draft) return;
     await call("/skills", {
       method: "POST",
-      json: { ...payload, content_md: blocksToMarkdown(draft) },
+      json: { ...payload, content_md: blocksToMarkdown(draft), used_mcps: draft.mcps ?? [] },
     });
   };
 

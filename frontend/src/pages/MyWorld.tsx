@@ -6,9 +6,16 @@ import { TopNav, type NavTab } from "../components/TopNav";
 import { NodeTrail } from "../components/NodeTrail";
 import { PixelArt } from "../components/PixelArt";
 import { FlowNode } from "../components/flow/FlowNode";
-import { getGraph, RunnerError, type RunnerGraph, type RunnerGraphNode } from "../lib/runner";
+import {
+  getGraph,
+  getCredentials,
+  RunnerError,
+  type RunnerGraph,
+  type RunnerGraphNode,
+} from "../lib/runner";
 import { useApi, ApiError } from "../lib/api";
 import { assembleToFlow, type AssembledNode, type FlowNodeData } from "../lib/flowData";
+import type { ToolCatalogItem } from "../lib/toolCatalog";
 import { ROBOT_MUTED, ROBOT_ORANGE } from "../lib/pixelMaps";
 import "./MyWorld.css";
 
@@ -32,6 +39,7 @@ interface MyItem {
   name: string;
   description: string | null;
   is_public: boolean;
+  used_mcps: string[];
 }
 
 interface UserMe {
@@ -65,6 +73,30 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
   const [flowError, setFlowError] = useState<string | null>(null);
   // 열린 스킬이 쓰는 MCP 도구들 (graph의 skill→mcp 엣지 = SKILL.md allowed-tools)
   const [openMcps, setOpenMcps] = useState<string[]>([]);
+
+  // MCP 키 현황 — 카탈로그(백엔드)와 등록된 키(로컬 실행기)를 대조해 보여준다.
+  const [catalog, setCatalog] = useState<ToolCatalogItem[]>([]);
+  const [registeredKeys, setRegisteredKeys] = useState<string[] | null>(null);
+  const [keyStatusMsg, setKeyStatusMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    // 카탈로그는 부가 정보 — 실패해도 나머지 화면은 계속 보여준다.
+    call<{ items: ToolCatalogItem[] }>("/tool-catalog?limit=100")
+      .then((data) => setCatalog(data.items))
+      .catch(() => {});
+  }, [call]);
+
+  // GET /credentials (로컬 실행기) — secret은 안 오고 등록된 tool_key 목록만 온다.
+  const loadKeyStatus = async () => {
+    setKeyStatusMsg(null);
+    try {
+      const data = await getCredentials();
+      setRegisteredKeys(data.tool_keys);
+    } catch (e) {
+      setRegisteredKeys(null);
+      setKeyStatusMsg(e instanceof RunnerError ? e.message : "불러올 수 없음");
+    }
+  };
 
   const localSkills = graph?.nodes.filter((n) => n.type === "skill") ?? null;
 
@@ -157,7 +189,10 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
     setLoading(true);
     setError(null);
     call<{ items: MyItem[] }>("/skills?mine=true")
-      .then((data) => setMyItems(data.items))
+      // 백엔드/프론트 배포 시점차 등으로 used_mcps가 비어올 수 있어 방어(다른 화면과 동일 패턴)
+      .then((data) =>
+        setMyItems(data.items.map((it) => ({ ...it, used_mcps: it.used_mcps ?? [] }))),
+      )
       .catch((e) => setError(e instanceof ApiError ? e.message : "불러오기 실패"))
       .finally(() => setLoading(false));
   }, [call]);
@@ -172,6 +207,19 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
     if (!name || name === skill.name) return;
     try {
       await call(`/skills/${skill.id}`, { method: "PATCH", json: { name } });
+      loadMyItems();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "수정 실패");
+    }
+  };
+
+  // PATCH /skills/{id} — 공개/비공개 토글 (5-4, 이슈 #115)
+  const handleTogglePublic = async (skill: MyItem) => {
+    try {
+      await call(`/skills/${skill.id}`, {
+        method: "PATCH",
+        json: { is_public: !skill.is_public },
+      });
       loadMyItems();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "수정 실패");
@@ -198,7 +246,10 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
     setFlowsLoading(true);
     setFlowsError(null);
     call<{ items: MyItem[] }>("/workflows?mine=true")
-      .then((data) => setMyFlows(data.items))
+      // 백엔드/프론트 배포 시점차 등으로 used_mcps가 비어올 수 있어 방어(다른 화면과 동일 패턴)
+      .then((data) =>
+        setMyFlows(data.items.map((it) => ({ ...it, used_mcps: it.used_mcps ?? [] }))),
+      )
       .catch((e) => setFlowsError(e instanceof ApiError ? e.message : "불러오기 실패"))
       .finally(() => setFlowsLoading(false));
   }, [call]);
@@ -212,6 +263,19 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
     if (!name || name === wf.name) return;
     try {
       await call(`/workflows/${wf.id}`, { method: "PATCH", json: { name } });
+      loadMyFlows();
+    } catch (e) {
+      setFlowsError(e instanceof ApiError ? e.message : "수정 실패");
+    }
+  };
+
+  // PATCH /workflows/{id} — 공개/비공개 토글 (4-4, 이슈 #115)
+  const handleToggleFlowPublic = async (wf: MyItem) => {
+    try {
+      await call(`/workflows/${wf.id}`, {
+        method: "PATCH",
+        json: { is_public: !wf.is_public },
+      });
       loadMyFlows();
     } catch (e) {
       setFlowsError(e instanceof ApiError ? e.message : "수정 실패");
@@ -377,7 +441,20 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
                   </span>
                   <h3 className="mw__cardTitle">{s.name}</h3>
                   <p className="mw__cardMeta">{s.description ?? "-"}</p>
+                  {s.used_mcps.length > 0 && (
+                    <div className="mw__mcpRow">
+                      <span className="mw__mcpLabel">MCP</span>
+                      {s.used_mcps.map((m) => (
+                        <span className="mw__mcpChip" key={m}>
+                          ◈ {m}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   <div className="mw__cardActions">
+                    <button type="button" onClick={() => handleTogglePublic(s)}>
+                      {s.is_public ? "비공개" : "공개"}
+                    </button>
                     <button type="button" onClick={() => handleRename(s)}>
                       수정
                     </button>
@@ -418,7 +495,20 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
                   </span>
                   <h3 className="mw__cardTitle">{f.name}</h3>
                   <p className="mw__cardDesc">{f.description ?? "-"}</p>
+                  {f.used_mcps.length > 0 && (
+                    <div className="mw__mcpRow">
+                      <span className="mw__mcpLabel">MCP</span>
+                      {f.used_mcps.map((m) => (
+                        <span className="mw__mcpChip" key={m}>
+                          ◈ {m}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   <div className="mw__cardActions">
+                    <button type="button" onClick={() => handleToggleFlowPublic(f)}>
+                      {f.is_public ? "비공개" : "공개"}
+                    </button>
                     <button type="button" onClick={() => handleRenameFlow(f)}>
                       수정
                     </button>
@@ -438,6 +528,44 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
               >
                 전체보기 ({myFlows.length}개)
               </button>
+            )}
+          </div>
+        )}
+
+        {/* MCP 키는 특정 탭에 속한 항목이 아니라 계정 전반의 설정이라 '전체'에서만 보여준다 */}
+        {worldFilter === "all" && (
+          <div className="mw__section">
+            <p className="mw__sectionLabel">
+              <span className="mw__dot" style={{ background: "var(--sc-node-tool)" }} />내 MCP 키
+              현황
+              <button
+                type="button"
+                className="mw__newWorld"
+                style={{ marginLeft: "0.75rem" }}
+                onClick={loadKeyStatus}
+              >
+                🔑 현황 불러오기
+              </button>
+            </p>
+            {keyStatusMsg && <p className="mw__cardMeta">{keyStatusMsg}</p>}
+            {registeredKeys && (
+              <div className="mw__mcpRow" style={{ flexWrap: "wrap" }}>
+                {catalog.map((tool) => {
+                  const registered = registeredKeys.includes(tool.key);
+                  const needsKey = tool.key_required && tool.auth_owner === "user";
+                  const label = !needsKey ? "키 불필요" : registered ? "등록됨" : "미등록";
+                  const color = !needsKey ? "#999" : registered ? "#3b8a4c" : "#c94f4f";
+                  return (
+                    <span
+                      className="mw__mcpChip"
+                      key={tool.key}
+                      style={{ borderColor: color, color }}
+                    >
+                      ◈ {tool.key} · {label}
+                    </span>
+                  );
+                })}
+              </div>
             )}
           </div>
         )}

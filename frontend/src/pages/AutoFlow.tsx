@@ -33,6 +33,7 @@ import {
   runFlow,
   approveRun,
   saveCredential,
+  getCredentials,
   RunnerError,
   type RunResultItem,
   type RunResponse,
@@ -125,6 +126,7 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
   // ── 도구 카탈로그 (GET /tool-catalog) — 키 붙여넣기 팝업 자동생성 ──
   const [catalog, setCatalog] = useState<ToolCatalogItem[]>([]);
   const [keyModalOpen, setKeyModalOpen] = useState(false);
+  const [savedKeys, setSavedKeys] = useState<Set<string>>(new Set());
   const [keyTarget, setKeyTarget] = useState<{ key: string; tool: ToolCatalogItem | null } | null>(
     null,
   );
@@ -381,6 +383,17 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
       .catch(() => {});
   }, [call]);
 
+  // 이미 키를 넣은 도구 목록 (로컬 실행기). 이게 없으면 저장하고 나서도 "키 연결 필요"가
+  // 그대로 떠서 넣었는지 확인할 방법이 없다. 실행기가 안 떠 있으면 조용히 빈 목록.
+  const refreshSavedKeys = useCallback(() => {
+    getCredentials()
+      .then((d) => setSavedKeys(new Set(d.tool_keys)))
+      .catch(() => {});
+  }, []);
+  useEffect(() => {
+    refreshSavedKeys();
+  }, [refreshSavedKeys]);
+
   // MCP 노드 키로 카탈로그 매칭 후 키 팝업 열기
   const openKeyModal = (toolKey: string) => {
     const tool = catalog.find((t) => t.key === toolKey.trim().toLowerCase()) ?? null;
@@ -522,16 +535,25 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
                     : true
                   : false;
                 if (!showKeyPanel) return null;
+                // 이미 넣은 키면 경고(주황) 대신 완료(초록)로. 이게 없으면 저장하고 나서도
+                // "키 연결 필요"가 그대로 떠서 넣었는지 확인할 방법이 없다.
+                const done = savedKeys.has((selected.data.mcpKey ?? "").toLowerCase());
                 return (
-                  <div className="af__keyWarn">
-                    <p className="af__keyWarnTitle">▨ MCP 키 연결 필요</p>
-                    <p className="af__keyWarnBody">이 도구는 키를 붙여넣어야 실행돼요.</p>
+                  <div className={done ? "af__keyWarn af__keyWarn--done" : "af__keyWarn"}>
+                    <p className="af__keyWarnTitle">
+                      {done ? "✓ 키 연결됨" : "▨ MCP 키 연결 필요"}
+                    </p>
+                    <p className="af__keyWarnBody">
+                      {done
+                        ? "이 PC에 저장돼 있어요. 바로 실행할 수 있어요."
+                        : "이 도구는 키를 붙여넣어야 실행돼요."}
+                    </p>
                     <button
                       className="af__keyBtn"
                       type="button"
                       onClick={() => openKeyModal(selected.data.mcpKey ?? selected.data.title)}
                     >
-                      키 붙여넣기
+                      {done ? "키 다시 넣기" : "키 붙여넣기"}
                     </button>
                   </div>
                 );
@@ -821,8 +843,8 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
           if (!keyTarget) return;
           // 저장은 로컬 실행기(POST /credential). 실패하면 throw → 모달이 에러 표시
           await saveCredential(keyTarget.key, secret);
+          refreshSavedKeys(); // 패널을 '연결됨'으로 즉시 바꾼다
           setKeyModalOpen(false);
-          alert(`${keyTarget.key} 키가 로컬에 저장됐어요.`);
         }}
       />
     </div>
