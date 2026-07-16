@@ -47,19 +47,25 @@ def _secret_for(tool_key: str, spec: dict) -> str | None:
 
 
 def _summarize_sweettracker(data: dict) -> str:
-    """스마트택배 응답 → 사람이 읽을 한 줄. 응답 스키마가 달라도 안 죽게 전부 .get()."""
-    if not data.get("status"):
+    """스마트택배 응답 → 사람이 읽을 한 줄. 응답 스키마가 달라도 안 죽게 전부 .get().
+
+    ⚠️ 성공 응답에는 `status` 필드가 **아예 없다**. 실패일 때만 status=false + msg/code가 온다.
+    (`if not data.get("status")` 로 짜면 성공을 실패로 오판한다 — 실제 조회로 확인함)
+    """
+    if data.get("status") is False:
         return f"조회 실패: {data.get('msg') or data.get('code') or '알 수 없는 오류'}"
+
     details = data.get("trackingDetails") or []
     last = details[-1] if isinstance(details, list) and details else {}
     when = last.get("timeString") or "?"
     where = last.get("where") or "?"
     kind = last.get("kind") or "?"
-    state = "배송완료" if data.get("complete") else "배송중"
-    item = data.get("itemName") or ""
-    if where == "?" and kind == "?":  # 예상과 다른 스키마 → 원문을 넘겨 AI가 읽게
+    if where == "?" and kind == "?":  # 예상과 다른 스키마 → 원문을 넘겨 뒤 agent가 읽게
         return json.dumps(data, ensure_ascii=False)[:600]
-    line = f"{state} · 최근 {when} {where} ({kind})"
+
+    state = "배송완료" if data.get("complete") else "배송중"
+    item = (data.get("itemName") or "").split(",")[0].strip()[:40]  # 상품명이 아주 길다
+    line = f"{state} · 최근 {when} {where} ({kind}) · {len(details)}단계"
     return line + (f" · 상품: {item}" if item else "")
 
 
