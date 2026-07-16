@@ -1,0 +1,558 @@
+{
+  "id": null,
+  "uid": "skillcanvas-postgres",
+  "title": "SkillCanvas - Postgres",
+  "description": "postgres-exporter(prometheuscommunity/postgres-exporter) 계측 기반. Grafana 커뮤니티 대시보드 ID 9628(PostgreSQL Database)의 구성을 참고했으나, 원본은 Helm chart 전제(release 라벨)·구버전 Angular 패널(singlestat)이라 latest Grafana에 그대로 임포트하면 대부분 깨짐 — 이 프로젝트의 실제 postgres-exporter 메트릭/레이블로 재작성함.",
+  "tags": ["skillcanvas", "postgres", "infra"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "links": [
+    {
+      "title": "Overview",
+      "type": "link",
+      "url": "/d/skillcanvas-overview?${__url_time_range}",
+      "targetBlank": false
+    }
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "서비스 상태",
+      "gridPos": { "h": 6, "w": 4, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "pg_up or vector(0)", "legendFormat": "pg_up" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "blue", "value": null }]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "DB 크기 (skillcanvas)",
+      "gridPos": { "h": 6, "w": 4, "x": 4, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "pg_database_size_bytes{datname=\"skillcanvas\"} or vector(0)", "legendFormat": "size" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "decbytes",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "blue", "value": null }]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "활성 커넥션 수",
+      "description": "template0/template1/postgres 시스템 DB 제외",
+      "gridPos": { "h": 6, "w": 4, "x": 8, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "sum(pg_stat_database_numbackends{datname!~\"template.*|postgres\"}) or vector(0)", "legendFormat": "connections" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "blue", "value": null }]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 4,
+      "type": "gauge",
+      "title": "커넥션 사용률 (%)",
+      "gridPos": { "h": 6, "w": 4, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "100 * sum(pg_stat_database_numbackends) / clamp_min(max(pg_settings_max_connections), 1)", "legendFormat": "usage" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 70 },
+              { "color": "red", "value": 90 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "캐시 히트율 (%)",
+      "description": "pg_stat_database_blks_hit / (blks_hit + blks_read). 낮으면 shared_buffers 부족 신호.",
+      "gridPos": { "h": 6, "w": 4, "x": 16, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * (sum(rate(pg_stat_database_blks_hit{datname!~\"template.*|postgres\"}[$__rate_interval])) or vector(0)) / clamp_min(sum(rate(pg_stat_database_blks_hit{datname!~\"template.*|postgres\"}[$__rate_interval])) + sum(rate(pg_stat_database_blks_read{datname!~\"template.*|postgres\"}[$__rate_interval])), 1e-9)",
+          "legendFormat": "cache hit"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 90 },
+              { "color": "green", "value": 99 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Deadlock 발생 수 (선택 구간)",
+      "gridPos": { "h": 6, "w": 4, "x": 20, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "sum(increase(pg_stat_database_deadlocks{datname!~\"template.*|postgres\"}[$__range])) or vector(0)", "legendFormat": "deadlocks" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 7,
+      "type": "row",
+      "title": "Transactions",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 6 },
+      "panels": []
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "TPS (commit / rollback, DB별)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (datname) (rate(pg_stat_database_xact_commit{datname!~\"template.*|postgres\"}[$__rate_interval]))",
+          "legendFormat": "{{datname}} commit"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (datname) (rate(pg_stat_database_xact_rollback{datname!~\"template.*|postgres\"}[$__rate_interval]))",
+          "legendFormat": "{{datname}} rollback"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "spanNulls": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byRegexp", "options": "rollback" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }]
+          }
+        ]
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] },
+        "tooltip": { "mode": "multi" }
+      }
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Tuple 처리량 (fetch / insert / update / delete)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(pg_stat_database_tup_fetched{datname!~\"template.*|postgres\"}[$__rate_interval]))", "legendFormat": "fetch" },
+        { "refId": "B", "expr": "sum(rate(pg_stat_database_tup_inserted{datname!~\"template.*|postgres\"}[$__rate_interval]))", "legendFormat": "insert" },
+        { "refId": "C", "expr": "sum(rate(pg_stat_database_tup_updated{datname!~\"template.*|postgres\"}[$__rate_interval]))", "legendFormat": "update" },
+        { "refId": "D", "expr": "sum(rate(pg_stat_database_tup_deleted{datname!~\"template.*|postgres\"}[$__rate_interval]))", "legendFormat": "delete" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 15,
+            "stacking": { "mode": "normal", "group": "A" },
+            "spanNulls": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] },
+        "tooltip": { "mode": "multi" }
+      }
+    },
+    {
+      "id": 10,
+      "type": "row",
+      "title": "Sessions & Locks",
+      "collapsed": true,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 15 },
+      "panels": [
+        {
+          "id": 11,
+          "type": "timeseries",
+          "title": "세션 상태별 분포",
+          "gridPos": { "h": 8, "w": 8, "x": 0, "y": 16 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum by (state) (pg_stat_activity_count{datname!~\"template.*|postgres\"})",
+              "legendFormat": "{{state}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 1,
+                "fillOpacity": 15,
+                "stacking": { "mode": "normal", "group": "A" },
+                "spanNulls": true
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] },
+            "tooltip": { "mode": "multi" }
+          }
+        },
+        {
+          "id": 12,
+          "type": "timeseries",
+          "title": "락 모드별 건수",
+          "gridPos": { "h": 8, "w": 8, "x": 8, "y": 16 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum by (mode) (pg_locks_count{datname!~\"template.*|postgres\"})",
+              "legendFormat": "{{mode}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 1,
+                "fillOpacity": 15,
+                "stacking": { "mode": "normal", "group": "A" },
+                "spanNulls": true
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] },
+            "tooltip": { "mode": "multi" }
+          }
+        },
+        {
+          "id": 13,
+          "type": "timeseries",
+          "title": "최장 트랜잭션 소요시간",
+          "gridPos": { "h": 8, "w": 8, "x": 16, "y": 16 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "max(pg_stat_activity_max_tx_duration{datname!~\"template.*|postgres\"}) or vector(0)",
+              "legendFormat": "max tx duration"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 1,
+                "fillOpacity": 10,
+                "spanNulls": true
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 30 },
+                  { "color": "red", "value": 120 }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["mean", "max"] },
+            "tooltip": { "mode": "multi" }
+          }
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "type": "row",
+      "title": "Tables",
+      "collapsed": true,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 16 },
+      "panels": [
+        {
+          "id": 15,
+          "type": "timeseries",
+          "title": "테이블별 Dead Tuple 비율 (%)",
+          "description": "n_dead_tup / (n_live_tup + n_dead_tup). 높으면 autovacuum이 못 따라가는 신호.",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 17 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "100 * pg_stat_user_tables_n_dead_tup{datname=\"skillcanvas\"} / clamp_min(pg_stat_user_tables_n_live_tup{datname=\"skillcanvas\"} + pg_stat_user_tables_n_dead_tup{datname=\"skillcanvas\"}, 1)",
+              "legendFormat": "{{relname}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 1,
+                "fillOpacity": 5,
+                "spanNulls": true
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] },
+            "tooltip": { "mode": "multi" }
+          }
+        },
+        {
+          "id": 16,
+          "type": "timeseries",
+          "title": "테이블별 Scan 비율 (Seq vs Index, req/s)",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 17 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum by (relname) (rate(pg_stat_user_tables_seq_scan{datname=\"skillcanvas\"}[$__rate_interval]))",
+              "legendFormat": "{{relname}} seq"
+            },
+            {
+              "refId": "B",
+              "expr": "sum by (relname) (rate(pg_stat_user_tables_idx_scan{datname=\"skillcanvas\"}[$__rate_interval]))",
+              "legendFormat": "{{relname}} idx"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ops",
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 1,
+                "fillOpacity": 5,
+                "spanNulls": true
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] },
+            "tooltip": { "mode": "multi" }
+          }
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "type": "row",
+      "title": "Maintenance & WAL",
+      "collapsed": true,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 17 },
+      "panels": [
+        {
+          "id": 18,
+          "type": "timeseries",
+          "title": "Autovacuum / Autoanalyze 실행 건수 (구간 증가량)",
+          "gridPos": { "h": 8, "w": 8, "x": 0, "y": 18 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "targets": [
+            { "refId": "A", "expr": "sum(increase(pg_stat_user_tables_autovacuum_count{datname=\"skillcanvas\"}[$__rate_interval]))", "legendFormat": "autovacuum" },
+            { "refId": "B", "expr": "sum(increase(pg_stat_user_tables_autoanalyze_count{datname=\"skillcanvas\"}[$__rate_interval]))", "legendFormat": "autoanalyze" }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": {
+                "drawStyle": "bars",
+                "fillOpacity": 30,
+                "spanNulls": true
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["mean", "max"] },
+            "tooltip": { "mode": "multi" }
+          }
+        },
+        {
+          "id": 19,
+          "type": "timeseries",
+          "title": "WAL 크기",
+          "gridPos": { "h": 8, "w": 8, "x": 8, "y": 18 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "targets": [
+            { "refId": "A", "expr": "pg_wal_size_bytes or vector(0)", "legendFormat": "wal size" }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "decbytes",
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 1,
+                "fillOpacity": 10,
+                "spanNulls": true
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["mean", "max"] },
+            "tooltip": { "mode": "multi" }
+          }
+        },
+        {
+          "id": 20,
+          "type": "timeseries",
+          "title": "Checkpoint 발생률 (시간당, timed vs requested)",
+          "description": "requested가 크면 checkpoint_timeout/max_wal_size 튜닝 신호.",
+          "gridPos": { "h": 8, "w": 8, "x": 16, "y": 18 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "targets": [
+            { "refId": "A", "expr": "rate(pg_stat_bgwriter_checkpoints_timed_total[$__rate_interval]) * 3600", "legendFormat": "timed/h" },
+            { "refId": "B", "expr": "rate(pg_stat_bgwriter_checkpoints_req_total[$__rate_interval]) * 3600", "legendFormat": "requested/h" }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 1,
+                "fillOpacity": 10,
+                "spanNulls": true
+              }
+            },
+            "overrides": [
+              {
+                "matcher": { "id": "byName", "options": "requested/h" },
+                "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } }]
+              }
+            ]
+          },
+          "options": {
+            "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["mean", "max"] },
+            "tooltip": { "mode": "multi" }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -23,6 +23,12 @@
       "targetBlank": false
     },
     {
+      "title": "Postgres",
+      "type": "link",
+      "url": "/d/skillcanvas-postgres?${__url_time_range}",
+      "targetBlank": false
+    },
+    {
       "title": "Business Metrics",
       "type": "link",
       "url": "/d/skillcanvas-business-metrics?${__url_time_range}",
@@ -417,6 +423,9 @@
           "title": "Postgres TPS (commit + rollback)",
           "gridPos": { "h": 8, "w": 12, "x": 0, "y": 17 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "links": [
+            { "title": "Postgres에서 자세히 보기", "url": "/d/skillcanvas-postgres?${__url_time_range}", "targetBlank": false }
+          ],
           "targets": [
             {
               "refId": "A",
@@ -447,6 +456,9 @@
           "title": "DB 커넥션 사용률 (%)",
           "gridPos": { "h": 8, "w": 12, "x": 12, "y": 17 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "links": [
+            { "title": "Postgres에서 자세히 보기", "url": "/d/skillcanvas-postgres?${__url_time_range}", "targetBlank": false }
+          ],
           "targets": [
             {
               "refId": "A",
