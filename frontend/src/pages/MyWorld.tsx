@@ -33,19 +33,15 @@ interface MyWorldProps {
 export function MyWorld({ onNavigate }: MyWorldProps) {
   const navigate = useNavigate();
   const call = useApi();
-  // 로컬 실행기(GET /graph)에서 읽어온 내 .claude 전체 그래프 (스킬 목록용)
   const [graph, setGraph] = useState<RunnerGraph | null>(null);
   const [localMsg, setLocalMsg] = useState<string | null>(null);
   const [localLoading, setLocalLoading] = useState(false);
-  // 노드 뷰(실행 플로우)로 펼쳐 볼 스킬
   const [openSkill, setOpenSkill] = useState<RunnerGraphNode | null>(null);
   const [flow, setFlow] = useState<{ nodes: Node<FlowNodeData>[]; edges: Edge[] } | null>(null);
   const [flowLoading, setFlowLoading] = useState(false);
   const [flowError, setFlowError] = useState<string | null>(null);
-  // 열린 스킬이 쓰는 MCP 도구들 (graph의 skill→mcp 엣지 = SKILL.md allowed-tools)
   const [openMcps, setOpenMcps] = useState<string[]>([]);
 
-  // ── 내 MCP 키 현황 (카탈로그 전체 × 러너에 등록된 키) ──
   const [catalog, setCatalog] = useState<ToolCatalogItem[]>([]);
   const [registeredKeys, setRegisteredKeys] = useState<string[] | null>(null);
   const [keyStatusMsg, setKeyStatusMsg] = useState<string | null>(null);
@@ -53,9 +49,7 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
   useEffect(() => {
     call<{ items: ToolCatalogItem[] }>("/tool-catalog?limit=100")
       .then((data) => setCatalog(data.items))
-      .catch(() => {
-        /* 카탈로그 실패 시 섹션에서 조용히 생략 */
-      });
+      .catch(() => {});
   }, [call]);
 
   const loadKeyStatus = async () => {
@@ -83,13 +77,11 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
     }
   };
 
-  // 스킬 카드 클릭 → 설명을 /assemble(AI)에 넣어 실행 플로우로 그린다.
   const openLocalSkill = async (node: RunnerGraphNode) => {
     setOpenSkill(node);
     setFlow(null);
     setFlowError(null);
     setFlowLoading(true);
-    // 이 스킬이 쓰는 MCP = graph의 skill→mcp(uses) 엣지 (SKILL.md allowed-tools)
     const mcps = (graph?.edges ?? [])
       .filter((e) => e.from === node.id && e.kind === "uses")
       .map((e) => e.to.replace(/^mcp:/, ""));
@@ -102,7 +94,6 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
       });
       setFlow(assembleToFlow(data.nodes, mcps));
     } catch (e) {
-      // fetch 자체 실패(서버 미기동/CORS)는 ApiError가 아니라 TypeError로 온다
       const msg =
         e instanceof ApiError
           ? e.message
@@ -128,7 +119,6 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // GET /skills?mine=true — 내 스킬 (비공개 포함) (5-1)
   const loadMyItems = useCallback(() => {
     setLoading(true);
     setError(null);
@@ -142,7 +132,6 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
     loadMyItems();
   }, [loadMyItems]);
 
-  // PATCH /skills/{id} — 이름 수정 (5-4)
   const handleRename = async (skill: MyItem) => {
     const name = window.prompt("새 이름", skill.name);
     if (!name || name === skill.name) return;
@@ -154,7 +143,6 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
     }
   };
 
-  // DELETE /skills/{id} — 삭제 (5-5)
   const handleDelete = async (skill: MyItem) => {
     if (!window.confirm(`"${skill.name}" 스킬을 삭제할까요?`)) return;
     try {
@@ -165,7 +153,6 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
     }
   };
 
-  // ── 내 워크플로우 (GET /workflows?mine, 4-1) — SKILL과 동일 패턴 ──
   const [myFlows, setMyFlows] = useState<MyItem[]>([]);
   const [flowsLoading, setFlowsLoading] = useState(true);
   const [flowsError, setFlowsError] = useState<string | null>(null);
@@ -245,7 +232,10 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
                     onKeyDown={(e) => e.key === "Enter" && openLocalSkill(s)}
                   >
                     <span className="mw__pill">
-                      <span className="mw__pillDot" style={{ background: "var(--sc-node-tool)" }} />
+                      <span
+                        className="mw__pillDot"
+                        style={{ background: "var(--sc-node-tool)" }}
+                      />
                       로컬
                     </span>
                     <h3 className="mw__cardTitle">{s.label}</h3>
@@ -257,39 +247,37 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
                 ))}
               </div>
             ))}
+        </div>
 
-          <div className="mw__section">
-            <p className="mw__sectionLabel">
-              <span className="mw__dot" style={{ background: "var(--sc-node-agent)" }} />
-              SKILL <span className="mw__count">{mySkills.length}개</span>
-            </p>
-
-            {loading && <p className="mw__sub">불러오는 중…</p>}
-            {error && <p className="mw__sub">에러: {error}</p>}
-            {!loading && !error && mySkills.length === 0 && (
-              <p className="mw__sub">아직 만든 스킬이 없어요.</p>
-            )}
-
-            <div className="mw__grid">
-              {mySkills.map((s) => (
-                <article className="mw__skill" key={s.id}>
-                  <span className="mw__pill">
-                    <span className="mw__pillDot" style={{ background: "var(--sc-node-agent)" }} />
-                    {s.is_public ? "공개" : "나만보기"}
-                  </span>
-                  <h3 className="mw__cardTitle">{s.name}</h3>
-                  <p className="mw__cardMeta">{s.description ?? "-"}</p>
-                  <div className="mw__cardActions">
-                    <button type="button" onClick={() => handleRename(s)}>
-                      수정
-                    </button>
-                    <button type="button" onClick={() => handleDelete(s)}>
-                      삭제
-                    </button>
-                  </div>
-                </article>
-              ))}
-            </div>
+        <div className="mw__section">
+          <p className="mw__sectionLabel">
+            <span className="mw__dot" style={{ background: "var(--sc-node-agent)" }} />
+            SKILL <span className="mw__count">{mySkills.length}개</span>
+          </p>
+          {loading && <p className="mw__sub">불러오는 중…</p>}
+          {error && <p className="mw__sub">에러: {error}</p>}
+          {!loading && !error && mySkills.length === 0 && (
+            <p className="mw__sub">아직 만든 스킬이 없어요.</p>
+          )}
+          <div className="mw__grid">
+            {mySkills.map((s) => (
+              <article className="mw__skill" key={s.id}>
+                <span className="mw__pill">
+                  <span className="mw__pillDot" style={{ background: "var(--sc-node-agent)" }} />
+                  {s.is_public ? "공개" : "나만보기"}
+                </span>
+                <h3 className="mw__cardTitle">{s.name}</h3>
+                <p className="mw__cardMeta">{s.description ?? "-"}</p>
+                <div className="mw__cardActions">
+                  <button type="button" onClick={() => handleRename(s)}>
+                    수정
+                  </button>
+                  <button type="button" onClick={() => handleDelete(s)}>
+                    삭제
+                  </button>
+                </div>
+              </article>
+            ))}
           </div>
         </div>
 
@@ -314,11 +302,7 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
                 const label = !needsKey ? "키 불필요" : registered ? "등록됨" : "미등록";
                 const color = !needsKey ? "#999" : registered ? "#3b8a4c" : "#c94f4f";
                 return (
-                  <span
-                    className="mw__mcpChip"
-                    key={tool.key}
-                    style={{ borderColor: color, color }}
-                  >
+                  <span className="mw__mcpChip" key={tool.key} style={{ borderColor: color, color }}>
                     ◈ {tool.key} · {label}
                   </span>
                 );
@@ -332,13 +316,11 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
             <span className="mw__dot" style={{ background: "var(--sc-accent)" }} />
             AUTO-FLOW <span className="mw__count">{myFlows.length}개</span>
           </p>
-
           {flowsLoading && <p className="mw__sub">불러오는 중…</p>}
           {flowsError && <p className="mw__sub">에러: {flowsError}</p>}
           {!flowsLoading && !flowsError && myFlows.length === 0 && (
             <p className="mw__sub">아직 만든 워크플로우가 없어요.</p>
           )}
-
           <div className="mw__grid mw__grid--flow">
             {myFlows.map((f) => (
               <article className="mw__flow" key={f.id}>
@@ -393,12 +375,7 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
                 >
                   ✏️ AUTO-FLOW에서 편집
                 </button>
-                <button
-                  type="button"
-                  className="mw__modalClose"
-                  aria-label="닫기"
-                  onClick={closeModal}
-                >
+                <button type="button" className="mw__modalClose" aria-label="닫기" onClick={closeModal}>
                   ✕
                 </button>
               </div>
@@ -419,12 +396,7 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
                   elementsSelectable={false}
                   proOptions={{ hideAttribution: true }}
                 >
-                  <Background
-                    variant={BackgroundVariant.Dots}
-                    gap={26}
-                    size={1.4}
-                    color="#ddd7c7"
-                  />
+                  <Background variant={BackgroundVariant.Dots} gap={26} size={1.4} color="#ddd7c7" />
                 </ReactFlow>
               ) : null}
             </div>

@@ -959,7 +959,11 @@ run의 현재 상태와 **전체 결과(누적)**를 조회한다.
 | 필드 | 타입 | 필수 | 설명 |
 | --- | --- | --- | --- |
 | `tool_key` | String | Y | 도구 key(카탈로그 key). 저장 시 `strip().lower()` 정규화 |
-| `secret` | String | Y | 키 값(원문 저장). 공백-only 불가 |
+| `secret` | String | Y | 키 값(원문 저장). 공백-only 불가. 값이 여러 개인 도구(gmail·slack 등)는 JSON 객체 문자열 |
+
+> 도구에 따라 저장 전에 부족한 값을 대신 조회해 채운다. 예: 텔레그램은 **봇 토큰만** 받고
+> `chat_id`는 `getUpdates`로 자동 조회한다(유저가 JSON을 열어 찾지 않아도 됨).
+> 조회에 실패하면 400 `CREDENTIAL_RESOLVE_FAILED`.
 
 **Response Body (200 OK)**
 ```json
@@ -972,6 +976,7 @@ run의 현재 상태와 **전체 결과(누적)**를 조회한다.
 | HTTP 상태 | errorCode | 설명 |
 | --- | --- | --- |
 | 400 | `CREDENTIAL_INVALID_INPUT` | `tool_key`/`secret` 누락·공백 |
+| 400 | `CREDENTIAL_RESOLVE_FAILED` | 자동 조회 실패 (토큰 무효, 봇과 대화 미시작 등). `message`에 사용자가 고칠 수 있는 사유가 담긴다 |
 
 ---
 
@@ -996,3 +1001,21 @@ run의 현재 상태와 **전체 결과(누적)**를 조회한다.
 ---
 
 *형식: 직접반환 · 순수 REST · `{code, message}` errorCode. 로컬 SQLite(processed·credentials)는 ERD 아님(로컬 상태 저장).*
+
+### A-8. 등록된 도구 키 목록 조회
+
+로컬에 저장된 MCP 도구 키 현황을 조회한다. secret 값은 포함하지 않는다.
+
+| 항목 | 내용 |
+| --- | --- |
+| **Method** | `GET` |
+| **URL** | `/credentials` |
+| **인증** | 불필요 (로컬 전용) |
+
+**Response Body (200 OK)**
+```json
+{ "tool_keys": ["slack", "notion"] }
+```
+| 필드 | 타입 | 설명 |
+| --- | --- | --- |
+| `tool_keys` | String[] | 등록된 도구 key 목록. secret은 응답에 포함되지 않음 |

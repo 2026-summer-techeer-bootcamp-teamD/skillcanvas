@@ -97,6 +97,7 @@ def get_credential(tool_key: str) -> str | None:
     finally:
         conn.close()
 
+
 def list_credential_keys() -> list[str]:
     """등록된 도구 키 목록(현황 조회용). secret은 절대 포함하지 않는다."""
     conn = _connect()
