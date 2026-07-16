@@ -1,0 +1,29 @@
+/* 키 모달 전용 — 카드·스크림·입력 스타일은 PublishModal.css를 재사용하고,
+   여기엔 발급 절차 안내(guide)와 필드 힌트만 둔다. */
+
+.key__guide {
+  margin: 4px 0 14px;
+  padding-left: 20px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #5b6472;
+}
+
+.key__guide li {
+  margin-bottom: 4px;
+}
+
+.key__guide li::marker {
+  color: #7a4fd6;
+  font-weight: 600;
+}
+
+/* 필드 바로 아래 붙는 한 줄 힌트 (label 안에 들어가므로 block으로 내린다) */
+.key__hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #8a93a0;
+  font-weight: 400;
+}

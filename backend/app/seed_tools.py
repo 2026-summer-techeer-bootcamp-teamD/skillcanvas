@@ -22,6 +22,12 @@ TOOLS = [
         # fields의 name = MCP 서버(@codefuturist/email-mcp)에 넘길 환경변수명.
         # IMAP/SMTP 호스트는 상수라 mcp.py의 static_env에 박아둠 — 유저는 2개만 넣는다.
         "metadata_json": {
+            "guide": [
+                "Google 계정에 2단계 인증을 먼저 켜세요 ← 안 켜면 앱 비밀번호 메뉴가 안 보입니다",
+                "myaccount.google.com/apppasswords 접속",
+                "앱 이름 아무거나 입력 → 만들기 → 16자리 비밀번호 복사",
+                "계정 비밀번호가 아니라 이 16자리를 아래에 붙여넣으세요",
+            ],
             "fields": [
                 {
                     "name": "MCP_EMAIL_ADDRESS",
@@ -33,7 +39,7 @@ TOOLS = [
                     "placeholder": "16자리 앱 비밀번호",
                     "help": "2단계 인증 후 앱 비밀번호 생성 (계정 비밀번호 아님)",
                 },
-            ]
+            ],
         },
     },
     {
@@ -61,10 +67,28 @@ TOOLS = [
         "key_required": True,
         "key_issue_url": "https://api.slack.com/apps",
         "description": "슬랙 메시지 전송",
+        # fields의 name = @modelcontextprotocol/server-slack 에 넘길 환경변수명.
+        # mcp.py의 MCP_SERVERS["slack"].env_fields 와 일치해야 한다 — 하나라도 비면 no_key로 막힌다.
         "metadata_json": {
-            "field": "SLACK_BOT_TOKEN",
-            "help": "봇 토큰 생성 후 붙여넣기",
-            "placeholder": "xoxb-...",
+            "guide": [
+                "api.slack.com/apps → Create New App → From scratch",
+                "좌측 OAuth & Permissions → Bot Token Scopes에 chat:write 추가",
+                "같은 화면 상단 Install to Workspace → 설치 승인",
+                "Bot User OAuth Token (xoxb-로 시작) 복사 → 아래에 붙여넣기",
+                "Team ID는 슬랙 웹 주소 app.slack.com/client/T01234567/... 의 T로 시작하는 부분",
+            ],
+            "fields": [
+                {
+                    "name": "SLACK_BOT_TOKEN",
+                    "placeholder": "xoxb-...",
+                    "help": "OAuth & Permissions의 Bot User OAuth Token",
+                },
+                {
+                    "name": "SLACK_TEAM_ID",
+                    "placeholder": "T01234567",
+                    "help": "슬랙 웹 주소에서 T로 시작하는 워크스페이스 ID",
+                },
+            ],
         },
     },
     {
@@ -133,13 +157,21 @@ TOOLS = [
         # fields의 name = MCP 서버에 넘길 환경변수명. local-runner/app/core/mcp.py 의
         # MCP_SERVERS["discord"].env_fields 와 반드시 일치해야 한다.
         "metadata_json": {
+            "guide": [
+                "Developer Portal → New Application (이름 아무거나)",
+                "좌측 Bot 탭 → Reset Token → 복사 (한 번만 보입니다)",
+                "좌측 OAuth2 → URL Generator → Scopes에 bot 체크",
+                "Bot Permissions에 Send Messages · Read Message History 체크",
+                "아래 생성된 URL을 브라우저로 열어 내 서버에 봇 초대 ← 이걸 빼먹으면 토큰이 맞아도 발송 실패",
+                "서버가 없으면 디스코드 좌측 맨 아래 + → 직접 만들기 로 하나 만드세요",
+            ],
             "fields": [
                 {
                     "name": "DISCORD_BOT_TOKEN",
                     "placeholder": "봇 토큰",
-                    "help": "Developer Portal → Bot → Reset Token. 봇을 서버에 초대해야 전송됩니다.",
+                    "help": "Bot 탭의 Reset Token 값",
                 }
-            ]
+            ],
         },
     },
     {
@@ -148,22 +180,31 @@ TOOLS = [
         "type": "mcp",
         "auth_owner": "developer",  # @BotFather 발급 봇 토큰
         "key_required": True,
-        "key_issue_url": "https://core.telegram.org/bots#botfather",
+        # 딥링크 — 누르면 텔레그램 앱의 BotFather 대화가 바로 열린다(문서 페이지보다 빠름).
+        "key_issue_url": "https://t.me/BotFather",
         "description": "봇으로 채널·대화방에 메시지 발송",
         # 값이 2개 필요한 도구 — secret 컬럼에 JSON으로 저장된다.
         "metadata_json": {
+            "guide": [
+                "텔레그램에서 @BotFather 검색 → /newbot 입력",
+                "봇 이름 입력 (아무거나, 예: SkillCanvas Demo)",
+                "username 입력 — 반드시 bot 으로 끝나야 함 (예: skillcanvas_demo_bot)",
+                "나온 토큰을 아래 BOT_TELEGRAM_TOKEN 에 붙여넣기",
+                "만든 봇을 검색해 /start 를 한 번 누르기 ← 안 누르면 chat_id가 안 생깁니다",
+                "https://api.telegram.org/bot<토큰>/getUpdates 를 열면 result[0].message.chat.id 가 chat_id",
+            ],
             "fields": [
                 {
                     "name": "BOT_TELEGRAM_TOKEN",
                     "placeholder": "123456789:AA...",
-                    "help": "@BotFather 에서 /newbot 으로 발급",
+                    "help": "@BotFather 가 /newbot 끝에 알려주는 값",
                 },
                 {
                     "name": "BOT_TELEGRAM_CHAT_ID",
                     "placeholder": "-100... 또는 123456789",
-                    "help": "봇과 대화를 먼저 시작해야 chat_id가 생깁니다",
+                    "help": "봇과 대화를 먼저 시작해야 생깁니다 (위 6번)",
                 },
-            ]
+            ],
         },
     },
     {
