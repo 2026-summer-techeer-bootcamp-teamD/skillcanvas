@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
-import Mascot from "./components/Mascot";
+import { BrandNav } from "../../components/BrandNav";
 import { tokens } from "./tokens";
+import "../../styles/scene.css";
 
 interface OnboardingLayoutProps {
   onSkip: () => void;
@@ -9,6 +10,7 @@ interface OnboardingLayoutProps {
 
 // 상단 nav + 배경 도트 패턴 + 가운데 콘텐츠 슬롯을 담당하는 공용 쉘.
 // hero/step/signup 뷰는 모두 이 안에서 children으로 렌더됩니다.
+// 상단 바는 Splash/Login/Signup과 동일하게 공용 BrandNav + sc-nav 스타일을 씁니다.
 export default function OnboardingLayout({ onSkip, children }: OnboardingLayoutProps) {
   return (
     <div
@@ -34,42 +36,13 @@ export default function OnboardingLayout({ onSkip, children }: OnboardingLayoutP
         }}
       />
 
-      <div
-        style={{
-          position: "relative",
-          zIndex: 1,
-          display: "flex",
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "20px 40px",
-          flexShrink: 0,
-        }}
-      >
-        <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 10 }}>
-          <Mascot size={21} style={{ width: 26, height: 26 }} />
-          <span style={{ fontWeight: 800, fontSize: 17, letterSpacing: "-0.17px", color: tokens.ink }}>
-            SkillCanvas
-          </span>
-        </div>
-        <button
-          onClick={onSkip}
-          style={{
-            border: "none",
-            borderRadius: 9,
-            boxShadow: "inset 0 0 0 1px rgb(224,216,205)",
-            padding: "8px 18px",
-            background: "transparent",
-            fontWeight: 600,
-            fontSize: 14,
-            color: "rgb(138,127,113)",
-            fontFamily: "inherit",
-            cursor: "pointer",
-          }}
-        >
-          건너뛰기
-        </button>
-      </div>
+      <BrandNav
+        action={
+          <button className="sc-skip" type="button" onClick={onSkip}>
+            건너뛰기
+          </button>
+        }
+      />
 
       <div
         style={{
@@ -80,7 +53,7 @@ export default function OnboardingLayout({ onSkip, children }: OnboardingLayoutP
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          padding: "20px 24px 64px",
+          padding: "84px 24px 64px",
         }}
       >
         {children}
