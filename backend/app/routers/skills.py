@@ -54,7 +54,9 @@ def _auto_description(content_md: str) -> str | None:
     except HTTPException:
         return None
     summary = data.get("summary")
-    return summary.strip() if isinstance(summary, str) and summary.strip() else None
+    if not isinstance(summary, str) or not summary.strip():
+        return None
+    return summary.strip()[:500]
 
 
 # ── 헬퍼: 태그 ────────────────────────────────────────
