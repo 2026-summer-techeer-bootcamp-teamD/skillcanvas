@@ -40,11 +40,18 @@ TOOLS = [
         "key": "sweettracker",
         "name": "스마트택배 (배송조회)",
         "type": "api",
-        "auth_owner": "developer",  # 우리 공용키 — 유저는 붙여넣을 게 없음
+        # 우리 공용키 — 유저는 붙여넣을 게 없다(key_required=False라 키 모달도 안 뜬다).
+        # 대신 팀이 실행기마다 한 번 주입한다:
+        #   curl -X POST localhost:4737/credential -H 'Content-Type: application/json' \
+        #        -d '{"tool_key":"sweettracker","secret":"발급받은키"}'
+        # MCP 서버가 없는 REST API라 실행기가 직접 호출한다(local-runner/app/core/api_tools.py).
+        "auth_owner": "developer",
         "key_required": False,
         "key_issue_url": "https://info.sweettracker.co.kr/apidoc",
         "description": "택배 배송 상태 조회 (한국 택배사)",
-        "metadata_json": None,
+        "metadata_json": {
+            "fields": [{"name": "SWEETTRACKER_API_KEY", "placeholder": "발급받은 API KEY"}]
+        },
     },
     {
         "key": "slack",

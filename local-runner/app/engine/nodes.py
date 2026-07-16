@@ -7,7 +7,7 @@
 중복체크(processed)는 SQLite(core/db.py)에 저장 → 서버 재시작에도 유지.
 """
 
-from app.core import db, mcp
+from app.core import api_tools, db, mcp
 from app.core.claude import claude_call
 
 # claude가 가끔 붙이는 메타 서두(결과 아님) — 이런 줄은 건너뛴다
@@ -61,9 +61,10 @@ def _mcp_key(node: dict) -> str:
     프론트가 mcp_key를 보내주면 그게 정답. 안 보내는 경우를 위해 detail·label로 폴백한다
     (assemble 노드는 detail이 key, 추천패널 노드는 detail이 "mcp.call"이고 label이 key).
     """
+    known = set(mcp.MCP_SERVERS) | set(mcp.BUILTIN_TOOLS) | set(api_tools.API_TOOLS)
     for cand in (node.get("mcp_key"), node.get("detail"), node.get("label")):
         k = (cand or "").strip().lower()
-        if k in mcp.MCP_SERVERS:
+        if k in known:
             return k
     return (node.get("mcp_key") or node.get("label") or "").strip().lower()
 
@@ -121,7 +122,15 @@ def exec_node(node: dict, ctx: dict, history: list[dict] | None = None) -> dict:
         #  - 추천 패널로 추가한 노드는 detail이 "mcp.call"이고 label이 key
         key = _mcp_key(node)
 
-        # ① MCP 서버 없이 Claude Code 내장 도구로 되는 것(web-search 등) — 키 불필요.
+        # ① MCP 서버가 없는 REST API(스마트택배 등) — 실행기가 직접 HTTP. 키는
+        #    프롬프트에 안 들어가고 쿼리스트링으로만 나간다(core/api_tools.py).
+        if key in api_tools.API_TOOLS:
+            r = api_tools.call_api(key, detail)
+            if "error" in r:
+                return {"result": f"🔌 ⚠ {label}: {r['error']}"}
+            return {"result": f"🔌 {label} — {r['text']}"}
+
+        # ② MCP 서버 없이 Claude Code 내장 도구로 되는 것(web-search 등) — 키 불필요.
         if key in mcp.BUILTIN_TOOLS:
             r = claude_call(
                 _tool_prompt(label, detail, history),
@@ -131,14 +140,14 @@ def exec_node(node: dict, ctx: dict, history: list[dict] | None = None) -> dict:
                 return {"result": "🔌 ⚠ " + r["error"]}
             return {"result": "🔌 " + _clean(r["text"])}
 
-        # ② 연결된 MCP 서버가 없는 도구는 **시나리오 스텁**이다. CS 데모(cs_demo.py)의
+        # ③ 연결된 MCP 서버가 없는 도구는 **시나리오 스텁**이다. CS 데모(cs_demo.py)의
         #    tool 노드가 그 예로, detail에 시나리오 데이터를 담아두고("받은 메일: ...")
         #    그걸 결과로 흘려보내면 다음 agent 노드가 history로 읽어 판단한다.
         #    즉 여기서 mock은 버그가 아니라 데모의 작동 원리라 반드시 유지해야 한다.
         if key not in mcp.MCP_SERVERS:
             return {"result": "🔌 도구 실행: " + label + (f" — {detail}" if detail else "")}
 
-        # ③ MCP 연결 도구 — 키가 있어야 실제 호출. 없으면 가짜로 때우지 않고 명확히 실패.
+        # ④ MCP 연결 도구 — 키가 있어야 실제 호출. 없으면 가짜로 때우지 않고 명확히 실패.
         with mcp.mcp_config_for(key) as (cfg_path, reason):
             if reason == "no_key":
                 need = mcp.missing_fields_hint(key)
