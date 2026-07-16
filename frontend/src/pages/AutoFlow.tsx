@@ -33,7 +33,7 @@ import {
   runFlow,
   approveRun,
   saveCredential,
-  listCredentialKeys,
+  getCredentials,
   RunnerError,
   type RunResultItem,
   type RunResponse,
@@ -386,7 +386,7 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
   // 이미 키를 넣은 도구 목록 (로컬 실행기). 이게 없으면 저장하고 나서도 "키 연결 필요"가
   // 그대로 떠서 넣었는지 확인할 방법이 없다. 실행기가 안 떠 있으면 조용히 빈 목록.
   const refreshSavedKeys = useCallback(() => {
-    listCredentialKeys()
+    getCredentials()
       .then((d) => setSavedKeys(new Set(d.tool_keys)))
       .catch(() => {});
   }, []);
