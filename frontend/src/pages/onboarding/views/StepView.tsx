@@ -59,14 +59,18 @@ export default function StepView({ step, stepIndex, totalSteps, onNext }: StepVi
           onClick={onNext}
           style={{
             border: "none",
-            borderRadius: 14,
+            borderRadius: 12,
             background: tokens.ink,
-            padding: "16px 40px",
+            padding: "15px 20px",
             fontWeight: 700,
-            fontSize: 17,
+            fontSize: 15,
             color: "rgb(255,255,255)",
             fontFamily: "inherit",
             cursor: "pointer",
+            width: 148,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
           }}
         >
           {step.cta}
