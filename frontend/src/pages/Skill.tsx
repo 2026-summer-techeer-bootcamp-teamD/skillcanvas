@@ -33,6 +33,11 @@ const SEED_CHAT: ChatMessage[] = [
   { from: "ai", text: "‘본문 요약’ 블록을 3줄 요약으로 바꿨어요. 원하면 더 줄일 수도 있어요." },
 ];
 
+// 자연어 삭제 1차 구현: 문장 전체가 "삭제해줘" 류의 순수 삭제 명령일 때만 매칭
+// (부분 문자열 매칭이면 "파일 제거하는 도구", "문장 빼고 정리해줘" 같은 수정 요청까지 오인함)
+const DELETE_INTENT_RE =
+  /^(?:이\s*)?(?:블록|이거|이것|해당)?\s*(?:삭제|지워|빼|제거)(?:해\s?주세요|해줘|해요|해|줘|주세요)?\s*[.!?]*$/;
+
 type Phase = "input" | "generating" | "result";
 
 interface SkillProps {
@@ -47,6 +52,7 @@ interface SkillNodeProps {
   onDragStart: () => void;
   onDragEnter: () => void;
   onDragEnd: () => void;
+  onDelete: () => void;
 }
 
 function SkillNode({
@@ -57,6 +63,7 @@ function SkillNode({
   onDragStart,
   onDragEnter,
   onDragEnd,
+  onDelete,
 }: SkillNodeProps) {
   const className = [
     "skill__node",
@@ -84,6 +91,17 @@ function SkillNode({
         </p>
         {selected && <p className="skill__nodeDesc">{block.desc}</p>}
       </div>
+      <button
+        className="skill__nodeDel"
+        type="button"
+        aria-label="블록 삭제"
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete();
+        }}
+      >
+        ×
+      </button>
       <span className="skill__nodeHandle" aria-hidden="true">
         ⠿
       </span>
@@ -176,6 +194,28 @@ export function Skill({ onNavigate }: SkillProps) {
     setDragIndex(index);
   };
 
+  const deleteBlock = (id: string) => {
+    setDraft((prev) => (prev ? { ...prev, blocks: prev.blocks.filter((b) => b.id !== id) } : prev));
+    setSelectedId((prev) => (prev === id ? null : prev));
+  };
+
+  // 이슈 #114-2: "+ 블록 추가"는 (B)안 — 기본 블록을 바로 추가하고 선택 상태로 만들어
+  // 기존 AI편집/드래그 흐름으로 곧장 다듬을 수 있게 한다.
+  const addBlock = () => {
+    if (!draft) return;
+    const id = `new-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const block: SkillBlock = {
+      id,
+      type: "tool",
+      typeLabel: TYPE_LABEL.tool,
+      title: "새 블록",
+      meta: "-",
+      desc: "",
+    };
+    setDraft((prev) => (prev ? { ...prev, blocks: [...prev.blocks, block] } : prev));
+    setSelectedId(id);
+  };
+
   const generate = async (prompt: string) => {
     if (!prompt.trim()) return;
     setPhase("generating");
@@ -243,6 +283,19 @@ export function Skill({ onNavigate }: SkillProps) {
         { from: "ai", text: "먼저 왼쪽에서 수정할 블록을 클릭해 주세요." },
       ]);
       setChatInput("");
+      return;
+    }
+
+    // 이슈 #114-3: 자연어 삭제 1차 구현 — 선택 블록이 있고 삭제 의도면
+    // map-node 호출 없이 로컬에서 바로 제거 (백엔드 무변경)
+    if (DELETE_INTENT_RE.test(instruction)) {
+      setChat((prev) => [
+        ...prev,
+        { from: "user", text: instruction },
+        { from: "ai", text: `'${target.title}' 블록을 삭제했어요.` },
+      ]);
+      setChatInput("");
+      deleteBlock(target.id);
       return;
     }
 
@@ -379,9 +432,10 @@ export function Skill({ onNavigate }: SkillProps) {
                   onDragStart={() => setDragIndex(i)}
                   onDragEnter={() => handleDragEnter(i)}
                   onDragEnd={() => setDragIndex(null)}
+                  onDelete={() => deleteBlock(block.id)}
                 />
               ))}
-              <button className="skill__addBlock" type="button">
+              <button className="skill__addBlock" type="button" onClick={addBlock}>
                 + 블록 추가
               </button>
             </div>
