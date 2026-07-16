@@ -34,3 +34,8 @@ def save_credential(payload: CredentialIn) -> dict:
 
     db.set_credential(tool_key, secret)
     return {"ok": True, "tool_key": tool_key}  # secret은 응답에 노출하지 않음
+
+
+@router.get("/credentials", summary="등록된 도구 키 목록 (secret 미포함)")
+def list_credentials() -> dict:
+    return {"tool_keys": db.list_credential_keys()}

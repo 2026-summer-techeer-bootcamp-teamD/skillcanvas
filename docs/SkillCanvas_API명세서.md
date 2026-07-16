@@ -1006,3 +1006,21 @@ run의 현재 상태와 **전체 결과(누적)**를 조회한다.
 ---
 
 *형식: 직접반환 · 순수 REST · `{code, message}` errorCode. 로컬 SQLite(processed·credentials)는 ERD 아님(로컬 상태 저장).*
+
+### A-8. 등록된 도구 키 목록 조회
+
+로컬에 저장된 MCP 도구 키 현황을 조회한다. secret 값은 포함하지 않는다.
+
+| 항목 | 내용 |
+| --- | --- |
+| **Method** | `GET` |
+| **URL** | `/credentials` |
+| **인증** | 불필요 (로컬 전용) |
+
+**Response Body (200 OK)**
+```json
+{ "tool_keys": ["slack", "notion"] }
+```
+| 필드 | 타입 | 설명 |
+| --- | --- | --- |
+| `tool_keys` | String[] | 등록된 도구 key 목록. secret은 응답에 포함되지 않음 |

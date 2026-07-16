@@ -6,9 +6,16 @@ import { TopNav, type NavTab } from "../components/TopNav";
 import { NodeTrail } from "../components/NodeTrail";
 import { PixelArt } from "../components/PixelArt";
 import { FlowNode } from "../components/flow/FlowNode";
-import { getGraph, RunnerError, type RunnerGraph, type RunnerGraphNode } from "../lib/runner";
+import {
+  getGraph,
+  getCredentials,
+  RunnerError,
+  type RunnerGraph,
+  type RunnerGraphNode,
+} from "../lib/runner";
 import { useApi, ApiError } from "../lib/api";
 import { assembleToFlow, type AssembledNode, type FlowNodeData } from "../lib/flowData";
+import type { ToolCatalogItem } from "../lib/toolCatalog";
 import { ROBOT_MUTED, ROBOT_ORANGE } from "../lib/pixelMaps";
 import "./MyWorld.css";
 
@@ -66,6 +73,30 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
   const [flowError, setFlowError] = useState<string | null>(null);
   // 열린 스킬이 쓰는 MCP 도구들 (graph의 skill→mcp 엣지 = SKILL.md allowed-tools)
   const [openMcps, setOpenMcps] = useState<string[]>([]);
+
+  // MCP 키 현황 — 카탈로그(백엔드)와 등록된 키(로컬 실행기)를 대조해 보여준다.
+  const [catalog, setCatalog] = useState<ToolCatalogItem[]>([]);
+  const [registeredKeys, setRegisteredKeys] = useState<string[] | null>(null);
+  const [keyStatusMsg, setKeyStatusMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    // 카탈로그는 부가 정보 — 실패해도 나머지 화면은 계속 보여준다.
+    call<{ items: ToolCatalogItem[] }>("/tool-catalog?limit=100")
+      .then((data) => setCatalog(data.items))
+      .catch(() => {});
+  }, [call]);
+
+  // GET /credentials (로컬 실행기) — secret은 안 오고 등록된 tool_key 목록만 온다.
+  const loadKeyStatus = async () => {
+    setKeyStatusMsg(null);
+    try {
+      const data = await getCredentials();
+      setRegisteredKeys(data.tool_keys);
+    } catch (e) {
+      setRegisteredKeys(null);
+      setKeyStatusMsg(e instanceof RunnerError ? e.message : "불러올 수 없음");
+    }
+  };
 
   const localSkills = graph?.nodes.filter((n) => n.type === "skill") ?? null;
 
@@ -497,6 +528,44 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
               >
                 전체보기 ({myFlows.length}개)
               </button>
+            )}
+          </div>
+        )}
+
+        {/* MCP 키는 특정 탭에 속한 항목이 아니라 계정 전반의 설정이라 '전체'에서만 보여준다 */}
+        {worldFilter === "all" && (
+          <div className="mw__section">
+            <p className="mw__sectionLabel">
+              <span className="mw__dot" style={{ background: "var(--sc-node-tool)" }} />내 MCP 키
+              현황
+              <button
+                type="button"
+                className="mw__newWorld"
+                style={{ marginLeft: "0.75rem" }}
+                onClick={loadKeyStatus}
+              >
+                🔑 현황 불러오기
+              </button>
+            </p>
+            {keyStatusMsg && <p className="mw__cardMeta">{keyStatusMsg}</p>}
+            {registeredKeys && (
+              <div className="mw__mcpRow" style={{ flexWrap: "wrap" }}>
+                {catalog.map((tool) => {
+                  const registered = registeredKeys.includes(tool.key);
+                  const needsKey = tool.key_required && tool.auth_owner === "user";
+                  const label = !needsKey ? "키 불필요" : registered ? "등록됨" : "미등록";
+                  const color = !needsKey ? "#999" : registered ? "#3b8a4c" : "#c94f4f";
+                  return (
+                    <span
+                      className="mw__mcpChip"
+                      key={tool.key}
+                      style={{ borderColor: color, color }}
+                    >
+                      ◈ {tool.key} · {label}
+                    </span>
+                  );
+                })}
+              </div>
             )}
           </div>
         )}

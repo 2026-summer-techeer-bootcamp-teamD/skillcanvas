@@ -128,3 +128,8 @@ export function saveCredential(toolKey: string, secret: string) {
     body: JSON.stringify({ tool_key: toolKey, secret }),
   });
 }
+
+/** MCP 키 현황: 등록된 tool_key 목록 (secret은 절대 포함 안 됨). */
+export function getCredentials() {
+  return runnerFetch<{ tool_keys: string[] }>("/credentials");
+}
