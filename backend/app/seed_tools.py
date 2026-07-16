@@ -183,26 +183,22 @@ TOOLS = [
         # 딥링크 — 누르면 텔레그램 앱의 BotFather 대화가 바로 열린다(문서 페이지보다 빠름).
         "key_issue_url": "https://t.me/BotFather",
         "description": "봇으로 채널·대화방에 메시지 발송",
-        # 값이 2개 필요한 도구 — secret 컬럼에 JSON으로 저장된다.
+        # 실제로는 토큰 + chat_id 2개가 필요하지만 **입력칸은 토큰 하나뿐**이다.
+        # chat_id는 발급 화면 어디에도 없고 유저가 getUpdates JSON을 열어 찾아야 하는 값이라,
+        # 저장 시점에 실행기가 대신 조회해 채운다(local-runner/app/core/resolvers.py).
         "metadata_json": {
             "guide": [
                 "텔레그램에서 @BotFather 검색 → /newbot 입력",
                 "봇 이름 입력 (아무거나, 예: SkillCanvas Demo)",
                 "username 입력 — 반드시 bot 으로 끝나야 함 (예: skillcanvas_demo_bot)",
-                "나온 토큰을 아래 BOT_TELEGRAM_TOKEN 에 붙여넣기",
-                "만든 봇을 검색해 /start 를 한 번 누르기 ← 안 누르면 chat_id가 안 생깁니다",
-                "https://api.telegram.org/bot<토큰>/getUpdates 를 열면 result[0].message.chat.id 가 chat_id",
+                "만든 봇을 검색해 /start 를 한 번 누르기 ← 이걸 해야 봇이 나에게 보낼 수 있습니다",
+                "@BotFather 가 준 토큰을 아래에 붙여넣기 (받을 대화는 자동으로 찾습니다)",
             ],
             "fields": [
                 {
                     "name": "BOT_TELEGRAM_TOKEN",
                     "placeholder": "123456789:AA...",
                     "help": "@BotFather 가 /newbot 끝에 알려주는 값",
-                },
-                {
-                    "name": "BOT_TELEGRAM_CHAT_ID",
-                    "placeholder": "-100... 또는 123456789",
-                    "help": "봇과 대화를 먼저 시작해야 생깁니다 (위 6번)",
                 },
             ],
         },
