@@ -117,10 +117,15 @@ def exec_node(node: dict, ctx: dict, history: list[dict] | None = None) -> dict:
         #  - assemble이 만든 노드는 detail이 카탈로그 key("discord")
         #  - 추천 패널로 추가한 노드는 detail이 "mcp.call"이고 label이 key
         key = _mcp_key(node)
+
+        # 연결된 MCP 서버가 없는 도구는 **시나리오 스텁**이다. CS 데모(cs_demo.py)의
+        # tool 노드가 그 예로, detail에 시나리오 데이터를 담아두고("받은 메일: ...")
+        # 그걸 결과로 흘려보내면 다음 agent 노드가 history로 읽어 판단한다.
+        # 즉 여기서 mock은 버그가 아니라 데모의 작동 원리라 반드시 유지해야 한다.
+        if key not in mcp.MCP_SERVERS:
+            return {"result": "🔌 도구 실행: " + label + (f" — {detail}" if detail else "")}
+
         with mcp.mcp_config_for(key) as (cfg_path, reason):
-            if reason == "unsupported":
-                supported = ", ".join(mcp.MCP_SERVERS)
-                return {"result": f"🔌 ⚠ {label}: 아직 연결 안 된 도구 (지원: {supported})"}
             if reason == "no_key":
                 need = mcp.missing_fields_hint(key)
                 return {"result": f"🔌 ⚠ {label}: 키 미등록 — 노드를 클릭해 {need} 를 넣어주세요"}
