@@ -112,7 +112,41 @@ TOOLS = [
         "key_required": True,
         "key_issue_url": "https://discord.com/developers/applications",
         "description": "채널 메시지 송수신",
-        "metadata_json": None,
+        # fields의 name = MCP 서버에 넘길 환경변수명. local-runner/app/core/mcp.py 의
+        # MCP_SERVERS["discord"].env_fields 와 반드시 일치해야 한다.
+        "metadata_json": {
+            "fields": [
+                {
+                    "name": "DISCORD_BOT_TOKEN",
+                    "placeholder": "봇 토큰",
+                    "help": "Developer Portal → Bot → Reset Token. 봇을 서버에 초대해야 전송됩니다.",
+                }
+            ]
+        },
+    },
+    {
+        "key": "telegram",
+        "name": "Telegram",
+        "type": "mcp",
+        "auth_owner": "developer",  # @BotFather 발급 봇 토큰
+        "key_required": True,
+        "key_issue_url": "https://core.telegram.org/bots#botfather",
+        "description": "봇으로 채널·대화방에 메시지 발송",
+        # 값이 2개 필요한 도구 — secret 컬럼에 JSON으로 저장된다.
+        "metadata_json": {
+            "fields": [
+                {
+                    "name": "BOT_TELEGRAM_TOKEN",
+                    "placeholder": "123456789:AA...",
+                    "help": "@BotFather 에서 /newbot 으로 발급",
+                },
+                {
+                    "name": "BOT_TELEGRAM_CHAT_ID",
+                    "placeholder": "-100... 또는 123456789",
+                    "help": "봇과 대화를 먼저 시작해야 chat_id가 생깁니다",
+                },
+            ]
+        },
     },
     {
         "key": "github",
