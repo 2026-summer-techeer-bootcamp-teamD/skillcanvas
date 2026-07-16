@@ -32,6 +32,7 @@ interface MyItem {
   name: string;
   description: string | null;
   is_public: boolean;
+  used_mcps: string[];
 }
 
 interface UserMe {
@@ -157,7 +158,10 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
     setLoading(true);
     setError(null);
     call<{ items: MyItem[] }>("/skills?mine=true")
-      .then((data) => setMyItems(data.items))
+      // 백엔드/프론트 배포 시점차 등으로 used_mcps가 비어올 수 있어 방어(다른 화면과 동일 패턴)
+      .then((data) =>
+        setMyItems(data.items.map((it) => ({ ...it, used_mcps: it.used_mcps ?? [] }))),
+      )
       .catch((e) => setError(e instanceof ApiError ? e.message : "불러오기 실패"))
       .finally(() => setLoading(false));
   }, [call]);
@@ -172,6 +176,19 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
     if (!name || name === skill.name) return;
     try {
       await call(`/skills/${skill.id}`, { method: "PATCH", json: { name } });
+      loadMyItems();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "수정 실패");
+    }
+  };
+
+  // PATCH /skills/{id} — 공개/비공개 토글 (5-4, 이슈 #115)
+  const handleTogglePublic = async (skill: MyItem) => {
+    try {
+      await call(`/skills/${skill.id}`, {
+        method: "PATCH",
+        json: { is_public: !skill.is_public },
+      });
       loadMyItems();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "수정 실패");
@@ -198,7 +215,10 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
     setFlowsLoading(true);
     setFlowsError(null);
     call<{ items: MyItem[] }>("/workflows?mine=true")
-      .then((data) => setMyFlows(data.items))
+      // 백엔드/프론트 배포 시점차 등으로 used_mcps가 비어올 수 있어 방어(다른 화면과 동일 패턴)
+      .then((data) =>
+        setMyFlows(data.items.map((it) => ({ ...it, used_mcps: it.used_mcps ?? [] }))),
+      )
       .catch((e) => setFlowsError(e instanceof ApiError ? e.message : "불러오기 실패"))
       .finally(() => setFlowsLoading(false));
   }, [call]);
@@ -212,6 +232,19 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
     if (!name || name === wf.name) return;
     try {
       await call(`/workflows/${wf.id}`, { method: "PATCH", json: { name } });
+      loadMyFlows();
+    } catch (e) {
+      setFlowsError(e instanceof ApiError ? e.message : "수정 실패");
+    }
+  };
+
+  // PATCH /workflows/{id} — 공개/비공개 토글 (4-4, 이슈 #115)
+  const handleToggleFlowPublic = async (wf: MyItem) => {
+    try {
+      await call(`/workflows/${wf.id}`, {
+        method: "PATCH",
+        json: { is_public: !wf.is_public },
+      });
       loadMyFlows();
     } catch (e) {
       setFlowsError(e instanceof ApiError ? e.message : "수정 실패");
@@ -377,7 +410,20 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
                   </span>
                   <h3 className="mw__cardTitle">{s.name}</h3>
                   <p className="mw__cardMeta">{s.description ?? "-"}</p>
+                  {s.used_mcps.length > 0 && (
+                    <div className="mw__mcpRow">
+                      <span className="mw__mcpLabel">MCP</span>
+                      {s.used_mcps.map((m) => (
+                        <span className="mw__mcpChip" key={m}>
+                          ◈ {m}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   <div className="mw__cardActions">
+                    <button type="button" onClick={() => handleTogglePublic(s)}>
+                      {s.is_public ? "비공개" : "공개"}
+                    </button>
                     <button type="button" onClick={() => handleRename(s)}>
                       수정
                     </button>
@@ -418,7 +464,20 @@ export function MyWorld({ onNavigate }: MyWorldProps) {
                   </span>
                   <h3 className="mw__cardTitle">{f.name}</h3>
                   <p className="mw__cardDesc">{f.description ?? "-"}</p>
+                  {f.used_mcps.length > 0 && (
+                    <div className="mw__mcpRow">
+                      <span className="mw__mcpLabel">MCP</span>
+                      {f.used_mcps.map((m) => (
+                        <span className="mw__mcpChip" key={m}>
+                          ◈ {m}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   <div className="mw__cardActions">
+                    <button type="button" onClick={() => handleToggleFlowPublic(f)}>
+                      {f.is_public ? "비공개" : "공개"}
+                    </button>
                     <button type="button" onClick={() => handleRenameFlow(f)}>
                       수정
                     </button>

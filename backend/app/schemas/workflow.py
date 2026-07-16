@@ -41,6 +41,9 @@ class WorkflowListItem(BaseModel):
     tags: list[str]
     import_count: int
     is_public: bool  # 내 워크플로우 뷰에서 공개/비공개 배지 판단
+    # tags/is_public처럼 기본값 없이 필수로 둔다 — _list_item이 항상 채우는 필드라
+    # 기본값을 주면 나중에 빠뜨려도 조용히 []로 감춰지고 검증 에러가 나지 않는다.
+    used_mcps: list[str]
     created_at: datetime
 
 
