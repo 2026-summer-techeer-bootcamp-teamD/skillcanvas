@@ -332,44 +332,11 @@
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 15 },
       "panels": [
         {
-          "id": 11,
-          "type": "timeseries",
-          "title": "모델별 호출률 (calls/s)",
-          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "links": [
-            { "title": "AI Call Metrics에서 자세히 보기", "url": "/d/skillcanvas-ai-calls?${__url_time_range}", "targetBlank": false }
-          ],
-          "targets": [
-            {
-              "refId": "A",
-              "expr": "sum by (model) (rate(ai_call_total[$__rate_interval]))",
-              "legendFormat": "{{model}}"
-            }
-          ],
-          "fieldConfig": {
-            "defaults": {
-              "unit": "cps",
-              "custom": {
-                "drawStyle": "line",
-                "lineWidth": 1,
-                "fillOpacity": 10,
-                "spanNulls": true
-              }
-            },
-            "overrides": []
-          },
-          "options": {
-            "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] },
-            "tooltip": { "mode": "multi" }
-          }
-        },
-        {
           "id": 12,
           "type": "timeseries",
           "title": "상태별 호출 분포 (calls/s)",
           "description": "success / error / parse_error 스택",
-          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "links": [
             { "title": "AI Call Metrics에서 자세히 보기", "url": "/d/skillcanvas-ai-calls?${__url_time_range}", "targetBlank": false }

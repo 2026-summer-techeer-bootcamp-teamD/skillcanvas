@@ -25,7 +25,7 @@
       "gridPos": { "h": 6, "w": 4, "x": 0, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "refId": "A", "expr": "pg_up or vector(0)", "legendFormat": "pg_up" }
+        { "refId": "A", "expr": "max(pg_up) or vector(0)", "legendFormat": "pg_up" }
       ],
       "fieldConfig": {
         "defaults": {
@@ -53,7 +53,7 @@
       "gridPos": { "h": 6, "w": 4, "x": 4, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "refId": "A", "expr": "pg_database_size_bytes{datname=\"skillcanvas\"} or vector(0)", "legendFormat": "size" }
+        { "refId": "A", "expr": "max(pg_database_size_bytes{datname=\"skillcanvas\"}) or vector(0)", "legendFormat": "size" }
       ],
       "fieldConfig": {
         "defaults": {
@@ -133,46 +133,10 @@
       }
     },
     {
-      "id": 5,
-      "type": "stat",
-      "title": "캐시 히트율 (%)",
-      "description": "pg_stat_database_blks_hit / (blks_hit + blks_read). 낮으면 shared_buffers 부족 신호.",
-      "gridPos": { "h": 6, "w": 4, "x": 16, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "100 * (sum(rate(pg_stat_database_blks_hit{datname!~\"template.*|postgres\"}[$__rate_interval])) or vector(0)) / clamp_min((sum(rate(pg_stat_database_blks_hit{datname!~\"template.*|postgres\"}[$__rate_interval])) + sum(rate(pg_stat_database_blks_read{datname!~\"template.*|postgres\"}[$__rate_interval])) or vector(0)), 1e-9)",
-          "legendFormat": "cache hit"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent",
-          "decimals": 2,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "red", "value": null },
-              { "color": "yellow", "value": 90 },
-              { "color": "green", "value": 99 }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "colorMode": "value",
-        "graphMode": "area",
-        "textMode": "auto"
-      }
-    },
-    {
       "id": 6,
       "type": "stat",
       "title": "Deadlock 발생 수 (선택 구간)",
-      "gridPos": { "h": 6, "w": 4, "x": 20, "y": 0 },
+      "gridPos": { "h": 6, "w": 4, "x": 16, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         { "refId": "A", "expr": "sum(increase(pg_stat_database_deadlocks{datname!~\"template.*|postgres\"}[$__range])) or vector(0)", "legendFormat": "deadlocks" }
@@ -209,7 +173,7 @@
     {
       "id": 8,
       "type": "timeseries",
-      "title": "TPS (commit / rollback, DB별)",
+      "title": "TPS (commit, DB별)",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 7 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
@@ -217,11 +181,6 @@
           "refId": "A",
           "expr": "sum by (datname) (rate(pg_stat_database_xact_commit{datname!~\"template.*|postgres\"}[$__rate_interval]))",
           "legendFormat": "{{datname}} commit"
-        },
-        {
-          "refId": "B",
-          "expr": "sum by (datname) (rate(pg_stat_database_xact_rollback{datname!~\"template.*|postgres\"}[$__rate_interval]))",
-          "legendFormat": "{{datname}} rollback"
         }
       ],
       "fieldConfig": {
@@ -234,12 +193,7 @@
             "spanNulls": true
           }
         },
-        "overrides": [
-          {
-            "matcher": { "id": "byRegexp", "options": "rollback" },
-            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }]
-          }
-        ]
+        "overrides": []
       },
       "options": {
         "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] },
@@ -500,7 +454,7 @@
           "gridPos": { "h": 8, "w": 8, "x": 8, "y": 18 },
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "targets": [
-            { "refId": "A", "expr": "pg_wal_size_bytes or vector(0)", "legendFormat": "wal size" }
+            { "refId": "A", "expr": "max(pg_wal_size_bytes) or vector(0)", "legendFormat": "wal size" }
           ],
           "fieldConfig": {
             "defaults": {
