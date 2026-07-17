@@ -124,10 +124,15 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState<string | null>(null);
   const [flowName, setFlowName] = useState("cs-complaint-handler");
-  const [flowMcps, setFlowMcps] = useState<string[]>([]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(INITIAL_NODES);
   const [edges, setEdges, onEdgesChange] = useEdgesState(INITIAL_EDGES);
+  // 상단 툴바의 MCP 칩은 실제 노드들의 mcpKey에서 파생 — 노드 바꾸기(map-node)·삭제·추가가
+  // 바로 반영된다(별도 상태로 두면 노드를 바꿔도 옛 도구가 그대로 남는다).
+  const flowMcps = useMemo(
+    () => Array.from(new Set(nodes.map((n) => n.data.mcpKey).filter(Boolean))) as string[],
+    [nodes],
+  );
   const [selected, setSelected] = useState<Node<FlowNodeData> | null>(null);
   // 노드 자연어 수정(POST /map-node) — 예: "팀 슬랙으로 바꿔줘"
   const [mapText, setMapText] = useState("");
@@ -416,7 +421,6 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
       setNodes(n);
       setEdges(e);
       if (data.name) setFlowName(data.name);
-      setFlowMcps(data.used_mcps ?? []);
       setPhase("builder");
     } catch (err) {
       const msg =
