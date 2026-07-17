@@ -1,7 +1,7 @@
 import type { Node, Edge } from "reactflow";
 import { MarkerType } from "reactflow";
 
-export type FlowNodeKind = "trigger" | "tool" | "agent" | "output" | "approve";
+export type FlowNodeKind = "trigger" | "tool" | "agent" | "output" | "approve" | "branch";
 
 export interface FlowNodeData {
   kind: FlowNodeKind;
@@ -24,6 +24,7 @@ export const NODE_COLOR: Record<FlowNodeKind, string> = {
   agent: "var(--sc-node-agent)",
   output: "var(--sc-node-output)",
   approve: "var(--sc-node-approve)",
+  branch: "var(--sc-node-branch)",
 };
 
 /** cs-complaint-handler 예시 플로우 (자연어 추천 결과 목업) */
@@ -105,6 +106,7 @@ const ASSEMBLE_LABEL: Record<string, string> = {
   tool: "도구",
   approve: "승인",
   output: "출력",
+  branch: "분기",
 };
 
 /**
@@ -120,7 +122,7 @@ export function assembleToFlow(
 } {
   const rfNodes: Node<FlowNodeData>[] = nodes.map((n, i) => {
     const kind = (
-      ["trigger", "tool", "agent", "approve", "output"].includes(n.type) ? n.type : "tool"
+      ["trigger", "tool", "agent", "approve", "output", "branch"].includes(n.type) ? n.type : "tool"
     ) as FlowNodeKind;
     const typeLabel = ASSEMBLE_LABEL[n.type] ?? n.type;
     // 노드 라벨·설명에 언급된 MCP를 찾아 간결한 태그로 (줄글 대신)
@@ -171,7 +173,7 @@ export function assembleWorkflowToFlow(
     const r = rowInCol[c] ?? 0;
     rowInCol[c] = r + 1;
     const kind = (
-      ["trigger", "tool", "agent", "approve", "output"].includes(n.type) ? n.type : "tool"
+      ["trigger", "tool", "agent", "approve", "output", "branch"].includes(n.type) ? n.type : "tool"
     ) as FlowNodeKind;
     // detail이 이 워크플로우가 쓰는 MCP 키면 → 키 연결 필요. 매칭은 이 mcpKey로(한글 title 아님).
     const isMcp = kind === "tool" && n.detail != null && usedMcps.includes(n.detail);
