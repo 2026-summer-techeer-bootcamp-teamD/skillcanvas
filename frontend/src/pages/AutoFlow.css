@@ -453,25 +453,8 @@
   padding-top: 1rem;
   border-top: 1px dashed var(--sc-line);
 }
-/* 키 패널(주황) 옆에서 튀지 않게 중성 아웃라인 버튼(주황 아님) */
-.af__mapBtn {
-  width: 100%;
-  margin-top: 0.5rem;
-  padding: 0.5625rem;
-  font-family: inherit;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--sc-ink);
-  background: var(--sc-card);
-  border: 1.5px solid var(--sc-line);
-  border-radius: 0.625rem;
-  cursor: pointer;
-}
-.af__mapBtn:hover:not(:disabled) {
-  border-color: var(--sc-ink);
-}
-.af__mapBtn:disabled {
-  opacity: 0.45;
+.af__recommend:disabled {
+  opacity: 0.5;
   cursor: default;
 }
 .af__keyWarn {

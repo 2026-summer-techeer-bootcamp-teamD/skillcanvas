@@ -598,6 +598,31 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
                 />
               </label>
 
+              {/* 노드 자연어 수정 — 예: 디스코드 노드에 "팀 슬랙으로 바꿔줘" */}
+              <div className="af__mapEdit">
+                <label className="af__field">
+                  노드 바꾸기
+                  <input
+                    className="af__fieldInput"
+                    value={mapText}
+                    onChange={(e) => setMapText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") mapNode();
+                    }}
+                    placeholder="예: 팀 슬랙으로 바꿔줘"
+                  />
+                </label>
+                <button
+                  className="af__recommend"
+                  type="button"
+                  onClick={mapNode}
+                  disabled={mapBusy || !mapText.trim()}
+                >
+                  {mapBusy ? "바꾸는 중…" : "바꾸기"}
+                </button>
+                {mapError && <p className="af__recMeta">에러: {mapError}</p>}
+              </div>
+
               {(() => {
                 const meta = selected.data.mcpKey
                   ? catalog.find((t) => t.key === selected.data.mcpKey)
@@ -636,31 +661,6 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
                   </div>
                 );
               })()}
-
-              {/* 노드 자연어 수정 — 예: 디스코드 노드에 "팀 슬랙으로 바꿔줘" */}
-              <div className="af__mapEdit">
-                <label className="af__field">
-                  노드 바꾸기
-                  <input
-                    className="af__fieldInput"
-                    value={mapText}
-                    onChange={(e) => setMapText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") mapNode();
-                    }}
-                    placeholder="예: 팀 슬랙으로 바꿔줘"
-                  />
-                </label>
-                <button
-                  className="af__mapBtn"
-                  type="button"
-                  onClick={mapNode}
-                  disabled={mapBusy || !mapText.trim()}
-                >
-                  {mapBusy ? "바꾸는 중…" : "바꾸기"}
-                </button>
-                {mapError && <p className="af__recMeta">에러: {mapError}</p>}
-              </div>
             </>
           ) : (
             <>
@@ -824,7 +824,7 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
             onClick={handleRecommend}
             disabled={recLoading}
           >
-            {recLoading ? "추천 중…" : "⚡ AI에게 추천받기"}
+            {recLoading ? "추천 중…" : "AI에게 추천받기"}
           </button>
           {recError && <p className="af__recMeta">에러: {recError}</p>}
 
