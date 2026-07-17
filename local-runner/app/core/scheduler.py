@@ -92,7 +92,15 @@ async def _run_if_new_mail(w: dict) -> str | None:
         return None
     nodes, edges = graph.get("nodes", []), graph.get("edges", [])
     log.info("새 메일 감지(%s) → 워크플로우 자동 실행", msgid)
-    await loop.run_in_executor(None, start_run, nodes, edges, msgid)
+    result = await loop.run_in_executor(None, start_run, nodes, edges, msgid)
+    r = result or {}
+    # 실행이 끝났는지·어디서 멈췄는지 남긴다. status=awaiting_approval이면 승인 게이트에
+    # 걸린 것 — 자동 실행은 스스로 승인 못 하므로 브라우저에서 승인해야 이어진다.
+    log.info(
+        "자동 실행 결과: status=%s, %d단계 완료",
+        r.get("status"),
+        len(r.get("results", [])),
+    )
     return msgid
 
 
