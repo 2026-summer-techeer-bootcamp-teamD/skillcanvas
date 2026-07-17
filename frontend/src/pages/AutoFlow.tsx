@@ -791,8 +791,8 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
                 }}
               >
                 <strong>실행 결과</strong>
-                <span style={{ fontSize: 13, color: "#8a8375" }}>
-                  {running
+                {(() => {
+                  const label = running
                     ? "실행 중…"
                     : runStatus === "done"
                       ? "완료"
@@ -800,8 +800,25 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
                         ? "승인 대기"
                         : runStatus === "stopped"
                           ? "중단 (중복)"
-                          : ""}
-                </span>
+                          : "";
+                  if (!label) return null;
+                  // 완료는 우리 브랜드 주황 알약으로 포인트, 나머지는 담백한 회색 텍스트
+                  const done = runStatus === "done" && !running;
+                  return (
+                    <span
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        padding: done ? "3px 10px" : 0,
+                        borderRadius: 999,
+                        color: done ? "#fff" : "#8a8375",
+                        background: done ? "var(--sc-accent)" : "transparent",
+                      }}
+                    >
+                      {label}
+                    </span>
+                  );
+                })()}
               </div>
               {runError && (
                 <p style={{ color: "#c0392b", fontSize: 13, margin: "4px 0" }}>⚠ {runError}</p>
