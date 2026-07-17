@@ -94,6 +94,34 @@ export function getRunStatus(runId: string) {
   return runnerFetch<RunResponse>(`/run/${runId}/status`);
 }
 
+// ── 스케줄러 (감시 워크플로우 자동 실행) ─────────────────
+export interface WatchStatus {
+  watching: boolean;
+  saved: boolean;
+  interval_sec?: number;
+  node_count?: number;
+  updated_at?: string;
+}
+
+/** 현재 그래프를 '감시 워크플로우'로 저장하고 자동 실행 감시 시작. */
+export function startWatch(nodes: Node<FlowNodeData>[], edges: Edge[], intervalSec?: number) {
+  const graph = toRunnerGraph(nodes, edges);
+  return runnerFetch<WatchStatus>("/watch", {
+    method: "POST",
+    body: JSON.stringify(intervalSec ? { ...graph, interval_sec: intervalSec } : graph),
+  });
+}
+
+/** 감시 중지 (저장된 그래프는 보존). */
+export function stopWatch() {
+  return runnerFetch<WatchStatus>("/watch/stop", { method: "POST" });
+}
+
+/** 감시 상태 조회. */
+export function getWatchStatus() {
+  return runnerFetch<WatchStatus>("/watch");
+}
+
 // ── 부품 창고 (.claude 파일 다루기) ─────────────────────
 export interface RunnerGraphNode {
   id: string;

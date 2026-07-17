@@ -42,9 +42,13 @@ import {
   approveRun,
   saveCredential,
   getCredentials,
+  startWatch,
+  stopWatch,
+  getWatchStatus,
   RunnerError,
   type RunResultItem,
   type RunResponse,
+  type WatchStatus,
 } from "../lib/runner";
 import "./AutoFlow.css";
 
@@ -207,6 +211,30 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
   const [runPending, setRunPending] = useState<{ id: string; message: string } | null>(null);
   const [running, setRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
+
+  // ── 스케줄러 감시 (POST /watch) ────────────────────
+  const [watch, setWatch] = useState<WatchStatus | null>(null);
+  const [watchBusy, setWatchBusy] = useState(false);
+
+  useEffect(() => {
+    // 실행기가 켜져 있으면 감시 상태를 읽어와 버튼에 반영(꺼져 있으면 조용히 무시)
+    getWatchStatus()
+      .then(setWatch)
+      .catch(() => {});
+  }, []);
+
+  const handleToggleWatch = async () => {
+    setWatchBusy(true);
+    setRunError(null);
+    try {
+      const next = watch?.watching ? await stopWatch() : await startWatch(nodes, edges);
+      setWatch(next);
+    } catch (e) {
+      setRunError(e instanceof RunnerError ? e.message : "감시 설정 실패");
+    } finally {
+      setWatchBusy(false);
+    }
+  };
 
   const handleRun = async () => {
     setRunning(true);
@@ -735,6 +763,15 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
               </span>
             ))}
             <div className="af__toolbarRight">
+              <button
+                className={watch?.watching ? "af__watch af__watch--on" : "af__watch"}
+                type="button"
+                onClick={handleToggleWatch}
+                disabled={watchBusy}
+                title="새 메일이 오면 이 워크플로우를 자동 실행해요 (실행기가 켜져 있는 동안)"
+              >
+                {watchBusy ? "…" : watch?.watching ? "● 감시 중 · 끄기" : "감시 시작"}
+              </button>
               <button className="af__run" type="button" onClick={handleRun} disabled={running}>
                 {running ? "실행 중…" : "실행"}
               </button>
