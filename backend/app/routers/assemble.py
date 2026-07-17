@@ -95,7 +95,7 @@ def _map_node_system_prompt(catalog_keys: list[str]) -> str:
         "detail 규칙: tool 노드의 detail은 반드시 위 카탈로그 key 하나만 넣어라(예: notion). "
         "trigger·agent·approve 노드의 detail은 10자 이내 짧은 힌트로. 긴 문장은 절대 쓰지 마라.\n"
         "다른 설명 없이 반드시 아래 형태의 JSON만 답한다:\n"
-        '{"node": {"type": "trigger|tool|agent|approve", "label": str, "detail": str}, '
+        '{"node": {"type": "trigger|tool|agent|approve|branch", "label": str, "detail": str}, '
         '"mcp_added": "새로 필요해진 카탈로그 key 또는 null"}'
     )
 
