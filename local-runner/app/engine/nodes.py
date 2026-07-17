@@ -57,6 +57,34 @@ def _agent_prompt(label: str, detail: str, history: list[dict] | None) -> str:
     )
 
 
+def _branch_prompt(label: str, routes: list[str], history: list[dict] | None) -> str:
+    """분기 노드용 — 앞 단계 내용을 보고 정해진 라벨 중 하나만 고르게 한다."""
+    steps = "\n".join(f"- {h['label']}: {h['result']}" for h in history) if history else ""
+    opts = " / ".join(routes)
+    return (
+        f"너는 업무 자동화 워크플로우의 분기 판단 단계 '{label}'다.\n"
+        f"[지금까지 진행된 단계와 결과]\n{steps or '(이전 단계 없음)'}\n\n"
+        f"위 내용을 읽고 아래 유형 중 **정확히 하나**로 분류하라.\n"
+        f"[가능한 유형] {opts}\n\n"
+        "규칙:\n"
+        f"- 반드시 위 유형 중 하나의 라벨만 출력한다. 다른 말·설명·기호 절대 금지.\n"
+        f"- 예: 답이 '{routes[0]}'이면 오직 '{routes[0]}' 다섯 글자 이내로만 출력.\n"
+        "- 애매하면 가장 가까운 하나를 고른다. 여러 개 나열 금지."
+    )
+
+
+def _parse_route(text: str, routes: list[str]) -> str:
+    """모델 출력에서 라벨 하나를 뽑는다. 정확 일치 → 포함 → 첫 라벨 폴백."""
+    t = (text or "").strip()
+    for r in routes:  # 정확히 그 라벨을 말했나
+        if t == r:
+            return r
+    for r in routes:  # 문장 안에 라벨이 들어있나
+        if r in t:
+            return r
+    return routes[0]  # 못 고르면 첫 번째(안전 폴백)
+
+
 def _mcp_key(node: dict) -> str:
     """tool 노드가 쓸 카탈로그 key를 고른다.
 
@@ -147,6 +175,18 @@ def exec_node(node: dict, ctx: dict, history: list[dict] | None = None) -> dict:
         if "error" in r:
             return {"result": "🧠 ⚠ " + r["error"]}  # 실패해도 런은 계속
         return {"result": "🧠 " + _clean(r["text"])}
+
+    if t == "branch":  # 조건 분기 — 앞 내용 보고 유형 판단 → route로 경로 선택
+        # detail에 라벨을 '|'로 정의한다. 예: "문의|제안". 엣지의 when이 이 라벨과 매칭.
+        routes = [x.strip() for x in (detail or "").split("|") if x.strip()]
+        if not routes:  # 라벨 미정의 → 분기 못 함, 그냥 통과(첫 엣지)
+            return {"result": "🔀 분기: (라벨 미정의)"}
+        r = claude_call(_branch_prompt(label, routes, history), allowed_tools=None)
+        if "error" in r:
+            # 판단 실패해도 런이 죽지 않게 첫 경로로 폴백
+            return {"result": f"🔀 ⚠ 분기 판단 실패 → {routes[0]}", "route": routes[0]}
+        route = _parse_route(r["text"], routes)
+        return {"result": f"🔀 분류: {route}", "route": route}
 
     if t == "dedup":  # 하네스: 이미 처리한 건이면 중단 (SQLite 조회)
         key = ctx.get("item_key")
