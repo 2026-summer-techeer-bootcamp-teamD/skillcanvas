@@ -68,6 +68,7 @@ def assemble(
         system,
         user_message,
         fail_code="ASSEMBLE_FAILED",
+        feature="assemble",
         model=settings.anthropic_assemble_model,
     )
 
@@ -110,7 +111,7 @@ def map_node(
     system = _map_node_system_prompt(catalog_keys)
     user_message = f"현재 노드: {payload.node.model_dump_json()}\n수정 지시: {payload.instruction}"
 
-    data = ask_claude_json(system, user_message, fail_code="MAP_NODE_FAILED")
+    data = ask_claude_json(system, user_message, fail_code="MAP_NODE_FAILED", feature="map_node")
 
     try:
         result = MapNodeResponse(**data)

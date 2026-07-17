@@ -45,10 +45,10 @@ logger = logging.getLogger("skillcanvas.llm")
 AI_CALL_DURATION = Histogram(
     "ai_call_duration_seconds",
     "Claude API 호출 소요 시간(초)",
-    ["model", "status"],
+    ["model", "status", "feature"],
     buckets=(1, 2.5, 5, 10, 15, 20, 30, 45, 60, 90),
 )
-AI_CALL_TOTAL = Counter("ai_call_total", "Claude API 호출 횟수", ["model", "status"])
+AI_CALL_TOTAL = Counter("ai_call_total", "Claude API 호출 횟수", ["model", "status", "feature"])
 
 # 키가 없으면 client 생성이 실패하므로 지연 생성(lazy). AI 안 쓰는 팀원도 앱은 뜸.
 _client: Anthropic | None = None
@@ -81,6 +81,7 @@ def ask_claude(
     system: str,
     user: str,
     *,
+    feature: str,
     model: str | None = None,
     max_tokens: int = 2048,
 ) -> str:
@@ -88,6 +89,7 @@ def ask_claude(
 
     model 미지정 시 settings.anthropic_model(기본 haiku). 품질 필요한
     assemble(3-1)은 model="claude-sonnet-5" 로 넘겨 쓰길 권장.
+    feature는 호출 주체(assemble/map_node/recommend/classify 등) 식별용 라벨.
     """
     used_model = model or settings.anthropic_model
     start = time.perf_counter()
@@ -117,14 +119,14 @@ def ask_claude(
         ) from e
     finally:
         # 키 미설정으로 _get_client()가 502를 던진 경우도 실패 호출로 집계된다.
-        AI_CALL_DURATION.labels(model=used_model, status=status).observe(
+        AI_CALL_DURATION.labels(model=used_model, status=status, feature=feature).observe(
             time.perf_counter() - start
         )
         # success는 여기서 세지 않는다 — ask_claude_json()이 JSON 파싱까지 끝난
         # 최종 결과(success/parse_error)를 보고 1건만 집계한다(이중 집계 방지).
         # error는 파싱 단계까지 갈 수 없는 경우라 여기서 확정 집계.
         if status == "error":
-            AI_CALL_TOTAL.labels(model=used_model, status=status).inc()
+            AI_CALL_TOTAL.labels(model=used_model, status=status, feature=feature).inc()
 
 
 def ask_claude_json(
@@ -132,6 +134,7 @@ def ask_claude_json(
     user: str,
     *,
     fail_code: str,
+    feature: str,
     model: str | None = None,
     max_tokens: int = 2048,
 ) -> dict:
@@ -141,23 +144,24 @@ def ask_claude_json(
     - JSON 파싱 실패   → 422 fail_code (예: "RECOMMEND_FAILED")
 
     system 프롬프트에 "반드시 JSON만 답하라"를 꼭 넣을 것.
+    feature는 호출 주체(assemble/map_node/recommend/classify 등) 식별용 라벨.
     """
     used_model = model or settings.anthropic_model
-    text = ask_claude(system, user, model=model, max_tokens=max_tokens)
+    text = ask_claude(system, user, feature=feature, model=model, max_tokens=max_tokens)
     try:
         data = json.loads(_strip_fence(text))
     except (json.JSONDecodeError, ValueError) as e:
         # Claude API 호출 자체는 성공했지만 응답을 못 써먹은 경우. ask_claude()는
         # 이 시점엔 아직 success를 집계하지 않았으므로 parse_error 1건만 남는다.
-        AI_CALL_TOTAL.labels(model=used_model, status="parse_error").inc()
+        AI_CALL_TOTAL.labels(model=used_model, status="parse_error", feature=feature).inc()
         raise HTTPException(
             422, {"code": fail_code, "message": "AI 응답을 해석하지 못했습니다"}
         ) from e
     # 유효한 JSON이라도 객체가 아니면(list/str/int/bool) 라우터가 dict로 다루다
     # AttributeError→500이 난다. 파싱 실패로 간주해 명세대로 422로 막는다.
     if not isinstance(data, dict):
-        AI_CALL_TOTAL.labels(model=used_model, status="parse_error").inc()
+        AI_CALL_TOTAL.labels(model=used_model, status="parse_error", feature=feature).inc()
         raise HTTPException(422, {"code": fail_code, "message": "AI 응답을 해석하지 못했습니다"})
     # 여기까지 왔다면 호출부터 파싱까지 완전히 성공한 논리적 요청 1건 → 여기서만 집계.
-    AI_CALL_TOTAL.labels(model=used_model, status="success").inc()
+    AI_CALL_TOTAL.labels(model=used_model, status="success", feature=feature).inc()
     return data
