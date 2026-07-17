@@ -128,3 +128,9 @@ export function saveCredential(toolKey: string, secret: string) {
     body: JSON.stringify({ tool_key: toolKey, secret }),
   });
 }
+
+/** MCP 키 현황: 등록된 tool_key 목록 (secret은 절대 포함 안 됨).
+ *  MyWorld(키 현황)와 AutoFlow(노드 편집 시 '이미 넣었는지' 표시)가 공유한다. */
+export function getCredentials() {
+  return runnerFetch<{ tool_keys: string[] }>("/credentials");
+}

@@ -31,7 +31,17 @@ export default function StepView({ step, stepIndex, totalSteps, onNext }: StepVi
         maxWidth: 1080,
       }}
     >
-      <div style={{ flex: 1, minWidth: 280, maxWidth: 420, display: "flex", flexDirection: "column", alignItems: "flex-start", textAlign: "left" }}>
+      <div
+        style={{
+          flex: 1,
+          minWidth: 280,
+          maxWidth: 420,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "flex-start",
+          textAlign: "left",
+        }}
+      >
         <div
           style={{
             borderRadius: 999,
@@ -44,7 +54,9 @@ export default function StepView({ step, stepIndex, totalSteps, onNext }: StepVi
           }}
         >
           <Mascot size={15} />
-          <span style={{ fontWeight: 700, fontSize: 12.5, color: tokens.badgeText }}>{step.pill}</span>
+          <span style={{ fontWeight: 700, fontSize: 12.5, color: tokens.badgeText }}>
+            {step.pill}
+          </span>
         </div>
         <div style={{ height: 20 }} />
         <Headline parts={step.parts} />
@@ -100,7 +112,13 @@ export default function StepView({ step, stepIndex, totalSteps, onNext }: StepVi
           loop
           muted
           playsInline
-          style={{ width: "100%", height: 340, objectFit: "cover", borderRadius: 12, boxShadow: `inset 0 0 0 1px ${tokens.line}` }}
+          style={{
+            width: "100%",
+            height: 340,
+            objectFit: "cover",
+            borderRadius: 12,
+            boxShadow: `inset 0 0 0 1px ${tokens.line}`,
+          }}
         />
       </div>
     </div>

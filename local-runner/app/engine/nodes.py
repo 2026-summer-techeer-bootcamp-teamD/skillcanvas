@@ -51,6 +51,8 @@ def _agent_prompt(label: str, detail: str, history: list[dict] | None) -> str:
         "절대 지어내지 말고, 못 찾으면 못 찾았다고 쓴다.\n"
         "- 이전 단계의 '🔌 도구 실행' 줄은 실제 데이터가 아니라 실행 기록일 뿐이다. "
         "거기서 데이터를 기대하지 말고 필요하면 직접 검색해라.\n"
+        "- 앞 단계가 항목마다 `[출처: URL]`을 줬으면 **그 링크를 요약에도 항목별로 그대로 유지**한다. "
+        "URL을 새로 지어내지는 마라.\n"
         "- 한국어, 결과 텍스트만. 요약·목록이면 불릿 5개 이내, 그 외엔 3문장 이내."
     )
 
@@ -69,27 +71,64 @@ def _mcp_key(node: dict) -> str:
     return (node.get("mcp_key") or node.get("label") or "").strip().lower()
 
 
-def _tool_prompt(label: str, detail: str, history: list[dict] | None) -> str:
-    """도구 노드용 — 앞 단계 **결과물**을 실제로 전송시킨다.
+_COMMON_TOOL_RULES = (
+    "- 도구를 실제로 호출하라. 호출한 척하고 보고만 하지 마라.\n"
+    "- 인사말·해명·'짚어둘 점이 있습니다' 같은 메타 발언 절대 금지. 결과만 쓴다.\n"
+    "- 이 단계에서 할 수 없는 일(다음 단계 몫)을 왜 안 했는지 설명하지 마라.\n"
+)
 
-    '바로 앞 단계'를 쓰라고 하면 안 된다. 승인 게이트 뒤에 발송 노드가 오는 그래프(CS
-    시나리오)에서 바로 앞은 "🚨 승인 게이트 — 사용자 확인 대기"라, 사과문 대신 그 문구를
-    메일로 보내버린다. 하네스 줄(🚨/🔁/✅/⏱)과 실제 결과물(🧠)을 구분해서 알려준다.
+
+def _tool_prompt(label: str, detail: str, history: list[dict] | None, role: str = "auto") -> str:
+    """도구 노드용 프롬프트. role에 따라 지시가 완전히 달라진다.
+
+    ⚠️ 예전엔 발송(telegram/discord) 전제로만 썼다("앞 결과물을 전송하라", "어디로 보냈는지
+    보고하라"). 그러면 web-search 같은 **수집** 도구에서 AI가 혼란에 빠져
+    "어디로도 전송하지 않았습니다 — 이번 단계는 검색 단계일 뿐이고..." 하는 해명을
+    길게 늘어놓는다(실제로 그랬다).
+
+    role: "fetch"(수집·조회) | "send"(발송) | "auto"(라벨 보고 판단 — gmail처럼 둘 다 되는 도구)
     """
     steps = "\n".join(f"- {h['label']}: {h['result']}" for h in history) if history else ""
-    return (
-        f"너는 업무 자동화 워크플로우의 '{label}' 도구 단계다. "
-        f"연결된 {label} 도구를 실제로 호출해 작업을 수행하라.\n"
+    head = (
+        f"너는 업무 자동화 워크플로우의 '{label}' 도구 단계다.\n"
         f"[지금까지 진행된 단계와 결과]\n{steps or '(이전 단계 없음)'}\n\n"
-        f"[이번 단계] {label} ({detail})\n\n"
-        "규칙:\n"
-        "- 전송할 내용은 앞 단계들이 만든 **결과물**(사과문·요약문 등, 보통 🧠 로 시작)이다. "
-        "여러 개면 이번 단계 목적에 맞는 것을 고른다. 내용을 새로 지어내지 마라.\n"
-        "- ⏱ 트리거 / 🚨 승인 게이트 / 🔁 중복체크 / ✅ 검증 줄은 워크플로우 내부 실행 기록이다. "
-        "**절대 전송 내용으로 쓰지 마라.**\n"
-        "- 결과물 앞의 이모지 접두사(🧠 🔌 등)는 내부 표시이므로 빼고 보낸다.\n"
-        "- 도구를 실제로 호출하라. 호출한 척하고 보고만 하지 마라.\n"
-        "- 끝나면 무엇을 어디로 보냈는지 한국어 1문장으로만 보고한다."
+        f"[이번 단계] {label} ({detail})\n\n규칙:\n"
+    )
+
+    if role == "fetch":
+        return head + (
+            "- 이 단계는 **수집·조회** 단계다. 어디로도 보내지 않는다. 발송은 다음 단계 몫이다.\n"
+            "- 도구로 가져온 내용을 **다음 단계가 바로 쓸 수 있게** 정리해 출력한다.\n"
+            "- 한국어 불릿 5개 이내. 각 줄은 '제목 — 핵심 한 줄'.\n"
+            "- **각 항목 끝에 그 내용을 실제로 확인한 기사 URL을 `[출처: https://...]` 형태로 붙인다.** "
+            "항목마다 개별 링크가 원칙이고, 검색 결과에 그 항목의 URL이 없으면 링크를 지어내지 말고 생략한다.\n"
+            "- 못 찾았으면 못 찾았다고만 쓴다. 없는 사실·없는 링크를 지어내지 마라.\n"
+            + _COMMON_TOOL_RULES
+        )
+
+    if role == "send":
+        return head + (
+            "- 이 단계는 **발송** 단계다. 앞 단계들이 만든 **결과물**(요약·사과문 등, 보통 🧠 나 🔌 로 "
+            "시작하는 줄의 내용)을 전송한다.\n"
+            "- **사실은 앞 결과물에서만 가져온다. 없는 내용을 새로 지어내지 마라.** 다만 그대로 붙여넣지 말고 "
+            "받는 사람이 읽기 좋게 **다듬어서** 보낸다.\n"
+            "- 메신저(텔레그램·디스코드·슬랙)로 보내는 브리핑/요약이면 이 틀을 따른다:\n"
+            "    · 첫 줄: 한 줄 제목 + 날짜 (예: 📱 오늘의 AI 브리핑 — 2026.7.16)\n"
+            "    · 항목마다 '번호. 굵은 소제목 (관련 이모지)' 다음 줄에 2~3문장 설명, 항목 사이 빈 줄\n"
+            "    · 앞 단계가 항목마다 `[출처: URL]`을 줬으면, 맨 아래 '🔗 출처'에 **항목 번호와 함께** "
+            "'1. https://...' 처럼 개별 링크로 나열한다. 링크가 없는 항목은 번호만 두거나 생략한다. "
+            "**URL을 새로 지어내지 마라 — 앞 단계가 준 것만 쓴다.**\n"
+            "  이메일이면 인사–본문–맺음의 격식 있는 편지 형식으로. 내용 성격에 맞는 틀을 골라라.\n"
+            "- ⏱ 트리거 / 🚨 승인 게이트 / 🔁 중복체크 / ✅ 검증 줄은 워크플로우 내부 실행 기록이다. "
+            "**절대 전송 내용으로 쓰지 마라.** 결과물 앞의 이모지 접두사(🧠 🔌)도 빼고 보낸다.\n"
+            "- 끝나면 무엇을 어디로 보냈는지 한국어 1문장으로만 보고한다.\n" + _COMMON_TOOL_RULES
+        )
+
+    return head + (
+        "- 이번 단계의 목적은 위 [이번 단계]에 적혀 있다. 그 목적에 맞게 도구를 호출하라.\n"
+        "- 목적이 **읽기·조회**면 가져온 내용을 정리해 출력한다(어디로도 보내지 않는다).\n"
+        "- 목적이 **발송**이면 앞 단계 결과물을 그대로 보낸다. ⏱🚨🔁✅ 줄은 내부 기록이니 보내지 마라.\n"
+        "- 한국어로 간결하게. 결과만 쓴다.\n" + _COMMON_TOOL_RULES
     )
 
 
@@ -140,9 +179,10 @@ def exec_node(node: dict, ctx: dict, history: list[dict] | None = None) -> dict:
 
         # ② MCP 서버 없이 Claude Code 내장 도구로 되는 것(web-search 등) — 키 불필요.
         if key in mcp.BUILTIN_TOOLS:
+            spec = mcp.BUILTIN_TOOLS[key]
             r = claude_call(
-                _tool_prompt(label, detail, history),
-                allowed_tools=mcp.BUILTIN_TOOLS[key],
+                _tool_prompt(label, detail, history, role=spec["role"]),
+                allowed_tools=spec["tools"],
             )
             if "error" in r:
                 return {"result": "🔌 ⚠ " + r["error"]}
@@ -168,7 +208,7 @@ def exec_node(node: dict, ctx: dict, history: list[dict] | None = None) -> dict:
                     f"노드를 클릭해 {need} 를 다시 저장해 주세요"
                 }
             r = claude_call(
-                _tool_prompt(label, detail, history),
+                _tool_prompt(label, detail, history, role=mcp.MCP_SERVERS[key].get("role", "auto")),
                 allowed_tools=f"mcp__{key}",  # 이 서버의 도구만 허용
                 mcp_config=cfg_path,
             )

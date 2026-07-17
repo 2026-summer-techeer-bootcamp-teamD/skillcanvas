@@ -11,14 +11,13 @@ prefix를 두지 않고 엔드포인트마다 전체 경로를 명시한다.
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import ValidationError
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.db import get_db
 from app.core.deps import get_current_user
 from app.core.llm import ask_claude_json
-from app.models.tool_catalog import ToolCatalog
+from app.models.tool_catalog import list_catalog_keys
 from app.models.user import User
 from app.schemas.assemble import (
     AssembleRequest,
@@ -28,10 +27,6 @@ from app.schemas.assemble import (
 )
 
 router = APIRouter(tags=["자연어 조립"])
-
-
-def _catalog_keys(db: Session) -> list[str]:
-    return list(db.scalars(select(ToolCatalog.key).order_by(ToolCatalog.key)))
 
 
 def _system_prompt(catalog_keys: list[str], target: str) -> str:
@@ -60,7 +55,7 @@ def assemble(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    catalog_keys = _catalog_keys(db)
+    catalog_keys = list_catalog_keys(db)
     system = _system_prompt(catalog_keys, payload.target)
     user_message = "\n".join([*payload.context, payload.text])
 
@@ -107,7 +102,7 @@ def map_node(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    catalog_keys = _catalog_keys(db)
+    catalog_keys = list_catalog_keys(db)
     system = _map_node_system_prompt(catalog_keys)
     user_message = f"현재 노드: {payload.node.model_dump_json()}\n수정 지시: {payload.instruction}"
 

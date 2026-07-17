@@ -33,6 +33,7 @@ import {
   runFlow,
   approveRun,
   saveCredential,
+  getCredentials,
   RunnerError,
   type RunResultItem,
   type RunResponse,
@@ -125,6 +126,7 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
   // ── 도구 카탈로그 (GET /tool-catalog) — 키 붙여넣기 팝업 자동생성 ──
   const [catalog, setCatalog] = useState<ToolCatalogItem[]>([]);
   const [keyModalOpen, setKeyModalOpen] = useState(false);
+  const [savedKeys, setSavedKeys] = useState<Set<string>>(new Set());
   const [keyTarget, setKeyTarget] = useState<{ key: string; tool: ToolCatalogItem | null } | null>(
     null,
   );
@@ -381,6 +383,17 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
       .catch(() => {});
   }, [call]);
 
+  // 이미 키를 넣은 도구 목록 (로컬 실행기). 이게 없으면 저장하고 나서도 "키 연결 필요"가
+  // 그대로 떠서 넣었는지 확인할 방법이 없다. 실행기가 안 떠 있으면 조용히 빈 목록.
+  const refreshSavedKeys = useCallback(() => {
+    getCredentials()
+      .then((d) => setSavedKeys(new Set(d.tool_keys)))
+      .catch(() => {});
+  }, []);
+  useEffect(() => {
+    refreshSavedKeys();
+  }, [refreshSavedKeys]);
+
   // MCP 노드 키로 카탈로그 매칭 후 키 팝업 열기
   const openKeyModal = (toolKey: string) => {
     const tool = catalog.find((t) => t.key === toolKey.trim().toLowerCase()) ?? null;
@@ -522,16 +535,25 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
                     : true
                   : false;
                 if (!showKeyPanel) return null;
+                // 이미 넣은 키면 경고(주황) 대신 완료(초록)로. 이게 없으면 저장하고 나서도
+                // "키 연결 필요"가 그대로 떠서 넣었는지 확인할 방법이 없다.
+                const done = savedKeys.has((selected.data.mcpKey ?? "").toLowerCase());
                 return (
-                  <div className="af__keyWarn">
-                    <p className="af__keyWarnTitle">▨ MCP 키 연결 필요</p>
-                    <p className="af__keyWarnBody">이 도구는 키를 붙여넣어야 실행돼요.</p>
+                  <div className={done ? "af__keyWarn af__keyWarn--done" : "af__keyWarn"}>
+                    <p className="af__keyWarnTitle">
+                      {done ? "✓ 키 연결됨" : "▨ MCP 키 연결 필요"}
+                    </p>
+                    <p className="af__keyWarnBody">
+                      {done
+                        ? "이 PC에 저장돼 있어요. 바로 실행할 수 있어요."
+                        : "이 도구는 키를 붙여넣어야 실행돼요."}
+                    </p>
                     <button
                       className="af__keyBtn"
                       type="button"
                       onClick={() => openKeyModal(selected.data.mcpKey ?? selected.data.title)}
                     >
-                      키 붙여넣기
+                      {done ? "키 다시 넣기" : "키 붙여넣기"}
                     </button>
                   </div>
                 );
@@ -592,94 +614,94 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
               <Controls showInteractive={false} />
             </ReactFlow>
           </div>
-        </div>
 
-        {/* 실행 결과 오버레이 (로컬 실행기 응답) */}
-        {(running || runStatus || runError) && (
-          <div
-            style={{
-              position: "fixed",
-              right: 20,
-              bottom: 20,
-              width: 380,
-              maxHeight: "44vh",
-              overflow: "auto",
-              background: "#fff",
-              border: "1px solid #e5e0d2",
-              borderRadius: 12,
-              padding: "12px 14px",
-              boxShadow: "0 8px 24px rgba(0,0,0,.12)",
-              zIndex: 50,
-            }}
-          >
+          {/* 실행 결과 오버레이 (로컬 실행기 응답) */}
+          {(running || runStatus || runError) && (
             <div
               style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 8,
+                position: "absolute",
+                right: 20,
+                bottom: 20,
+                width: "min(380px, calc(100% - 40px))",
+                maxHeight: "44vh",
+                overflow: "auto",
+                background: "#fff",
+                border: "1px solid #e5e0d2",
+                borderRadius: 12,
+                padding: "12px 14px",
+                boxShadow: "0 8px 24px rgba(0,0,0,.12)",
+                zIndex: 50,
               }}
             >
-              <strong>실행 결과</strong>
-              <span style={{ fontSize: 13, color: "#8a8375" }}>
-                {running
-                  ? "▶ 실행 중…"
-                  : runStatus === "done"
-                    ? "✅ 완료"
-                    : runStatus === "awaiting_approval"
-                      ? "🚨 승인 대기"
-                      : runStatus === "stopped"
-                        ? "⛔ 중단(중복)"
-                        : ""}
-              </span>
-            </div>
-            {runError && (
-              <p style={{ color: "#c0392b", fontSize: 13, margin: "4px 0" }}>⚠ {runError}</p>
-            )}
-            <ol
-              style={{
-                margin: 0,
-                paddingLeft: 18,
-                fontSize: 13,
-                lineHeight: 1.7,
-                color: "#4a4636",
-              }}
-            >
-              {runResults.map((r, i) => (
-                <li key={`${r.id}-${i}`}>{r.result}</li>
-              ))}
-            </ol>
-            {runPending && (
               <div
                 style={{
-                  marginTop: 10,
-                  padding: "10px 12px",
-                  background: "#fff4ec",
-                  border: "1px solid #f2c9a8",
-                  borderRadius: 8,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 8,
                 }}
               >
-                <p style={{ margin: "0 0 8px", fontSize: 13 }}>🚨 {runPending.message}</p>
-                <button
-                  type="button"
-                  onClick={handleApprove}
-                  disabled={running}
+                <strong>실행 결과</strong>
+                <span style={{ fontSize: 13, color: "#8a8375" }}>
+                  {running
+                    ? "▶ 실행 중…"
+                    : runStatus === "done"
+                      ? "✅ 완료"
+                      : runStatus === "awaiting_approval"
+                        ? "🚨 승인 대기"
+                        : runStatus === "stopped"
+                          ? "⛔ 중단(중복)"
+                          : ""}
+                </span>
+              </div>
+              {runError && (
+                <p style={{ color: "#c0392b", fontSize: 13, margin: "4px 0" }}>⚠ {runError}</p>
+              )}
+              <ol
+                style={{
+                  margin: 0,
+                  paddingLeft: 18,
+                  fontSize: 13,
+                  lineHeight: 1.7,
+                  color: "#4a4636",
+                }}
+              >
+                {runResults.map((r, i) => (
+                  <li key={`${r.id}-${i}`}>{r.result}</li>
+                ))}
+              </ol>
+              {runPending && (
+                <div
                   style={{
-                    padding: "6px 14px",
-                    background: "#e8843c",
-                    color: "#fff",
-                    border: "none",
-                    borderRadius: 6,
-                    cursor: "pointer",
-                    fontWeight: 600,
+                    marginTop: 10,
+                    padding: "10px 12px",
+                    background: "#fff4ec",
+                    border: "1px solid #f2c9a8",
+                    borderRadius: 8,
                   }}
                 >
-                  승인하고 계속
-                </button>
-              </div>
-            )}
-          </div>
-        )}
+                  <p style={{ margin: "0 0 8px", fontSize: 13 }}>🚨 {runPending.message}</p>
+                  <button
+                    type="button"
+                    onClick={handleApprove}
+                    disabled={running}
+                    style={{
+                      padding: "6px 14px",
+                      background: "#e8843c",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: 6,
+                      cursor: "pointer",
+                      fontWeight: 600,
+                    }}
+                  >
+                    승인하고 계속
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* 오른쪽: 자연어 추천 / 라이브러리 패널 */}
         <aside className="af__side">
@@ -821,8 +843,8 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
           if (!keyTarget) return;
           // 저장은 로컬 실행기(POST /credential). 실패하면 throw → 모달이 에러 표시
           await saveCredential(keyTarget.key, secret);
+          refreshSavedKeys(); // 패널을 '연결됨'으로 즉시 바꾼다
           setKeyModalOpen(false);
-          alert(`${keyTarget.key} 키가 로컬에 저장됐어요.`);
         }}
       />
     </div>

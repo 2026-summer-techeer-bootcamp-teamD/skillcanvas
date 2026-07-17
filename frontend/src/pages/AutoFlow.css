@@ -272,6 +272,7 @@
 
 /* 가운데 캔버스 */
 .af__canvas {
+  position: relative;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -280,12 +281,19 @@
 }
 .af__toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
+  row-gap: 0.5rem;
   padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--sc-line);
 }
 .af__flowChip {
+  flex-shrink: 0;
+  max-width: 12rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   padding: 0.375rem 0.75rem;
   font-family: var(--sc-font-mono);
   font-size: 0.8rem;
@@ -296,6 +304,7 @@
   border-radius: 0.5rem;
 }
 .af__conn {
+  flex-shrink: 0;
   padding: 0.375rem 0.625rem;
   font-size: 0.8rem;
   font-weight: 600;
@@ -306,6 +315,7 @@
 }
 .af__toolbarRight {
   display: flex;
+  flex-shrink: 0;
   gap: 0.5rem;
   margin-left: auto;
 }
@@ -481,6 +491,58 @@
   border-bottom: 1px solid var(--sc-line);
 }
 
+/* 창이 좁아지면 좌우 패널 폭을 줄여 캔버스/툴바가 겹치지 않도록 함 */
+@media (max-width: 68.75rem) {
+  .af__inspect,
+  .af__side {
+    width: 14rem;
+  }
+}
+@media (max-width: 56.25rem) {
+  .af__inspect,
+  .af__side {
+    width: 11.25rem;
+    padding: 0.875rem;
+  }
+  .af__toolbar {
+    padding: 0.625rem 0.75rem;
+  }
+  .af__flowChip {
+    max-width: 8rem;
+  }
+}
+
+/* 정말 좁은 화면(모바일 폭)에서는 옆으로 눌러 짜는 대신 위/아래로 쌓는다 —
+   그래야 툴바 버튼이 옆 패널을 침범해 겹치는 일이 없다. */
+@media (max-width: 42rem) {
+  .af__work {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .af__inspect,
+  .af__side {
+    width: 100%;
+    max-height: 13rem;
+    flex-shrink: 0;
+    border: none;
+  }
+  .af__inspect {
+    border-bottom: 1px solid var(--sc-line);
+  }
+  .af__side {
+    border-top: 1px solid var(--sc-line);
+  }
+  .af__canvas {
+    min-height: 22rem;
+  }
+  .af__toolbar {
+    padding: 0.625rem;
+  }
+  .af__toolbarRight {
+    margin-left: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .af__mascot {
     animation: none;
@@ -492,4 +554,19 @@
   font-size: 1.125rem;
   font-weight: 600;
   color: var(--sc-muted, #9a938a);
+}
+
+/* 키가 이미 등록된 도구 — 경고(주황)가 아니라 완료(초록)로 보여준다.
+   예전엔 저장 후에도 "키 연결 필요"가 그대로 떠서 넣었는지 확인이 안 됐다. */
+.af__keyWarn--done {
+  border-color: #1f9d55;
+  background: #f0fbf4;
+}
+.af__keyWarn--done .af__keyWarnTitle {
+  color: #1f7a43;
+}
+.af__keyWarn--done .af__keyBtn {
+  background: transparent;
+  color: #1f7a43;
+  border: 1px solid #1f9d55;
 }
