@@ -67,6 +67,14 @@ const REC_SKILLS: {
     typeLabel: "승인",
     op: "human.gate",
   },
+  {
+    // op(=detail)에 분기 라벨을 '|'로. 실행기 branch 노드가 이걸 유형 후보로 쓴다.
+    title: "분기 (유형 판단)",
+    meta: "분기 · branch",
+    kind: "branch",
+    typeLabel: "분기",
+    op: "문의|제안",
+  },
 ];
 
 const MY_SKILLS: {
