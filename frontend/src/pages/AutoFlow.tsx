@@ -46,6 +46,16 @@ const EXAMPLES = [
   "메일 오면 분류해서 라벨 붙이기",
 ];
 
+// map-node 응답의 type → 노드 타입 라벨(인스펙터 표시용).
+const KIND_LABEL: Record<FlowNodeKind, string> = {
+  trigger: "트리거",
+  tool: "도구",
+  agent: "에이전트",
+  approve: "승인",
+  output: "출력",
+  branch: "분기",
+};
+
 const REC_SKILLS: {
   title: string;
   meta: string;
@@ -119,6 +129,10 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState(INITIAL_NODES);
   const [edges, setEdges, onEdgesChange] = useEdgesState(INITIAL_EDGES);
   const [selected, setSelected] = useState<Node<FlowNodeData> | null>(null);
+  // 노드 자연어 수정(POST /map-node) — 예: "팀 슬랙으로 바꿔줘"
+  const [mapText, setMapText] = useState("");
+  const [mapBusy, setMapBusy] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
   const idRef = useRef(100);
   const flowWrapper = useRef<HTMLDivElement>(null);
   const [rfInstance, setRfInstance] = useState<ReactFlowInstance | null>(null);
@@ -301,11 +315,57 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
     );
   };
 
+  // 선택 노드를 자연어 지시로 재매핑(POST /map-node). 예: 디스코드 노드에 "슬랙으로 바꿔줘".
+  // 응답의 detail이 카탈로그 key면 그게 곧 실행기가 쓸 mcpKey → 실행 대상·키 패널까지 갱신된다.
+  const mapNode = async () => {
+    if (!selected) return;
+    const instruction = mapText.trim();
+    if (!instruction || mapBusy) return;
+    setMapBusy(true);
+    setMapError(null);
+    try {
+      const data = await call<{
+        node: { type: string; label: string; detail: string | null };
+        mcp_added: string | null;
+      }>("/map-node", {
+        method: "POST",
+        json: {
+          node: {
+            type: selected.data.kind,
+            label: selected.data.title,
+            detail: selected.data.op || null,
+          },
+          instruction,
+        },
+      });
+      const kind = (
+        ["trigger", "tool", "agent", "approve", "output", "branch"].includes(data.node.type)
+          ? data.node.type
+          : "tool"
+      ) as FlowNodeKind;
+      const detail = data.node.detail ?? "";
+      const isMcp = kind === "tool" && detail !== "" && catalog.some((t) => t.key === detail);
+      updateSelectedData({
+        kind,
+        typeLabel: KIND_LABEL[kind] ?? kind,
+        title: data.node.label,
+        op: detail,
+        mcpKey: isMcp ? detail : undefined,
+      });
+      setMapText("");
+    } catch (e) {
+      setMapError(e instanceof ApiError ? e.message : "노드 수정 실패");
+    } finally {
+      setMapBusy(false);
+    }
+  };
+
   // 클릭뿐 아니라 키보드 선택까지 아우르도록 React Flow 선택 상태로 인스펙터를 연다.
-  const onSelectionChange = useCallback(
-    ({ nodes: sel }: { nodes: Node<FlowNodeData>[] }) => setSelected(sel[0] ?? null),
-    [],
-  );
+  const onSelectionChange = useCallback(({ nodes: sel }: { nodes: Node<FlowNodeData>[] }) => {
+    setSelected(sel[0] ?? null);
+    setMapText(""); // 다른 노드로 넘어가면 자연어 수정 입력·에러 초기화
+    setMapError(null);
+  }, []);
 
   // 연결선을 클릭하면 그 연결을 삭제 (노드는 핸들을 드래그해 다시 이을 수 있다)
   const onEdgeClick = useCallback(
@@ -576,6 +636,31 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
                   </div>
                 );
               })()}
+
+              {/* 노드 자연어 수정 — 예: 디스코드 노드에 "팀 슬랙으로 바꿔줘" */}
+              <div className="af__mapEdit">
+                <label className="af__field">
+                  ✎ AI로 바꾸기
+                  <input
+                    className="af__fieldInput"
+                    value={mapText}
+                    onChange={(e) => setMapText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") mapNode();
+                    }}
+                    placeholder="예: 팀 슬랙으로 바꿔줘"
+                  />
+                </label>
+                <button
+                  className="af__recommend"
+                  type="button"
+                  onClick={mapNode}
+                  disabled={mapBusy || !mapText.trim()}
+                >
+                  {mapBusy ? "바꾸는 중…" : "⚡ AI로 수정"}
+                </button>
+                {mapError && <p className="af__recMeta">에러: {mapError}</p>}
+              </div>
             </>
           ) : (
             <>
