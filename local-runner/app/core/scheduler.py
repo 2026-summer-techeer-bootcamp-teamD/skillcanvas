@@ -94,13 +94,15 @@ async def _run_if_new_mail(w: dict) -> str | None:
     log.info("새 메일 감지(%s) → 워크플로우 자동 실행", msgid)
     result = await loop.run_in_executor(None, start_run, nodes, edges, msgid)
     r = result or {}
-    # 실행이 끝났는지·어디서 멈췄는지 남긴다. status=awaiting_approval이면 승인 게이트에
-    # 걸린 것 — 자동 실행은 스스로 승인 못 하므로 브라우저에서 승인해야 이어진다.
-    log.info(
-        "자동 실행 결과: status=%s, %d단계 완료",
-        r.get("status"),
-        len(r.get("results", [])),
-    )
+    # status=done은 '끝까지 갔다'일 뿐 모든 노드 성공이 아니다(실패 노드도 다음으로 넘어감).
+    # status=awaiting_approval이면 승인 게이트에 걸린 것 — 자동 실행은 스스로 승인 못 한다.
+    results = r.get("results", [])
+    log.info("자동 실행 결과: status=%s, %d단계 완료", r.get("status"), len(results))
+    # 노드별 결과를 남겨 '어디서 실패했는지'(예: 노션 저장 실패)를 콘솔에서 바로 보게 한다.
+    for item in results:
+        log.info(
+            "  · %s: %s", item.get("label"), (item.get("result") or "").replace("\n", " ")[:140]
+        )
     return msgid
 
 
