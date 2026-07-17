@@ -345,7 +345,7 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
       const data = await call<{
         name: string;
         nodes: { id: string; type: string; label: string; detail: string | null }[];
-        edges: { from: string; to: string }[];
+        edges: { from: string; to: string; when?: string | null }[];
         used_mcps: string[];
       }>("/assemble", { method: "POST", json: { text: prompt, target: "workflow" } });
       const { nodes: n, edges: e } = assembleWorkflowToFlow(

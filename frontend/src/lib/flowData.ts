@@ -73,7 +73,7 @@ const EDGE_STYLE = {
   strokeDasharray: "5 5",
 };
 
-function edge(id: string, source: string, target: string): Edge {
+function edge(id: string, source: string, target: string, label?: string): Edge {
   return {
     id,
     source,
@@ -81,6 +81,9 @@ function edge(id: string, source: string, target: string): Edge {
     animated: true,
     style: EDGE_STYLE,
     markerEnd: { type: MarkerType.ArrowClosed, color: "#e8843c" },
+    // 분기 조건 라벨(assemble의 when). 있으면 빨간 라벨로 표시하고, 실행 시 toRunnerGraph가
+    // 이 label을 when으로 실어보낸다(수동 연결 onConnect와 같은 계약).
+    ...(label ? { label, labelStyle: { fill: "#d64550", fontWeight: 600 } } : {}),
   };
 }
 
@@ -150,7 +153,7 @@ export function assembleToFlow(
  */
 export function assembleWorkflowToFlow(
   nodes: AssembledNode[],
-  edges: { from: string; to: string }[],
+  edges: { from: string; to: string; when?: string | null }[],
   usedMcps: string[] = [],
 ): { nodes: Node<FlowNodeData>[]; edges: Edge[] } {
   // 각 노드의 열(깊이): 루트=0, 자식=부모열+1 (longest-path 완화)
@@ -190,6 +193,8 @@ export function assembleWorkflowToFlow(
       },
     };
   });
-  const rfEdges: Edge[] = edges.map((e, i) => edge(`we${i}`, e.from, e.to));
+  const rfEdges: Edge[] = edges.map((e, i) =>
+    edge(`we${i}`, e.from, e.to, e.when?.trim() || undefined),
+  );
   return { nodes: rfNodes, edges: rfEdges };
 }
