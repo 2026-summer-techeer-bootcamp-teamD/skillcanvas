@@ -402,7 +402,7 @@
           "targets": [
             {
               "refId": "A",
-              "expr": "100 * (pg_stat_user_tables_n_dead_tup{datname=\"skillcanvas\"} or vector(0)) / clamp_min((pg_stat_user_tables_n_live_tup{datname=\"skillcanvas\"} + pg_stat_user_tables_n_dead_tup{datname=\"skillcanvas\"} or vector(0)), 1)",
+              "expr": "100 * pg_stat_user_tables_n_dead_tup{datname=\"skillcanvas\"} / clamp_min((pg_stat_user_tables_n_live_tup{datname=\"skillcanvas\"} + pg_stat_user_tables_n_dead_tup{datname=\"skillcanvas\"}), 1)",
               "legendFormat": "{{relname}}"
             }
           ],
