@@ -20,6 +20,17 @@ _META_HINTS = (
     "단계의 결과물",
 )
 
+# agent 노드가 웹검색을 켤지 판단하는 키워드. label/detail에 이게 있으면 검색 허용.
+# 기본은 검색 끔 — 답변·요약·판단 노드는 검색이 필요 없는데 켜두면 모델이 괜히
+# 웹검색을 시도해 느려지거나 간헐적으로 타임아웃 난다. (뉴스 수집은 보통 web-search
+# tool 노드가 따로 하므로 agent는 검색이 거의 불필요.)
+_SEARCH_HINTS = ("검색", "뉴스", "조사", "찾아", "최신", "search", "news")
+
+
+def _needs_search(label: str, detail: str) -> bool:
+    hay = f"{label} {detail}".lower()
+    return any(h in hay for h in _SEARCH_HINTS)
+
 
 def _clean(text: str, limit: int = 1200) -> str:
     """claude 응답에서 앞쪽 메타 서두 줄만 걷어내고 본문은 그대로 살린다.
@@ -36,9 +47,29 @@ def _clean(text: str, limit: int = 1200) -> str:
     return lines[-1][:limit]  # 전부 메타 서두인 경우
 
 
-def _agent_prompt(label: str, detail: str, history: list[dict] | None) -> str:
-    """이전 단계 결과를 맥락으로 넣어, agent가 흐름을 반영해 판단/생성하게 한다."""
+def _agent_prompt(
+    label: str, detail: str, history: list[dict] | None, can_search: bool = False
+) -> str:
+    """이전 단계 결과를 맥락으로 넣어, agent가 흐름을 반영해 판단/생성하게 한다.
+
+    can_search=False면 이 노드는 WebSearch가 꺼진 상태 → "검색해서 쓰라"는 지시를
+    빼야 한다(도구 없이 검색하라고 하면 모델이 거절하거나 사실을 지어낸다).
+    """
     steps = "\n".join(f"- {h['label']}: {h['result']}" for h in history) if history else ""
+    if can_search:
+        search_rule = (
+            "- 최신 정보·뉴스·외부 사실이 필요하면 WebSearch/WebFetch로 직접 찾아서 쓴다. "
+            "절대 지어내지 말고, 못 찾으면 못 찾았다고 쓴다.\n"
+            "- 이전 단계의 '🔌 도구 실행' 줄은 실제 데이터가 아니라 실행 기록일 뿐이다. "
+            "거기서 데이터를 기대하지 말고 필요하면 직접 검색해라.\n"
+        )
+    else:
+        # 검색 없는 노드(답변·요약·판단): 앞 단계가 준 내용만으로 처리. 외부 사실을
+        # 지어내지 말고, 정보가 부족하면 부족하다고 쓴다.
+        search_rule = (
+            "- 앞 단계들이 준 내용만으로 이번 결과를 만든다. 외부 사실을 새로 지어내지 말고, "
+            "필요한 정보가 없으면 '(정보 없음)'이라고 쓴다.\n"
+        )
     return (
         "너는 업무 자동화 워크플로우의 한 단계를 수행하는 에이전트다.\n"
         f"[지금까지 진행된 단계와 결과]\n{steps or '(이전 단계 없음)'}\n\n"
@@ -47,10 +78,7 @@ def _agent_prompt(label: str, detail: str, history: list[dict] | None) -> str:
         "- 위 맥락을 반영해 '이번 단계의 최종 결과물' 자체만 출력한다.\n"
         "- 인사말·상황설명·'~단계군요'·'~하겠습니다' 같은 메타 발언 절대 금지.\n"
         "- 예를 들어 '사과문 생성'이면 사과문 문장 자체를, '긴급도 판단'이면 판단 결과를 바로 쓴다.\n"
-        "- 최신 정보·뉴스·외부 사실이 필요하면 WebSearch/WebFetch로 직접 찾아서 쓴다. "
-        "절대 지어내지 말고, 못 찾으면 못 찾았다고 쓴다.\n"
-        "- 이전 단계의 '🔌 도구 실행' 줄은 실제 데이터가 아니라 실행 기록일 뿐이다. "
-        "거기서 데이터를 기대하지 말고 필요하면 직접 검색해라.\n"
+        f"{search_rule}"
         "- 앞 단계가 항목마다 `[출처: URL]`을 줬으면 **그 링크를 요약에도 항목별로 그대로 유지**한다. "
         "URL을 새로 지어내지는 마라.\n"
         "- 한국어, 결과 텍스트만. 요약·목록이면 불릿 5개 이내, 그 외엔 3문장 이내."
@@ -169,9 +197,13 @@ def exec_node(node: dict, ctx: dict, history: list[dict] | None = None) -> dict:
         return {"result": "⏱ 트리거 발동 — 실행 시작"}
 
     if t in ("agent", "ai"):  # 에이전트 = Claude 두뇌 (이전 단계 맥락 반영해 실제 호출)
-        # WebSearch/WebFetch 허용 — 이게 없으면 최신 정보가 필요한 단계에서 모델이
-        # 사실을 지어내거나 "데이터가 없다"고 거절한다(둘 다 쓸모없음).
-        r = claude_call(_agent_prompt(label, detail, history), allowed_tools="WebSearch,WebFetch")
+        # 기본은 검색 끔 — 답변·요약·판단 노드는 검색이 필요 없는데 WebSearch를 켜두면
+        # 모델이 괜히 검색을 시도해 느려지고 간헐적으로 타임아웃 난다. label/detail에
+        # 검색 관련 키워드(검색·뉴스·조사…)가 있을 때만 켠다. (뉴스 수집은 보통 web-search
+        # tool 노드가 따로 하므로 agent는 대개 검색 불필요.)
+        can_search = _needs_search(label, detail)
+        allowed = "WebSearch,WebFetch" if can_search else None
+        r = claude_call(_agent_prompt(label, detail, history, can_search), allowed_tools=allowed)
         if "error" in r:
             return {"result": "🧠 ⚠ " + r["error"]}  # 실패해도 런은 계속
         return {"result": "🧠 " + _clean(r["text"])}
