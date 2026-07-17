@@ -66,7 +66,12 @@ export function toRunnerGraph(nodes: Node<FlowNodeData>[], edges: Edge[]) {
       // 따라 "discord"(assemble)일 수도 "mcp.call"(추천패널)일 수도 있어 신뢰 불가.
       ...(n.data.mcpKey ? { mcp_key: n.data.mcpKey } : {}),
     })),
-    edges: edges.map((e) => ({ from: e.source, to: e.target })),
+    edges: edges.map((e) => ({
+      from: e.source,
+      to: e.target,
+      // 분기 조건: 엣지 라벨이 곧 조건(branch 노드의 route와 매칭). 라벨 없으면 조건 없는 엣지.
+      ...(typeof e.label === "string" && e.label.trim() ? { when: e.label.trim() } : {}),
+    })),
   };
 }
 

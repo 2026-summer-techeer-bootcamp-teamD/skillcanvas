@@ -261,18 +261,28 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
   );
 
   const onConnect = useCallback(
-    (conn: Connection) =>
+    (conn: Connection) => {
+      // 분기 노드에서 나가는 엣지면 조건 라벨을 물어본다(라벨=실행기 when 조건).
+      const src = nodes.find((n) => n.id === conn.source);
+      let label: string | undefined;
+      if (src?.data.kind === "branch") {
+        const v = window.prompt("이 경로로 갈 조건? (예: 문의 / 제안)")?.trim();
+        if (v) label = v;
+      }
       setEdges((eds) =>
         addEdge(
           {
             ...conn,
             animated: true,
+            label,
+            labelStyle: { fill: "#d64550", fontWeight: 600 },
             style: { stroke: "#e8843c", strokeWidth: 1.6, strokeDasharray: "5 5" },
           },
           eds,
         ),
-      ),
-    [setEdges],
+      );
+    },
+    [setEdges, nodes],
   );
 
   const updateSelectedData = (patch: Partial<FlowNodeData>) => {
