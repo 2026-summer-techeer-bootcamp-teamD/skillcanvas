@@ -108,10 +108,22 @@ TOOLS = [
         "key_required": True,
         "key_issue_url": "https://www.notion.so/my-integrations",
         "description": "노션 페이지 읽기·쓰기",
+        # fields의 name = @notionhq/notion-mcp-server 에 넘길 환경변수명.
+        # mcp.py의 MCP_SERVERS["notion"].env_fields 와 일치해야 한다 — 비면 no_key로 막힌다.
         "metadata_json": {
-            "field": "NOTION_TOKEN",
-            "help": "통합(integration) 생성 후 시크릿 붙여넣기",
-            "placeholder": "secret_...",
+            "guide": [
+                "notion.so/my-integrations → New integration → 이름 짓고 생성",
+                "생성된 통합의 Internal Integration Secret(ntn_로 시작) 복사 → 아래 붙여넣기",
+                "기록할 노션 페이지/DB 우측 ⋯ → Connections → 이 통합을 연결(공유)해야 접근됨",
+            ],
+            "fields": [
+                {
+                    "name": "NOTION_TOKEN",
+                    "label": "통합 토큰",
+                    "placeholder": "ntn_...",
+                    "help": "my-integrations의 Internal Integration Secret",
+                },
+            ],
         },
     },
     # ── 추가 수집분 (팀원 카탈로그 조사) ─────────────────
