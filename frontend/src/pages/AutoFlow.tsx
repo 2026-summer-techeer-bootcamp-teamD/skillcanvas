@@ -770,7 +770,7 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
                 disabled={watchBusy}
                 title="새 메일이 오면 이 워크플로우를 자동 실행해요 (실행기가 켜져 있는 동안)"
               >
-                {watchBusy ? "…" : watch?.watching ? "● 감시 중 · 끄기" : "감시 시작"}
+                {watchBusy ? "…" : watch?.watching ? "● 자동화 중 · 끄기" : "자동화 시작"}
               </button>
               <button className="af__run" type="button" onClick={handleRun} disabled={running}>
                 {running ? "실행 중…" : "실행"}
