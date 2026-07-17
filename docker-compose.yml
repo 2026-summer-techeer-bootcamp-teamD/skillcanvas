@@ -77,6 +77,38 @@ services:
       - prometheus
     profiles: ["monitoring"]
 
+  # 호스트(정확히는 Docker Desktop이 도는 리눅스 VM) CPU/메모리/디스크/네트워크 지표.
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: skillcanvas-node-exporter
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host/root:ro
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--path.rootfs=/host/root"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+    ports:
+      - "9100:9100"
+    profiles: ["monitoring"]
+
+  # 컨테이너별 CPU/메모리/네트워크 지표.
+  # containerd.sock도 같이 물려야 container_*{name=...} 라벨이 채워짐(docker.sock만
+  # 물리면 신형 cAdvisor(v0.55+)가 containerd factory 등록에 실패해서 name/image가 빈 값으로 나옴).
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: skillcanvas-cadvisor
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /run/containerd/containerd.sock:/run/containerd/containerd.sock:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+    ports:
+      - "8080:8080"
+    profiles: ["monitoring"]
+
   # 로그 저장소. Promtail이 여기로 로그를 push하고 Grafana가 조회.
   # 인증 기능이 없는 API(loki-config.yml: auth_enabled: false)라 호스트 포트로는 열지 않고
   # 같은 docker network 안(Grafana·Promtail)에서만 접근하게 함.

@@ -19,7 +19,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(increase(ai_call_total[$__range]))",
+          "expr": "sum(increase(ai_call_total[$__range])) or vector(0)",
           "legendFormat": "calls"
         }
       ],
@@ -85,7 +85,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(ai_call_duration_seconds_bucket[5m])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(ai_call_duration_seconds_bucket[5m]))) or vector(0)",
           "legendFormat": "p95"
         }
       ],
@@ -114,13 +114,13 @@
     {
       "id": 4,
       "type": "table",
-      "title": "모델/상태별 호출 건수 (선택 구간)",
+      "title": "상태별 호출 건수 (선택 구간)",
       "gridPos": { "h": 6, "w": 6, "x": 18, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
           "refId": "A",
-          "expr": "sort_desc(sum by (model, status) (increase(ai_call_total[$__range])))",
+          "expr": "sort_desc(sum by (status) (increase(ai_call_total[$__range])))",
           "format": "table",
           "instant": true
         }
@@ -140,14 +140,14 @@
     {
       "id": 5,
       "type": "timeseries",
-      "title": "모델별 호출률 (calls/s)",
+      "title": "기능별 호출률 (calls/s)",
       "gridPos": { "h": 9, "w": 24, "x": 0, "y": 6 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (model) (rate(ai_call_total[5m]))",
-          "legendFormat": "{{model}}"
+          "expr": "sum by (feature) (rate(ai_call_total[5m]))",
+          "legendFormat": "{{feature}}"
         }
       ],
       "fieldConfig": {
@@ -211,19 +211,19 @@
     {
       "id": 7,
       "type": "timeseries",
-      "title": "모델별 호출 소요시간 p50/p95 (초)",
+      "title": "기능별 호출 소요시간 p50/p95 (초)",
       "gridPos": { "h": 9, "w": 24, "x": 0, "y": 24 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.5, sum by (le, model) (rate(ai_call_duration_seconds_bucket[5m])))",
-          "legendFormat": "{{model}} p50"
+          "expr": "histogram_quantile(0.5, sum by (le, feature) (rate(ai_call_duration_seconds_bucket[5m])))",
+          "legendFormat": "{{feature}} p50"
         },
         {
           "refId": "B",
-          "expr": "histogram_quantile(0.95, sum by (le, model) (rate(ai_call_duration_seconds_bucket[5m])))",
-          "legendFormat": "{{model}} p95"
+          "expr": "histogram_quantile(0.95, sum by (le, feature) (rate(ai_call_duration_seconds_bucket[5m])))",
+          "legendFormat": "{{feature}} p95"
         }
       ],
       "fieldConfig": {

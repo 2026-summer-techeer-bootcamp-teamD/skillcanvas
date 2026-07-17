@@ -34,7 +34,7 @@ def classify(
     payload: ClassifyRequest,
     user: User = Depends(get_current_user),
 ):
-    data = ask_claude_json(SYSTEM, payload.text, fail_code="CLASSIFY_FAILED")
+    data = ask_claude_json(SYSTEM, payload.text, fail_code="CLASSIFY_FAILED", feature="classify")
 
     # Claude 응답 방어 — 점수가 정수가 아니면 파싱 실패로 간주 (422)
     # Claude 응답 방어 — 숫자가 아니면 파싱 실패로 간주 (422)

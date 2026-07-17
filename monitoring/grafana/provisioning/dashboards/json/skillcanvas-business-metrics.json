@@ -19,7 +19,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(increase(workflow_published_total[$__range]))",
+          "expr": "sum(increase(workflow_published_total[$__range])) or vector(0)",
           "legendFormat": "발행"
         }
       ],
@@ -49,7 +49,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(increase(skill_created_total[$__range]))",
+          "expr": "sum(increase(skill_created_total[$__range])) or vector(0)",
           "legendFormat": "생성"
         }
       ],
@@ -79,7 +79,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(increase(skill_imported_total[$__range]))",
+          "expr": "sum(increase(skill_imported_total[$__range])) or vector(0)",
           "legendFormat": "가져오기"
         }
       ],
@@ -109,17 +109,17 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "workflow_published_total",
+          "expr": "workflow_published_total or vector(0)",
           "legendFormat": "workflow_published_total"
         },
         {
           "refId": "B",
-          "expr": "skill_created_total",
+          "expr": "skill_created_total or vector(0)",
           "legendFormat": "skill_created_total"
         },
         {
           "refId": "C",
-          "expr": "skill_imported_total",
+          "expr": "skill_imported_total or vector(0)",
           "legendFormat": "skill_imported_total"
         }
       ],
@@ -149,17 +149,17 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(increase(workflow_published_total[1h]))",
+          "expr": "sum(increase(workflow_published_total[1h])) or vector(0)",
           "legendFormat": "워크플로우 발행"
         },
         {
           "refId": "B",
-          "expr": "sum(increase(skill_created_total[1h]))",
+          "expr": "sum(increase(skill_created_total[1h])) or vector(0)",
           "legendFormat": "스킬 생성"
         },
         {
           "refId": "C",
-          "expr": "sum(increase(skill_imported_total[1h]))",
+          "expr": "sum(increase(skill_imported_total[1h])) or vector(0)",
           "legendFormat": "스킬 가져오기"
         }
       ],
