@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type DragEvent,
+  type ReactNode,
+} from "react";
 import { useLocation } from "react-router-dom";
 import ReactFlow, {
   Background,
@@ -55,6 +63,40 @@ const KIND_LABEL: Record<FlowNodeKind, string> = {
   output: "출력",
   branch: "분기",
 };
+
+// 실행 결과 표시용: 러너 노드 타입 → 라벨·색 (이모지 대신 색 라벨로 타입 구분)
+const RESULT_TYPE: Record<string, { label: string; color: string }> = {
+  trigger: { label: "트리거", color: "var(--sc-node-trigger)" },
+  tool: { label: "도구", color: "var(--sc-node-tool)" },
+  agent: { label: "에이전트", color: "var(--sc-node-agent)" },
+  ai: { label: "에이전트", color: "var(--sc-node-agent)" },
+  branch: { label: "분기", color: "var(--sc-node-branch)" },
+  approve: { label: "승인", color: "var(--sc-node-approve)" },
+  output: { label: "출력", color: "var(--sc-node-output)" },
+};
+
+// 러너 결과 문자열의 이모지(⏱🔌🧠🔀📤 등)를 걷어낸다 — 화살표·대시는 살린다.
+const RESULT_EMOJI_RE =
+  /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2300}-\u{23FF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]/gu;
+
+function cleanResultLine(s: string): string {
+  return s
+    .replace(RESULT_EMOJI_RE, "")
+    .replace(/[ \t]{2,}/g, " ")
+    .trimStart();
+}
+
+// 이모지 제거 + **굵게** 렌더 + 줄바꿈 보존. (원본은 마크다운이라 그냥 뿌리면 별표가 그대로 보인다)
+function renderResult(text: string): ReactNode {
+  return text.split("\n").map((raw, li) => {
+    const line = cleanResultLine(raw);
+    return (
+      <span key={li} style={{ display: "block" }}>
+        {line.split("**").map((seg, si) => (si % 2 === 1 ? <strong key={si}>{seg}</strong> : seg))}
+      </span>
+    );
+  });
+}
 
 const REC_SKILLS: {
   title: string;
@@ -751,32 +793,49 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
                 <strong>실행 결과</strong>
                 <span style={{ fontSize: 13, color: "#8a8375" }}>
                   {running
-                    ? "▶ 실행 중…"
+                    ? "실행 중…"
                     : runStatus === "done"
-                      ? "✅ 완료"
+                      ? "완료"
                       : runStatus === "awaiting_approval"
-                        ? "🚨 승인 대기"
+                        ? "승인 대기"
                         : runStatus === "stopped"
-                          ? "⛔ 중단(중복)"
+                          ? "중단 (중복)"
                           : ""}
                 </span>
               </div>
               {runError && (
                 <p style={{ color: "#c0392b", fontSize: 13, margin: "4px 0" }}>⚠ {runError}</p>
               )}
-              <ol
-                style={{
-                  margin: 0,
-                  paddingLeft: 18,
-                  fontSize: 13,
-                  lineHeight: 1.7,
-                  color: "#4a4636",
-                }}
-              >
-                {runResults.map((r, i) => (
-                  <li key={`${r.id}-${i}`}>{r.result}</li>
-                ))}
-              </ol>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {runResults.map((r, i) => {
+                  const meta = RESULT_TYPE[r.type ?? ""] ?? { label: "단계", color: "#b3ab99" };
+                  return (
+                    <div
+                      key={`${r.id}-${i}`}
+                      style={{ borderLeft: `3px solid ${meta.color}`, paddingLeft: 10 }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          marginBottom: 3,
+                        }}
+                      >
+                        <span style={{ fontSize: 10.5, fontWeight: 700, color: meta.color }}>
+                          {meta.label}
+                        </span>
+                        <span style={{ fontSize: 12.5, fontWeight: 600, color: "#3a3529" }}>
+                          {r.label}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 12.5, lineHeight: 1.65, color: "#5a5545" }}>
+                        {renderResult(r.result)}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
               {runPending && (
                 <div
                   style={{
@@ -787,7 +846,9 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
                     borderRadius: 8,
                   }}
                 >
-                  <p style={{ margin: "0 0 8px", fontSize: 13 }}>🚨 {runPending.message}</p>
+                  <p style={{ margin: "0 0 8px", fontSize: 13 }}>
+                    {cleanResultLine(runPending.message)}
+                  </p>
                   <button
                     type="button"
                     onClick={handleApprove}
