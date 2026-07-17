@@ -19,7 +19,17 @@ export default function Mascot({ size = 21, style }: MascotProps) {
     "0px 15px 0 0 rgb(42,38,32), 3px 15px 0 0 rgb(42,38,32), 6px 15px 0 0 rgb(42,38,32), 9px 15px 0 0 rgb(42,38,32), 12px 15px 0 0 rgb(42,38,32), 15px 15px 0 0 rgb(42,38,32), 18px 15px 0 0 rgb(42,38,32), " +
     "3px 18px 0 0 rgb(42,38,32), 15px 18px 0 0 rgb(42,38,32)";
   return (
-    <div style={{ width: size, height: size, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", ...style }}>
+    <div
+      style={{
+        width: size,
+        height: size,
+        flexShrink: 0,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        ...style,
+      }}
+    >
       <div style={{ width: 21, height: 21, transform: `scale(${scale})` }}>
         <div style={{ width: 3, height: 3, boxShadow: shadow }} />
       </div>

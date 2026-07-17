@@ -492,7 +492,8 @@
   "items": [
     { "id": 8, "name": "CS 컴플레인 봇", "description": "매일 컴플레인 대응",
       "owner": { "id": 12, "nickname": "teamd" }, "tags": ["cs", "자동화"],
-      "import_count": 34, "is_public": true, "created_at": "2026-07-06T00:00:00Z" }
+      "import_count": 34, "is_public": true, "used_mcps": ["notion"],
+      "created_at": "2026-07-06T00:00:00Z" }
   ],
   "total": 137, "limit": 20, "offset": 0
 }
@@ -507,6 +508,7 @@
 | `items[].tags` | String[] | 태그 |
 | `items[].import_count` | Integer | 가져가기 수 |
 | `items[].is_public` | Boolean | 공개 여부 (내 목록의 공개/나만보기 배지용) |
+| `items[].used_mcps` | String[] | 그래프 노드에서 쓰인 카탈로그 MCP key (등장 순, 중복 없음) |
 | `items[].created_at` | DateTime | 발행일 |
 
 **비고**: 목록엔 `graph_json`(큰 데이터) 미포함 — 상세에서만. 기본은 **공개(`is_public=true`)만 노출**. **비공개(나만보기)는 오직 `mine=true`(+인증)로 본인 것만** 반환하며, 이때 소유자 판정은 **토큰 유저 id**로 한다(쿼리 `owner_id` 아님). `owner_id`는 남의 **공개** 목록 구경에만 쓴다.
@@ -725,18 +727,20 @@
 
 | 번호 | 기능 | Method · URL |
 | --- | --- | --- |
-| 5-1 | 스킬 목록 조회 | `GET /api/v1/skills` (4-1과 동일) |
+| 5-1 | 스킬 목록 조회 | `GET /api/v1/skills` (4-1과 동일, 단 `limit` 상한 있음 — 아래 비고) |
 | 5-2 | 스킬 상세 조회 | `GET /api/v1/skills/{skill_id}` (`content_md` 포함) |
 | 5-3 | 스킬 발행 | `POST /api/v1/skills` |
 | 5-4 | 스킬 수정 | `PATCH /api/v1/skills/{skill_id}` |
 | 5-5 | 스킬 삭제 | `DELETE /api/v1/skills/{skill_id}` |
 | 5-6 | 스킬 가져오기 | `POST /api/v1/skills/{skill_id}/import` |
 
+**5-1 비고**: `limit`은 **최대 100**(`limit>100`이면 FastAPI 기본 쿼리 검증에 걸려 `422`). 목록 응답이 비공개 없이도 `content_md`를 regex로 스캔해 `used_mcps`(레거시 폴백)를 계산하므로, 캡 없이는 비용이 그대로 증폭된다 — 워크플로우(4-1)의 `limit`엔 이 상한이 없음.
+
 **5-3 발행 Request Body 예시**
 ```json
 { "name": "meeting-notes", "description": "회의록 요약",
   "content_md": "---\nname: meeting-notes\nallowed-tools: [notion]\n---\n# 회의록 정리...",
-  "tags": ["pm"], "is_public": true }
+  "tags": ["pm"], "is_public": true, "used_mcps": ["notion"] }
 ```
 
 | 필드 | 타입 | 필수 | 설명 | 제약조건 |
@@ -746,8 +750,9 @@
 | `content_md` | String | Y | SKILL.md 원문 (frontmatter 포함) | |
 | `tags` | String[] | N | 태그 | 최대 5개 |
 | `is_public` | Boolean | N | 공개 여부 | 기본 true |
+| `used_mcps` | String[] | N | 발행 시 사용한 카탈로그 MCP key | 최대 20개, 카탈로그에 없는 key는 서버에서 필터링 후 저장 |
 
-**비고**: frontmatter는 `content_md`(SKILL.md 원문) **안에 들어있다.** 서버는 원문만 저장하고, 파싱이 필요하면 **로컬 실행기**가 처리 — 별도 frontmatter 컬럼 없음.
+**비고**: frontmatter는 `content_md`(SKILL.md 원문) **안에 들어있다.** 서버는 원문만 저장하고, 파싱이 필요하면 **로컬 실행기**가 처리 — 별도 frontmatter 컬럼 없음. 목록(5-1) 응답의 `used_mcps` 필드 설명은 4-1과 동일 — 단, 값이 저장돼 있으면(`null`이 아니면) 그 값을 그대로 반환하고, 마이그레이션 이전 레거시 스킬(`null`)만 `content_md` regex 폴백을 탄다.
 
 **Error Codes**: 워크플로우와 동일 (`SKILL_NOT_FOUND` 등 도메인만 교체). 상세·가져오기의 비공개 처리도 워크플로우처럼 **404로 숨김**.
 
@@ -1001,3 +1006,21 @@ run의 현재 상태와 **전체 결과(누적)**를 조회한다.
 ---
 
 *형식: 직접반환 · 순수 REST · `{code, message}` errorCode. 로컬 SQLite(processed·credentials)는 ERD 아님(로컬 상태 저장).*
+
+### A-8. 등록된 도구 키 목록 조회
+
+로컬에 저장된 MCP 도구 키 현황을 조회한다. secret 값은 포함하지 않는다.
+
+| 항목 | 내용 |
+| --- | --- |
+| **Method** | `GET` |
+| **URL** | `/credentials` |
+| **인증** | 불필요 (로컬 전용) |
+
+**Response Body (200 OK)**
+```json
+{ "tool_keys": ["slack", "notion"] }
+```
+| 필드 | 타입 | 설명 |
+| --- | --- | --- |
+| `tool_keys` | String[] | 등록된 도구 key 목록. secret은 응답에 포함되지 않음 |
