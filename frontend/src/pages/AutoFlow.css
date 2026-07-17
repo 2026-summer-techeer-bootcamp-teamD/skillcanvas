@@ -447,11 +447,11 @@
   border-color: var(--sc-accent);
 }
 
-/* 노드 자연어 수정(map-node) — 직접 편집 필드와 구분되게 위쪽 구분선 */
+/* 노드 자연어 수정(map-node) — 아래쪽 구분선으로 MCP 키 패널과 분리 */
 .af__mapEdit {
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px dashed var(--sc-line);
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px dashed var(--sc-line);
 }
 .af__recommend:disabled {
   opacity: 0.5;
