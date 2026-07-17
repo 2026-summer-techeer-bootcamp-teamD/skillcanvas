@@ -5,16 +5,40 @@
 확인: http://localhost:4737/docs
 """
 
+import asyncio
+import logging
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core import config
+from app.core.scheduler import poll_loop
 from app.routers import credential, graph, health, run, save, watch
+
+logging.basicConfig(level=logging.INFO)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 실행기가 떠 있는 동안 감시 워크플로우를 폴링하는 백그라운드 태스크.
+    # 종료 시 취소하고 깔끔히 정리한다.
+    task = asyncio.create_task(poll_loop())
+    try:
+        yield
+    finally:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+
 
 app = FastAPI(
     title="SkillCanvas Local Runner",
     description="사용자 PC의 .claude를 파싱·동기화·실행하는 로컬 실행기",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 # 프론트(브라우저)가 localhost로 이 실행기를 호출하므로 CORS 허용.
