@@ -640,7 +640,7 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
               {/* 노드 자연어 수정 — 예: 디스코드 노드에 "팀 슬랙으로 바꿔줘" */}
               <div className="af__mapEdit">
                 <label className="af__field">
-                  ✎ AI로 바꾸기
+                  노드 바꾸기
                   <input
                     className="af__fieldInput"
                     value={mapText}
@@ -652,12 +652,12 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
                   />
                 </label>
                 <button
-                  className="af__recommend"
+                  className="af__mapBtn"
                   type="button"
                   onClick={mapNode}
                   disabled={mapBusy || !mapText.trim()}
                 >
-                  {mapBusy ? "바꾸는 중…" : "⚡ AI로 수정"}
+                  {mapBusy ? "바꾸는 중…" : "바꾸기"}
                 </button>
                 {mapError && <p className="af__recMeta">에러: {mapError}</p>}
               </div>
