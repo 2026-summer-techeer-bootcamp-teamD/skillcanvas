@@ -56,6 +56,15 @@ MCP_SERVERS: dict[str, dict] = {
         "env_fields": ["BOT_TELEGRAM_TOKEN", "BOT_TELEGRAM_CHAT_ID"],
         "role": "send",
     },
+    "notion": {
+        "command": "npx",
+        # 공식 서버. Option 1(NOTION_TOKEN 단일 토큰) 지원 — 헤더 JSON(OPENAPI_MCP_HEADERS)
+        # 없이 토큰 하나면 된다. 통합(integration) 시크릿은 ntn_ 로 시작.
+        "args": ["-y", "@notionhq/notion-mcp-server@2.4.1"],
+        "env_fields": ["NOTION_TOKEN"],
+        # 제안 요약을 노션에 '정리해 기록'하는 용도 — 발송 계열
+        "role": "send",
+    },
 }
 
 # MCP 서버 없이 Claude Code 내장 도구로 처리하는 것들 — **키가 필요 없다.**
