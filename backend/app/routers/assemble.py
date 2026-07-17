@@ -39,11 +39,17 @@ def _system_prompt(catalog_keys: list[str], target: str) -> str:
         f"카탈로그: {', '.join(catalog_keys) if catalog_keys else '(없음)'}\n"
         "detail 규칙: tool 노드의 detail은 반드시 위 카탈로그 key 하나만 넣어라(예: notion). "
         "trigger·agent·approve 노드의 detail은 10자 이내 짧은 힌트로. 긴 문장은 절대 쓰지 마라.\n"
+        "분기(branch) 규칙: 업무가 '유형·조건을 판단해 경우에 따라 다르게 처리'하는 흐름이면 "
+        "branch 노드를 써라. branch 노드의 detail은 가능한 갈래 라벨을 '|'로 이어 넣는다"
+        "(예: 문의|제안). 그리고 그 branch 노드에서 나가는 엣지마다 when에 갈래 라벨을 정확히 "
+        "적어라(그 라벨은 detail의 '|' 라벨 중 하나와 글자까지 똑같아야 한다). 갈래마다 엣지 "
+        "하나씩, 각 갈래는 서로 다른 후속 노드로 이어진다. 조건 분기가 필요 없는 단순 흐름이면 "
+        "branch를 쓰지 말고 when도 넣지 마라.\n"
         "다른 설명 없이 반드시 아래 형태의 JSON만 답한다:\n"
         '{"name": "kebab-case 이름", '
-        '"nodes": [{"id": str, "type": "trigger|tool|agent|approve", '
+        '"nodes": [{"id": str, "type": "trigger|tool|agent|approve|branch", '
         '"label": str, "detail": str}], '
-        '"edges": [{"from": 노드id, "to": 노드id}], '
+        '"edges": [{"from": 노드id, "to": 노드id, "when": "분기 갈래 라벨(분기 엣지만, 아니면 생략)"}], '
         '"used_mcps": [실제로 쓴 카탈로그 key]}'
     )
 
