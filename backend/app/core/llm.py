@@ -23,7 +23,7 @@
         '{"skill": str, "description": str, "mcps": [카탈로그 key]}\\n'
         "카탈로그: " + catalog_keys_str  # tool_catalog에서 뽑은 key 목록
     )
-    data = ask_claude_json(SYSTEM, payload.text, fail_code="RECOMMEND_FAILED")
+    data = ask_claude_json(SYSTEM, payload.text, fail_code="RECOMMEND_FAILED", feature="recommend")
     # data["mcps"] 를 카탈로그 존재하는 key만 필터 후 반환
 ────────────────────────────────────────────────────────────
 """
