@@ -281,24 +281,33 @@
 **Response Body (200 OK)**
 ```json
 {
-  "name": "cs-complaint-handler",
+  "name": "mail-router",
   "nodes": [
-    { "id": "n1", "type": "trigger", "label": "매일 9시", "detail": "스케줄" },
+    { "id": "n1", "type": "trigger", "label": "새 메일", "detail": "메일 수신" },
     { "id": "n2", "type": "tool", "label": "Gmail 읽기", "detail": "gmail" },
-    { "id": "n3", "type": "agent", "label": "긴급도 판단", "detail": "Claude" },
-    { "id": "n4", "type": "approve", "label": "승인 게이트", "detail": "발송할까요?" }
+    { "id": "n3", "type": "branch", "label": "유형 판단", "detail": "문의|제안" },
+    { "id": "n4", "type": "tool", "label": "배송 조회", "detail": "sweettracker" },
+    { "id": "n5", "type": "agent", "label": "제안 요약", "detail": "Claude" }
   ],
-  "edges": [ { "from": "n1", "to": "n2" }, { "from": "n2", "to": "n3" }, { "from": "n3", "to": "n4" } ],
-  "used_mcps": ["gmail"]
+  "edges": [
+    { "from": "n1", "to": "n2" },
+    { "from": "n2", "to": "n3" },
+    { "from": "n3", "to": "n4", "when": "문의" },
+    { "from": "n3", "to": "n5", "when": "제안" }
+  ],
+  "used_mcps": ["gmail", "sweettracker"]
 }
 ```
 
 | 필드 | 타입 | 설명 |
 | --- | --- | --- |
 | `name` | String | 워크플로우 이름(kebab) |
-| `nodes[]` | Object[] | 노드 (id·type·label·detail) |
-| `edges[]` | Object[] | 연결 (from·to) |
+| `nodes[]` | Object[] | 노드 (id·type·label·detail). type: `trigger·tool·agent·approve·output·branch` |
+| `edges[]` | Object[] | 연결 (from·to·when) |
+| `edges[].when` | String / null | **분기(branch) 노드에서 나가는 엣지의 갈래 라벨.** branch 노드 detail의 `|` 라벨과 매칭돼 그 경로만 실행. 일반 엣지는 `null`(생략) |
 | `used_mcps` | String[] | 사용된 카탈로그 MCP key |
+
+> **조건 분기(branch)**: 업무가 "유형을 판단해 경우별로 다르게 처리"하면 `branch` 노드가 생성된다. detail에 갈래 라벨을 `|`로 넣고(예: `문의|제안`), 그 노드에서 나가는 엣지마다 `when`에 갈래 라벨을 담는다. 실행기는 branch 노드의 판단 결과와 `when`이 일치하는 엣지의 경로**만** 실행한다.
 
 **Error Codes**
 
@@ -386,8 +395,10 @@
 
 | 필드 | 타입 | 설명 |
 | --- | --- | --- |
-| `node` | Object | 갱신된 노드 |
+| `node` | Object | 갱신된 노드. type: `trigger·tool·agent·approve·branch` |
 | `mcp_added` | String / null | 새로 필요해진 MCP key |
+
+> 프론트(AutoFlow) 노드 인스펙터의 **"노드 바꾸기"** 자연어 입력이 이 엔드포인트를 호출한다. 예: 디스코드 노드에 "팀 슬랙으로 바꿔줘" → `detail: "slack"`으로 재매핑되고 `mcp_added: "slack"`. detail이 카탈로그 key면 프론트가 노드 mcpKey까지 갱신해 실행 대상·키 패널이 바뀐다.
 
 **Error Codes**
 
@@ -1024,3 +1035,66 @@ run의 현재 상태와 **전체 결과(누적)**를 조회한다.
 | 필드 | 타입 | 설명 |
 | --- | --- | --- |
 | `tool_keys` | String[] | 등록된 도구 key 목록. secret은 응답에 포함되지 않음 |
+
+---
+
+## A-9~A-11. 스케줄러 (감시 워크플로우 자동 실행)
+
+"친구는 실행 버튼을 안 누른다" — 실행기가 켜져 있는 동안 **새 메일이 오면 저장된 워크플로우를 자동 실행**한다. 프론트(AutoFlow) **"로컬에 저장"** 버튼이 현재 그래프를 저장하며 자동 실행을 켠다. 실행기는 백그라운드(FastAPI lifespan + asyncio)에서 N초마다 gmail INBOX의 안읽은 메일을 IMAP(stdlib, Claude 미호출)로 확인하고, 처음 보는 Message-ID면 `start_run`을 자동 호출한다. 중복 실행은 Message-ID를 `processed`에 기록해 막는다. 감시 워크플로우는 로컬 SQLite `watched_workflow`(단일 행)에 저장돼 재시작에도 유지된다.
+
+### A-9. 감시 워크플로우 저장 + 자동 실행 시작
+
+| 항목 | 내용 |
+| --- | --- |
+| **Method** | `POST` |
+| **URL** | `/watch` |
+| **인증** | 불필요 (로컬 전용) |
+
+**Request Body**
+```json
+{ "nodes": [ ... ], "edges": [ ... ], "interval_sec": 30 }
+```
+| 필드 | 타입 | 필수 | 설명 | 제약조건 |
+| --- | --- | --- | --- | --- |
+| `nodes` | Object[] | Y | 감시할 워크플로우 노드 (/run과 동일 형식) | |
+| `edges` | Object[] | Y | 엣지 | |
+| `interval_sec` | Integer | N | 폴링 주기(초) | 10~3600, 기본 30 |
+
+**Response Body (200 OK)** — 아래 A-10과 동일한 상태 객체
+```json
+{ "watching": true, "saved": true, "interval_sec": 30, "node_count": 7, "updated_at": "2026-07-19T..." }
+```
+
+### A-10. 감시 상태 조회
+
+| 항목 | 내용 |
+| --- | --- |
+| **Method** | `GET` |
+| **URL** | `/watch` |
+| **인증** | 불필요 (로컬 전용) |
+
+**Response Body (200 OK)**
+```json
+{ "watching": true, "saved": true, "interval_sec": 30, "node_count": 7, "updated_at": "2026-07-19T..." }
+```
+| 필드 | 타입 | 설명 |
+| --- | --- | --- |
+| `watching` | Boolean | 자동 실행 활성 여부 |
+| `saved` | Boolean | 저장된 감시 워크플로우 존재 여부 |
+| `interval_sec` | Integer | 폴링 주기(초) |
+| `node_count` | Integer | 저장된 그래프의 노드 수 |
+| `updated_at` | String | 마지막 저장/토글 시각 (ISO8601) |
+
+> 저장된 워크플로우가 없으면 `{ "watching": false, "saved": false }` 만 반환.
+
+### A-11. 감시 중지 (그래프는 보존)
+
+| 항목 | 내용 |
+| --- | --- |
+| **Method** | `POST` |
+| **URL** | `/watch/stop` |
+| **인증** | 불필요 (로컬 전용) |
+
+`enabled`만 끈다. 저장된 그래프는 남아 다시 `/watch`로 켤 수 있다. 응답은 A-10과 동일한 상태 객체(`watching: false`).
+
+*로컬 SQLite(processed·credentials·watched_workflow)는 ERD 아님(로컬 상태 저장).*
