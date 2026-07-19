@@ -223,14 +223,28 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
       .catch(() => {});
   }, []);
 
-  const handleToggleWatch = async () => {
+  // 로컬에 저장 = 지금 편집한 그래프를 실행기에 저장하고 자동 실행을 켠다.
+  // 이미 켜져 있어도 다시 누르면 '최신 그래프로 갱신' — 저장 뒤 노드를 더 고쳤을 때
+  // 낡은 저장본이 도는 걸 막는다(어제 노션이 안 됐던 원인).
+  const handleSaveLocal = async () => {
     setWatchBusy(true);
     setRunError(null);
     try {
-      const next = watch?.watching ? await stopWatch() : await startWatch(nodes, edges);
-      setWatch(next);
+      setWatch(await startWatch(nodes, edges));
     } catch (e) {
-      setRunError(e instanceof RunnerError ? e.message : "감시 설정 실패");
+      setRunError(e instanceof RunnerError ? e.message : "로컬 저장 실패");
+    } finally {
+      setWatchBusy(false);
+    }
+  };
+
+  const handleStopWatch = async () => {
+    setWatchBusy(true);
+    setRunError(null);
+    try {
+      setWatch(await stopWatch());
+    } catch (e) {
+      setRunError(e instanceof RunnerError ? e.message : "자동 실행 끄기 실패");
     } finally {
       setWatchBusy(false);
     }
@@ -766,12 +780,26 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
               <button
                 className={watch?.watching ? "af__watch af__watch--on" : "af__watch"}
                 type="button"
-                onClick={handleToggleWatch}
+                onClick={handleSaveLocal}
                 disabled={watchBusy}
-                title="새 메일이 오면 이 워크플로우를 자동 실행해요 (실행기가 켜져 있는 동안)"
+                title="지금 워크플로우를 실행기에 저장하고, 새 메일이 오면 자동 실행해요. 편집을 다 끝낸 뒤 누르세요. (이미 켜져 있으면 최신 내용으로 다시 저장)"
               >
-                {watchBusy ? "…" : watch?.watching ? "● 자동화 중 · 끄기" : "자동화 시작"}
+                {watchBusy
+                  ? "저장 중…"
+                  : watch?.watching
+                    ? "● 저장됨 · 자동 실행 중"
+                    : "로컬에 저장"}
               </button>
+              {watch?.watching && !watchBusy && (
+                <button
+                  className="af__watchOff"
+                  type="button"
+                  onClick={handleStopWatch}
+                  title="자동 실행 끄기 (저장본은 남겨둬요)"
+                >
+                  끄기
+                </button>
+              )}
               <button className="af__run" type="button" onClick={handleRun} disabled={running}>
                 {running ? "실행 중…" : "실행"}
               </button>

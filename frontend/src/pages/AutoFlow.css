@@ -365,6 +365,21 @@
   background: var(--sc-accent);
   border-color: var(--sc-accent);
 }
+/* 자동 실행 끄기 — 저장 버튼 옆의 담백한 보조 버튼 */
+.af__watchOff {
+  padding: 0.4375rem 0.75rem;
+  font-family: inherit;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--sc-muted);
+  background: var(--sc-card);
+  border: 1px solid var(--sc-line);
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+.af__watchOff:hover {
+  color: var(--sc-ink);
+}
 .af__flow {
   flex: 1;
   min-height: 0;
