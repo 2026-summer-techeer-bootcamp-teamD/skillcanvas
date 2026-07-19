@@ -25,6 +25,7 @@ import { PixelArt } from "../components/PixelArt";
 import { TopNav, type NavTab } from "../components/TopNav";
 import { PublishModal, type PublishPayload } from "../components/PublishModal";
 import { KeyModal } from "../components/KeyModal";
+import { ApprovalModal } from "../components/ApprovalModal";
 import { FlowNode } from "../components/flow/FlowNode";
 import { ROBOT_BLACK, ROBOT_ORANGE } from "../lib/pixelMaps";
 import {
@@ -211,6 +212,8 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
   const [runPending, setRunPending] = useState<{ id: string; message: string } | null>(null);
   const [running, setRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
+  // 승인 모달을 '나중에'로 닫았는지. 새 실행 시 리셋. 닫아도 패널에서 다시 열 수 있다.
+  const [approvalDismissed, setApprovalDismissed] = useState(false);
 
   // ── 스케줄러 감시 (POST /watch) ────────────────────
   const [watch, setWatch] = useState<WatchStatus | null>(null);
@@ -256,6 +259,7 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
     setRunResults([]);
     setRunPending(null);
     setRunStatus(null);
+    setApprovalDismissed(false); // 새 실행이면 승인 모달 다시 뜨게
     try {
       const r = await runFlow(nodes, edges);
       setRunId(r.run_id);
@@ -918,34 +922,40 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
                   );
                 })}
               </div>
-              {runPending && (
+              {/* 승인 대기 시 안내는 별도 팝업(ApprovalModal)으로 띄운다. 모달을 '나중에'로
+                  닫았을 때만, 다시 열 수 있는 담백한 줄을 패널에 남긴다. */}
+              {runPending && approvalDismissed && (
                 <div
                   style={{
                     marginTop: 10,
-                    padding: "10px 12px",
+                    padding: "8px 12px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 10,
                     background: "#fff4ec",
                     border: "1px solid #f2c9a8",
                     borderRadius: 8,
                   }}
                 >
-                  <p style={{ margin: "0 0 8px", fontSize: 13 }}>
-                    {cleanResultLine(runPending.message)}
-                  </p>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "#8a5a2b" }}>
+                    승인 대기 중
+                  </span>
                   <button
                     type="button"
-                    onClick={handleApprove}
-                    disabled={running}
+                    onClick={() => setApprovalDismissed(false)}
                     style={{
-                      padding: "6px 14px",
-                      background: "#e8843c",
+                      padding: "5px 12px",
+                      background: "var(--sc-accent)",
                       color: "#fff",
                       border: "none",
                       borderRadius: 6,
                       cursor: "pointer",
-                      fontWeight: 600,
+                      fontWeight: 700,
+                      fontSize: 12.5,
                     }}
                   >
-                    승인하고 계속
+                    승인 열기
                   </button>
                 </div>
               )}
@@ -1096,6 +1106,14 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
           refreshSavedKeys(); // 패널을 '연결됨'으로 즉시 바꾼다
           setKeyModalOpen(false);
         }}
+      />
+
+      <ApprovalModal
+        open={!!runPending && !approvalDismissed}
+        message={runPending ? cleanResultLine(runPending.message) : ""}
+        busy={running}
+        onApprove={handleApprove}
+        onClose={() => setApprovalDismissed(true)}
       />
     </div>
   );

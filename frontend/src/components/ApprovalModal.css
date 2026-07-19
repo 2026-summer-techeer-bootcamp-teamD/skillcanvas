@@ -1,0 +1,130 @@
+/* 승인 게이트 모달 — PermissionModal과 동일 오버레이 패턴, 승인 버튼만 브랜드 주황 */
+
+.am__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(35, 29, 22, 0.45);
+  animation: am-fade 0.18s ease both;
+}
+
+.am__card {
+  display: flex;
+  flex-direction: column;
+  width: 29.25rem;
+  max-width: 100%;
+  padding: 1.625rem 1.75rem 1.5rem;
+  background: #ffffff;
+  border-radius: 1.125rem;
+  box-shadow: 0 1.375rem 3.375rem rgba(26, 20, 13, 0.34);
+  animation: am-pop 0.22s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.am__head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.am__mascot {
+  width: 2.05rem;
+  height: 2.05rem;
+  flex-shrink: 0;
+}
+.am__title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: var(--sc-ink);
+}
+
+.am__body {
+  margin: 1rem 0 0;
+  padding: 0.875rem 1rem;
+  font-size: 0.9375rem;
+  line-height: 1.58;
+  color: var(--sc-ink);
+  background: #fff4ec;
+  border: 1px solid var(--sc-badge-border);
+  border-radius: 0.75rem;
+  white-space: pre-wrap;
+}
+
+.am__note {
+  margin: 0.75rem 0 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.45;
+  color: #8a7f71;
+}
+
+.am__actions {
+  display: flex;
+  gap: 0.625rem;
+  margin-top: 1.125rem;
+}
+.am__cancel {
+  padding: 0.875rem 1.375rem;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #4a4238;
+  background: #ffffff;
+  border: 1.5px solid var(--sc-line);
+  border-radius: 0.875rem;
+  cursor: pointer;
+  transition: background 0.14s ease;
+}
+.am__cancel:hover {
+  background: #faf7f2;
+}
+.am__approve {
+  flex: 1;
+  padding: 0.875rem;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--sc-cream);
+  background: var(--sc-accent);
+  border: none;
+  border-radius: 0.875rem;
+  cursor: pointer;
+  transition: filter 0.16s ease;
+}
+.am__approve:hover {
+  filter: brightness(1.08);
+}
+.am__cancel:disabled,
+.am__approve:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+@keyframes am-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes am-pop {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .am__scrim,
+  .am__card {
+    animation: none;
+  }
+}
