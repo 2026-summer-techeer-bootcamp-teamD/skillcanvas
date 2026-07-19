@@ -7,12 +7,14 @@
   → 실행기가 직접 HTTP를 친다. 키는 credentials에서 읽어 쿼리스트링으로만 나가고
     **프롬프트엔 절대 들어가지 않는다.** 의존성 없이 stdlib urllib만 쓴다.
 
-파라미터는 노드 detail에서 받는다(쿼리스트링 형식):
-  {"type": "tool", "label": "택배 조회", "mcp_key": "sweettracker",
-   "detail": "t_code=04&t_invoice=1234567890"}
+파라미터는 노드 detail(쿼리스트링)에서 받되, **비어 있으면 앞 단계(메일 읽기) 내용에서
+송장번호·택배사를 자동 추출**한다 — 그래서 노드에 값을 안 박아도 메일의 송장번호로 조회된다.
+  {"type": "tool", "label": "택배 조회", "mcp_key": "sweettracker", "detail": ""}
+  # ← detail 비어도, 앞 메일에 "송장번호: 511951252170 / 택배사: CJ대한통운" 있으면 조회됨
 """
 
 import json
+import re
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -72,8 +74,62 @@ def _summarize_sweettracker(data: dict) -> str:
 _SUMMARIZERS = {"sweettracker": _summarize_sweettracker}
 
 
-def call_api(tool_key: str, detail: str) -> dict:
-    """{"text": 요약} 또는 {"error": 사유}. 예외를 던지지 않는다(런이 중간에 죽지 않게)."""
+# 스마트택배 택배사 코드(국내) — 메일 본문의 택배사명 → 코드 매핑.
+# 긴 이름을 먼저 두어 부분일치 오인('cj'가 다른 데 섞이는 것)을 줄인다.
+_COURIER_CODES = {
+    "cj대한통운": "04",
+    "대한통운": "04",
+    "우체국": "01",
+    "한진택배": "05",
+    "한진": "05",
+    "로젠택배": "06",
+    "로젠": "06",
+    "롯데택배": "08",
+    "롯데글로벌": "08",
+    "롯데": "08",
+    "경동택배": "23",
+    "경동": "23",
+    "대신택배": "22",
+    "일양로지스": "11",
+    "gs postbox": "24",
+    "gs25": "24",
+    "cvsnet": "24",
+    "cj": "04",  # 마지막 폴백(짧은 별칭)
+}
+
+
+def _extract_sweettracker(text: str) -> dict:
+    """앞 단계(메일 등) 내용에서 송장번호·택배사코드를 자동으로 뽑는다.
+
+    detail에 파라미터를 안 넣어도, 메일에 '송장번호: …', '택배사: CJ대한통운'이 있으면
+    그걸로 조회한다(데모/실사용 모두 이게 자연스럽다). 규칙 기반이라 결정론적이다.
+    """
+    out: dict[str, str] = {}
+    # 송장번호: '송장' 근처의 숫자열 우선, 없으면 10~14자리 숫자열 폴백(주문번호 오인 방지 위해 자릿수 제한)
+    m = re.search(r"송장[^0-9]{0,10}(\d[\d-]{8,}\d)", text) or re.search(r"\b(\d{10,14})\b", text)
+    if m:
+        out["t_invoice"] = m.group(1).replace("-", "")
+    low = text.lower()
+    for name, code in _COURIER_CODES.items():
+        if name in low:
+            out["t_code"] = code
+            break
+    return out
+
+
+_EXTRACTORS = {"sweettracker": _extract_sweettracker}
+
+
+def _history_text(history: list[dict] | None) -> str:
+    return "\n".join(str(h.get("result", "")) for h in (history or []))
+
+
+def call_api(tool_key: str, detail: str, history: list[dict] | None = None) -> dict:
+    """{"text": 요약} 또는 {"error": 사유}. 예외를 던지지 않는다(런이 중간에 죽지 않게).
+
+    파라미터는 detail(명시)이 우선. detail에 없는 필수 파라미터는 앞 단계(메일 등)
+    내용에서 자동 추출해 채운다 — 그래서 노드 detail을 비워도 메일의 송장번호로 조회된다.
+    """
     spec = API_TOOLS[tool_key]
 
     secret = _secret_for(tool_key, spec)
@@ -81,9 +137,18 @@ def call_api(tool_key: str, detail: str) -> dict:
         return {"error": f"키 미등록 — {spec['env_fields'][0]} 를 넣어주세요"}
 
     given = {k: v[0] for k, v in urllib.parse.parse_qs(detail or "").items() if v}
+    # detail에 없는 필수 파라미터는 앞 단계 내용에서 자동 추출(명시값은 덮어쓰지 않음)
+    if [p for p in spec["params"] if not given.get(p)] and history:
+        extractor = _EXTRACTORS.get(tool_key)
+        if extractor:
+            for k, v in extractor(_history_text(history)).items():
+                given.setdefault(k, v)
     missing = [p for p in spec["params"] if not given.get(p)]
     if missing:
-        return {"error": f"파라미터 부족({', '.join(missing)}) — detail에 {spec['params_help']}"}
+        return {
+            "error": f"파라미터 부족({', '.join(missing)}) — 메일에서 못 찾았어요. "
+            f"detail에 {spec['params_help']}"
+        }
 
     query = {spec["key_param"]: secret, **{p: given[p] for p in spec["params"]}}
     url = f"{spec['url']}?{urllib.parse.urlencode(query)}"

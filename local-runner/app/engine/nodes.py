@@ -257,7 +257,8 @@ def exec_node(node: dict, ctx: dict, history: list[dict] | None = None) -> dict:
         # ① MCP 서버가 없는 REST API(스마트택배 등) — 실행기가 직접 HTTP. 키는
         #    프롬프트에 안 들어가고 쿼리스트링으로만 나간다(core/api_tools.py).
         if key in api_tools.API_TOOLS:
-            r = api_tools.call_api(key, detail)
+            # detail이 비어도 앞 단계(메일 읽기)에서 송장번호·택배사를 자동 추출해 조회
+            r = api_tools.call_api(key, detail, history)
             if "error" in r:
                 return {"result": f"🔌 ⚠ {label}: {r['error']}"}
             return {"result": f"🔌 {label} — {r['text']}"}
