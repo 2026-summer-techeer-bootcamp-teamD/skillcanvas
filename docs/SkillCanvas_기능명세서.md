@@ -29,16 +29,16 @@
 
 | 기능 | 설명 | 구분 | 우선 | 관련 데이터 |
 |------|------|:---:|:---:|------|
-| 카탈로그 조회 | 지원 MCP 목록 + 키 메타데이터 반환 | 🟦 | P1 | mcp_catalog |
-| 카탈로그 관리 | MCP 추가/수정 (운영) | 🟦 | P2 | mcp_catalog |
+| 카탈로그 조회 | 지원 MCP 목록 + 키 메타데이터 반환 | 🟦 | P1 | tool_catalog |
+| 카탈로그 관리 | MCP 추가/수정 (운영) | 🟦 | P2 | tool_catalog |
 
 ## 3. 자연어 조립 / 추천 (백엔드가 Claude API 호출)
 
 | 기능 | 설명 | 구분 | 우선 | 관련 데이터 |
 |------|------|:---:|:---:|------|
-| 자연어→워크플로우 생성 | NL → 그래프 JSON (카탈로그 안에서만·검증). **조건 분기(branch)·`when` 엣지 생성** 포함 | 🟦 | P1 | mcp_catalog |
-| 자연어→스킬 생성 | NL → 스킬 초안 | 🟦 | P1 | mcp_catalog |
-| MCP 추천 | "이거 하고싶어" → 붙일 MCP 제안 | 🟦 | P1 | mcp_catalog |
+| 자연어→워크플로우 생성 | NL → 그래프 JSON (카탈로그 안에서만·검증). **조건 분기(branch)·`when` 엣지 생성** 포함 | 🟦 | P1 | tool_catalog |
+| 자연어→스킬 생성 | NL → 스킬 초안 | 🟦 | P1 | tool_catalog |
+| MCP 추천 | "이거 하고싶어" → 붙일 MCP 제안 | 🟦 | P1 | tool_catalog |
 | 노드 자연어 편집/매핑 | 노드를 말로 수정 → 재매핑 (AutoFlow "노드 바꾸기") | 🟦 | P1 | — |
 
 ## 4. 갤러리 (공유·재사용)
@@ -103,34 +103,35 @@
 
 ```
 users
-  id (PK) · clerk_user_id (unique) · nickname · created_at
+  id (PK) · clerk_user_id (unique) · nickname (unique) · is_admin · created_at · updated_at
       │1
       ├───────────────┐N
       │N              │
 workflows            skills
   id (PK)             id (PK)
-  owner_id → users owner_id → users
-  title · description name · description
-  graph_json (jsonb)  skill_md (text)
-  is_public           frontmatter_json (jsonb)
-  import_count (int)  import_count (int)
-  created_at          created_at
+  users_id → users    users_id → users
+  name · description   name · description
+  graph_json (jsonb)   content_md (text)
+  is_public            used_mcps (jsonb)
+  import_count (int)   is_public · import_count
+  created·updated_at   created·updated_at
       │N                  │N
       │                   │
 workflow_tags(M:N)   skill_tags(M:N)
+  id PK · 2 FK · UQ쌍   id PK · 2 FK · UQ쌍
       │                   │
-      └──── tags (id PK · name) ────┘
+      └──── master_tags (id PK · name unique) ────┘
 
-mcp_catalog  (독립 — 지원 도구 레지스트리)
-  id (PK) · key · name · auth_type · auth_field · get_url · help · install_cmd · description
+tool_catalog  (독립 — 지원 도구 레지스트리)
+  id (PK) · key(unique) · name · description · key_required · key_issue_url · metadata_json(jsonb) · type · auth_owner
 ```
 
-**엔티티 7개**: `users` · `workflows` · `skills` · `tags` · `workflow_tags` · `skill_tags` · `mcp_catalog`
+**엔티티 7개**: `users` · `workflows` · `skills` · `master_tags` · `workflow_tags` · `skill_tags` · `tool_catalog`
 
 **관계 요약**:
-- users 1—N workflows / skills (소유)
-- workflows N—M tags (workflow_tags) / skills N—M tags (skill_tags)
-- mcp_catalog 독립 (참조 레지스트리)
+- users 1—N workflows / skills (소유, FK `users_id`)
+- workflows N—M master_tags (workflow_tags) / skills N—M master_tags (skill_tags) — 연결 테이블은 surrogate PK(id)+UNIQUE(쌍)
+- tool_catalog 독립 (참조 레지스트리)
 
 ## 로컬 SQLite — 참고용 (ERD 아님)
 
