@@ -2,8 +2,6 @@
 
 > 말로 만드는 AI 업무 비서 빌더 — 내가 커스텀한 Claude 스킬을 부품처럼 쌓아 워크플로우로 조립하고, 갤러리로 공유.
 
-**팀원은 [`온보딩.md`](./온보딩.md) 먼저 읽으세요.**
-
 ## 📣 Introduction
 
 <div align="center">
@@ -84,7 +82,7 @@ AI가 작업을 실행하는 중, 승인이 필요한 지점에서 자동으로 
 | 분야 | 사용 기술 |
 | --- | --- |
 | Frontend | ![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white) ![React](https://img.shields.io/badge/React-61DAFB?style=for-the-badge&logo=react&logoColor=black) ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white) ![React Flow](https://img.shields.io/badge/React%20Flow-0E9A6E?style=for-the-badge&logoColor=white) ![Clerk](https://img.shields.io/badge/Clerk-6C47FF?style=for-the-badge&logoColor=white) ![Prettier](https://img.shields.io/badge/Prettier-F7B93E?style=for-the-badge&logo=prettier&logoColor=black) |
-| Backend | ![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white) ![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white) ![Uvicorn](https://img.shields.io/badge/Uvicorn-2A308B?style=for-the-badge&logoColor=white) ![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-D71F00?style=for-the-badge&logoColor=white) ![Alembic](https://img.shields.io/badge/Alembic-3776AB?style=for-the-badge&logoColor=white) ![Pydantic](https://img.shields.io/badge/Pydantic-E92063?style=for-the-badge&logo=pydantic&logoColor=white) ![Claude](https://img.shields.io/badge/Claude-D97757?style=for-the-badge&logo=anthropic&logoColor=white) ![Clerk](https://img.shields.io/badge/Clerk-6C47FF?style=for-the-badge&logoColor=white) ![Ruff](https://img.shields.io/badge/Ruff-D7FF64?style=for-the-badge&logo=ruff&logoColor=black) ![Black](https://img.shields.io/badge/Black-000000?style=for-the-badge&logoColor=white) ![Pytest](https://img.shields.io/badge/Pytest-0A9EDC?style=for-the-badge&logo=pytest&logoColor=white) |
+| Backend | ![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white) ![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white) ![Uvicorn](https://img.shields.io/badge/Uvicorn-2A308B?style=for-the-badge&logoColor=white) ![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-D71F00?style=for-the-badge&logoColor=white) ![Alembic](https://img.shields.io/badge/Alembic-3776AB?style=for-the-badge&logoColor=white) ![Pydantic](https://img.shields.io/badge/Pydantic-E92063?style=for-the-badge&logo=pydantic&logoColor=white) ![Claude](https://img.shields.io/badge/Claude-D97757?style=for-the-badge&logo=anthropic&logoColor=white) |
 | Local Runner | ![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white) ![MCP](https://img.shields.io/badge/MCP-000000?style=for-the-badge&logoColor=white) ![Claude Code CLI](https://img.shields.io/badge/Claude%20Code%20CLI-D97757?style=for-the-badge&logo=anthropic&logoColor=white) ![SQLite](https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite&logoColor=white) |
 | Database | ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white) ![Amazon RDS](https://img.shields.io/badge/Amazon%20RDS-527FFF?style=for-the-badge&logoColor=white) ![SQLite](https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite&logoColor=white) |
 | DevOps | ![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white) ![Amazon EC2](https://img.shields.io/badge/Amazon%20EC2-FF9900?style=for-the-badge&logoColor=white) ![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white) ![Vercel](https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white) |
@@ -101,15 +99,11 @@ SkillCanvas의 데모 핵심 기능입니다. AI가 작업을 실행하기 전, 
 
 "AI가 알아서 다 한다"가 아니라 "AI가 준비하고 사람이 승인한다"는 원칙으로 설계했습니다.
 
-## 핵심 백엔드 API
+## API
 
 ![핵심 백엔드 API 1](assets/api-endpoints-1.png)
 
 ![핵심 백엔드 API 2](assets/api-endpoints-2.png)
-
-#### 로컬실행기 핵심기능 개발
-
-![로컬 실행기](assets/local-runner.png)
 
 ## Monitoring
 
