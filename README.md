@@ -196,14 +196,3 @@ uvicorn app.main:app --port 4737 --reload
 | --- | --- | --- | --- | --- |
 | **Role** | Leader, Fullstack, DevOps | Backend, DevOps | Frontend, Design | Backend |
 | **GitHub** | [@hyl1115](https://github.com/hyl1115) | [@reval04](https://github.com/reval04) | [@jungjungjungdd-ai](https://github.com/jungjungjungdd-ai) | [@yecnnz](https://github.com/yecnnz) |
-
-## 문서
-
-| 문서 | 내용 |
-|------|------|
-| `docs/레포구조.md` | **레포 구조 · API 개발 어디서 하는지 (API 개발자 필독)** |
-| `docs/SkillCanvas_컨벤션.md` | 코드·API 규칙 (**필독**) |
-| `docs/SkillCanvas_API명세서.md` | API 엔드포인트 상세 |
-| `docs/SkillCanvas_ERD.md` | DB 설계 |
-| `docs/SkillCanvas_기능명세서.md` | 기능 명세 (데이터·API 관점) |
-| `docs/SkillCanvas_기능명세서_상세.md` | 기능 명세 (화면 관점) |
