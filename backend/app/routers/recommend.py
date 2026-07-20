@@ -39,7 +39,7 @@ def recommend(
     )
 
     # ③ Claude 호출 (실패/파싱오류는 llm.py가 502/422로 처리)
-    data = ask_claude_json(system, payload.text, fail_code="RECOMMEND_FAILED")
+    data = ask_claude_json(system, payload.text, fail_code="RECOMMEND_FAILED", feature="recommend")
 
     # Claude가 필수 필드를 빠뜨렸으면 파싱 실패로 간주 → 422 (명세 3-2)
     if (

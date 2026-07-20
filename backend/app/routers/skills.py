@@ -53,7 +53,9 @@ def _auto_description(content_md: str) -> str | None:
     """description이 비어있을 때 content_md로 한 줄 요약 생성.
     요약 실패해도 발행 자체는 막지 않는다(description만 비워둠)."""
     try:
-        data = ask_claude_json(_SUMMARY_SYSTEM, content_md, fail_code="SUMMARY_FAILED")
+        data = ask_claude_json(
+            _SUMMARY_SYSTEM, content_md, fail_code="SUMMARY_FAILED", feature="summary"
+        )
     except HTTPException:
         return None
     summary = data.get("summary")
