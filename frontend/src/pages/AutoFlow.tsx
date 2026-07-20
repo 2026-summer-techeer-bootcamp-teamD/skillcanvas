@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type DragEvent,
+  type ReactNode,
+} from "react";
 import { useLocation } from "react-router-dom";
 import ReactFlow, {
   Background,
@@ -17,6 +25,7 @@ import { PixelArt } from "../components/PixelArt";
 import { TopNav, type NavTab } from "../components/TopNav";
 import { PublishModal, type PublishPayload } from "../components/PublishModal";
 import { KeyModal } from "../components/KeyModal";
+import { ApprovalModal } from "../components/ApprovalModal";
 import { FlowNode } from "../components/flow/FlowNode";
 import { ROBOT_BLACK, ROBOT_ORANGE } from "../lib/pixelMaps";
 import {
@@ -34,9 +43,13 @@ import {
   approveRun,
   saveCredential,
   getCredentials,
+  startWatch,
+  stopWatch,
+  getWatchStatus,
   RunnerError,
   type RunResultItem,
   type RunResponse,
+  type WatchStatus,
 } from "../lib/runner";
 import "./AutoFlow.css";
 
@@ -45,6 +58,50 @@ const EXAMPLES = [
   "CS 컴플레인 오면 배송조회해서 사과+쿠폰 발송",
   "메일 오면 분류해서 라벨 붙이기",
 ];
+
+// map-node 응답의 type → 노드 타입 라벨(인스펙터 표시용).
+const KIND_LABEL: Record<FlowNodeKind, string> = {
+  trigger: "트리거",
+  tool: "도구",
+  agent: "에이전트",
+  approve: "승인",
+  output: "출력",
+  branch: "분기",
+};
+
+// 실행 결과 표시용: 러너 노드 타입 → 라벨·색 (이모지 대신 색 라벨로 타입 구분)
+const RESULT_TYPE: Record<string, { label: string; color: string }> = {
+  trigger: { label: "트리거", color: "var(--sc-node-trigger)" },
+  tool: { label: "도구", color: "var(--sc-node-tool)" },
+  agent: { label: "에이전트", color: "var(--sc-node-agent)" },
+  ai: { label: "에이전트", color: "var(--sc-node-agent)" },
+  branch: { label: "분기", color: "var(--sc-node-branch)" },
+  approve: { label: "승인", color: "var(--sc-node-approve)" },
+  output: { label: "출력", color: "var(--sc-node-output)" },
+};
+
+// 러너 결과 문자열의 이모지(⏱🔌🧠🔀📤 등)를 걷어낸다 — 화살표·대시는 살린다.
+const RESULT_EMOJI_RE =
+  /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2300}-\u{23FF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]/gu;
+
+function cleanResultLine(s: string): string {
+  return s
+    .replace(RESULT_EMOJI_RE, "")
+    .replace(/[ \t]{2,}/g, " ")
+    .trimStart();
+}
+
+// 이모지 제거 + **굵게** 렌더 + 줄바꿈 보존. (원본은 마크다운이라 그냥 뿌리면 별표가 그대로 보인다)
+function renderResult(text: string): ReactNode {
+  return text.split("\n").map((raw, li) => {
+    const line = cleanResultLine(raw);
+    return (
+      <span key={li} style={{ display: "block" }}>
+        {line.split("**").map((seg, si) => (si % 2 === 1 ? <strong key={si}>{seg}</strong> : seg))}
+      </span>
+    );
+  });
+}
 
 const REC_SKILLS: {
   title: string;
@@ -66,6 +123,14 @@ const REC_SKILLS: {
     kind: "approve",
     typeLabel: "승인",
     op: "human.gate",
+  },
+  {
+    // op(=detail)에 분기 라벨을 '|'로. 실행기 branch 노드가 이걸 유형 후보로 쓴다.
+    title: "분기 (유형 판단)",
+    meta: "분기 · branch",
+    kind: "branch",
+    typeLabel: "분기",
+    op: "문의|제안",
   },
 ];
 
@@ -106,11 +171,20 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState<string | null>(null);
   const [flowName, setFlowName] = useState("cs-complaint-handler");
-  const [flowMcps, setFlowMcps] = useState<string[]>([]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(INITIAL_NODES);
   const [edges, setEdges, onEdgesChange] = useEdgesState(INITIAL_EDGES);
+  // 상단 툴바의 MCP 칩은 실제 노드들의 mcpKey에서 파생 — 노드 바꾸기(map-node)·삭제·추가가
+  // 바로 반영된다(별도 상태로 두면 노드를 바꿔도 옛 도구가 그대로 남는다).
+  const flowMcps = useMemo(
+    () => Array.from(new Set(nodes.map((n) => n.data.mcpKey).filter(Boolean))) as string[],
+    [nodes],
+  );
   const [selected, setSelected] = useState<Node<FlowNodeData> | null>(null);
+  // 노드 자연어 수정(POST /map-node) — 예: "팀 슬랙으로 바꿔줘"
+  const [mapText, setMapText] = useState("");
+  const [mapBusy, setMapBusy] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
   const idRef = useRef(100);
   const flowWrapper = useRef<HTMLDivElement>(null);
   const [rfInstance, setRfInstance] = useState<ReactFlowInstance | null>(null);
@@ -138,6 +212,46 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
   const [runPending, setRunPending] = useState<{ id: string; message: string } | null>(null);
   const [running, setRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
+  // 승인 모달을 '나중에'로 닫았는지. 새 실행 시 리셋. 닫아도 패널에서 다시 열 수 있다.
+  const [approvalDismissed, setApprovalDismissed] = useState(false);
+
+  // ── 스케줄러 감시 (POST /watch) ────────────────────
+  const [watch, setWatch] = useState<WatchStatus | null>(null);
+  const [watchBusy, setWatchBusy] = useState(false);
+
+  useEffect(() => {
+    // 실행기가 켜져 있으면 감시 상태를 읽어와 버튼에 반영(꺼져 있으면 조용히 무시)
+    getWatchStatus()
+      .then(setWatch)
+      .catch(() => {});
+  }, []);
+
+  // 로컬에 저장 = 지금 편집한 그래프를 실행기에 저장하고 자동 실행을 켠다.
+  // 이미 켜져 있어도 다시 누르면 '최신 그래프로 갱신' — 저장 뒤 노드를 더 고쳤을 때
+  // 낡은 저장본이 도는 걸 막는다(어제 노션이 안 됐던 원인).
+  const handleSaveLocal = async () => {
+    setWatchBusy(true);
+    setRunError(null);
+    try {
+      setWatch(await startWatch(nodes, edges));
+    } catch (e) {
+      setRunError(e instanceof RunnerError ? e.message : "로컬 저장 실패");
+    } finally {
+      setWatchBusy(false);
+    }
+  };
+
+  const handleStopWatch = async () => {
+    setWatchBusy(true);
+    setRunError(null);
+    try {
+      setWatch(await stopWatch());
+    } catch (e) {
+      setRunError(e instanceof RunnerError ? e.message : "자동 실행 끄기 실패");
+    } finally {
+      setWatchBusy(false);
+    }
+  };
 
   const handleRun = async () => {
     setRunning(true);
@@ -145,6 +259,7 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
     setRunResults([]);
     setRunPending(null);
     setRunStatus(null);
+    setApprovalDismissed(false); // 새 실행이면 승인 모달 다시 뜨게
     try {
       const r = await runFlow(nodes, edges);
       setRunId(r.run_id);
@@ -261,18 +376,28 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
   );
 
   const onConnect = useCallback(
-    (conn: Connection) =>
+    (conn: Connection) => {
+      // 분기 노드에서 나가는 엣지면 조건 라벨을 물어본다(라벨=실행기 when 조건).
+      const src = nodes.find((n) => n.id === conn.source);
+      let label: string | undefined;
+      if (src?.data.kind === "branch") {
+        const v = window.prompt("이 경로로 갈 조건? (예: 문의 / 제안)")?.trim();
+        if (v) label = v;
+      }
       setEdges((eds) =>
         addEdge(
           {
             ...conn,
             animated: true,
+            label,
+            labelStyle: { fill: "#d64550", fontWeight: 600 },
             style: { stroke: "#e8843c", strokeWidth: 1.6, strokeDasharray: "5 5" },
           },
           eds,
         ),
-      ),
-    [setEdges],
+      );
+    },
+    [setEdges, nodes],
   );
 
   const updateSelectedData = (patch: Partial<FlowNodeData>) => {
@@ -283,11 +408,57 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
     );
   };
 
+  // 선택 노드를 자연어 지시로 재매핑(POST /map-node). 예: 디스코드 노드에 "슬랙으로 바꿔줘".
+  // 응답의 detail이 카탈로그 key면 그게 곧 실행기가 쓸 mcpKey → 실행 대상·키 패널까지 갱신된다.
+  const mapNode = async () => {
+    if (!selected) return;
+    const instruction = mapText.trim();
+    if (!instruction || mapBusy) return;
+    setMapBusy(true);
+    setMapError(null);
+    try {
+      const data = await call<{
+        node: { type: string; label: string; detail: string | null };
+        mcp_added: string | null;
+      }>("/map-node", {
+        method: "POST",
+        json: {
+          node: {
+            type: selected.data.kind,
+            label: selected.data.title,
+            detail: selected.data.op || null,
+          },
+          instruction,
+        },
+      });
+      const kind = (
+        ["trigger", "tool", "agent", "approve", "output", "branch"].includes(data.node.type)
+          ? data.node.type
+          : "tool"
+      ) as FlowNodeKind;
+      const detail = data.node.detail ?? "";
+      const isMcp = kind === "tool" && detail !== "" && catalog.some((t) => t.key === detail);
+      updateSelectedData({
+        kind,
+        typeLabel: KIND_LABEL[kind] ?? kind,
+        title: data.node.label,
+        op: detail,
+        mcpKey: isMcp ? detail : undefined,
+      });
+      setMapText("");
+    } catch (e) {
+      setMapError(e instanceof ApiError ? e.message : "노드 수정 실패");
+    } finally {
+      setMapBusy(false);
+    }
+  };
+
   // 클릭뿐 아니라 키보드 선택까지 아우르도록 React Flow 선택 상태로 인스펙터를 연다.
-  const onSelectionChange = useCallback(
-    ({ nodes: sel }: { nodes: Node<FlowNodeData>[] }) => setSelected(sel[0] ?? null),
-    [],
-  );
+  const onSelectionChange = useCallback(({ nodes: sel }: { nodes: Node<FlowNodeData>[] }) => {
+    setSelected(sel[0] ?? null);
+    setMapText(""); // 다른 노드로 넘어가면 자연어 수정 입력·에러 초기화
+    setMapError(null);
+  }, []);
 
   // 연결선을 클릭하면 그 연결을 삭제 (노드는 핸들을 드래그해 다시 이을 수 있다)
   const onEdgeClick = useCallback(
@@ -327,7 +498,7 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
       const data = await call<{
         name: string;
         nodes: { id: string; type: string; label: string; detail: string | null }[];
-        edges: { from: string; to: string }[];
+        edges: { from: string; to: string; when?: string | null }[];
         used_mcps: string[];
       }>("/assemble", { method: "POST", json: { text: prompt, target: "workflow" } });
       const { nodes: n, edges: e } = assembleWorkflowToFlow(
@@ -338,7 +509,6 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
       setNodes(n);
       setEdges(e);
       if (data.name) setFlowName(data.name);
-      setFlowMcps(data.used_mcps ?? []);
       setPhase("builder");
     } catch (err) {
       const msg =
@@ -520,6 +690,31 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
                 />
               </label>
 
+              {/* 노드 자연어 수정 — 예: 디스코드 노드에 "팀 슬랙으로 바꿔줘" */}
+              <div className="af__mapEdit">
+                <label className="af__field">
+                  노드 바꾸기
+                  <input
+                    className="af__fieldInput"
+                    value={mapText}
+                    onChange={(e) => setMapText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") mapNode();
+                    }}
+                    placeholder="예: 팀 슬랙으로 바꿔줘"
+                  />
+                </label>
+                <button
+                  className="af__recommend"
+                  type="button"
+                  onClick={mapNode}
+                  disabled={mapBusy || !mapText.trim()}
+                >
+                  {mapBusy ? "바꾸는 중…" : "바꾸기"}
+                </button>
+                {mapError && <p className="af__recMeta">에러: {mapError}</p>}
+              </div>
+
               {(() => {
                 const meta = selected.data.mcpKey
                   ? catalog.find((t) => t.key === selected.data.mcpKey)
@@ -586,6 +781,29 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
               </span>
             ))}
             <div className="af__toolbarRight">
+              <button
+                className={watch?.watching ? "af__watch af__watch--on" : "af__watch"}
+                type="button"
+                onClick={handleSaveLocal}
+                disabled={watchBusy}
+                title="지금 워크플로우를 실행기에 저장하고, 새 메일이 오면 자동 실행해요. 편집을 다 끝낸 뒤 누르세요. (이미 켜져 있으면 최신 내용으로 다시 저장)"
+              >
+                {watchBusy
+                  ? "저장 중…"
+                  : watch?.watching
+                    ? "● 저장됨 · 자동 실행 중"
+                    : "로컬에 저장"}
+              </button>
+              {watch?.watching && !watchBusy && (
+                <button
+                  className="af__watchOff"
+                  type="button"
+                  onClick={handleStopWatch}
+                  title="자동 실행 끄기 (저장본은 남겨둬요)"
+                >
+                  끄기
+                </button>
+              )}
               <button className="af__run" type="button" onClick={handleRun} disabled={running}>
                 {running ? "실행 중…" : "실행"}
               </button>
@@ -642,60 +860,102 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
                 }}
               >
                 <strong>실행 결과</strong>
-                <span style={{ fontSize: 13, color: "#8a8375" }}>
-                  {running
-                    ? "▶ 실행 중…"
+                {(() => {
+                  const label = running
+                    ? "실행 중…"
                     : runStatus === "done"
-                      ? "✅ 완료"
+                      ? "완료"
                       : runStatus === "awaiting_approval"
-                        ? "🚨 승인 대기"
+                        ? "승인 대기"
                         : runStatus === "stopped"
-                          ? "⛔ 중단(중복)"
-                          : ""}
-                </span>
+                          ? "중단 (중복)"
+                          : "";
+                  if (!label) return null;
+                  // 완료는 우리 브랜드 주황 알약으로 포인트, 나머지는 담백한 회색 텍스트
+                  const done = runStatus === "done" && !running;
+                  return (
+                    <span
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        padding: done ? "3px 10px" : 0,
+                        borderRadius: 999,
+                        color: done ? "#fff" : "#8a8375",
+                        background: done ? "var(--sc-accent)" : "transparent",
+                      }}
+                    >
+                      {label}
+                    </span>
+                  );
+                })()}
               </div>
               {runError && (
                 <p style={{ color: "#c0392b", fontSize: 13, margin: "4px 0" }}>⚠ {runError}</p>
               )}
-              <ol
-                style={{
-                  margin: 0,
-                  paddingLeft: 18,
-                  fontSize: 13,
-                  lineHeight: 1.7,
-                  color: "#4a4636",
-                }}
-              >
-                {runResults.map((r, i) => (
-                  <li key={`${r.id}-${i}`}>{r.result}</li>
-                ))}
-              </ol>
-              {runPending && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {runResults.map((r, i) => {
+                  const meta = RESULT_TYPE[r.type ?? ""] ?? { label: "단계", color: "#b3ab99" };
+                  return (
+                    <div
+                      key={`${r.id}-${i}`}
+                      style={{ borderLeft: `3px solid ${meta.color}`, paddingLeft: 10 }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          marginBottom: 3,
+                        }}
+                      >
+                        <span style={{ fontSize: 10.5, fontWeight: 700, color: meta.color }}>
+                          {meta.label}
+                        </span>
+                        <span style={{ fontSize: 12.5, fontWeight: 600, color: "#3a3529" }}>
+                          {r.label}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 12.5, lineHeight: 1.65, color: "#5a5545" }}>
+                        {renderResult(r.result)}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* 승인 대기 시 안내는 별도 팝업(ApprovalModal)으로 띄운다. 모달을 '나중에'로
+                  닫았을 때만, 다시 열 수 있는 담백한 줄을 패널에 남긴다. */}
+              {runPending && approvalDismissed && (
                 <div
                   style={{
                     marginTop: 10,
-                    padding: "10px 12px",
+                    padding: "8px 12px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 10,
                     background: "#fff4ec",
                     border: "1px solid #f2c9a8",
                     borderRadius: 8,
                   }}
                 >
-                  <p style={{ margin: "0 0 8px", fontSize: 13 }}>🚨 {runPending.message}</p>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "#8a5a2b" }}>
+                    승인 대기 중
+                  </span>
                   <button
                     type="button"
-                    onClick={handleApprove}
-                    disabled={running}
+                    onClick={() => setApprovalDismissed(false)}
                     style={{
-                      padding: "6px 14px",
-                      background: "#e8843c",
+                      padding: "5px 12px",
+                      background: "var(--sc-accent)",
                       color: "#fff",
                       border: "none",
                       borderRadius: 6,
                       cursor: "pointer",
-                      fontWeight: 600,
+                      fontWeight: 700,
+                      fontSize: 12.5,
                     }}
                   >
-                    승인하고 계속
+                    승인 열기
                   </button>
                 </div>
               )}
@@ -721,7 +981,7 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
             onClick={handleRecommend}
             disabled={recLoading}
           >
-            {recLoading ? "추천 중…" : "⚡ AI에게 추천받기"}
+            {recLoading ? "추천 중…" : "AI에게 추천받기"}
           </button>
           {recError && <p className="af__recMeta">에러: {recError}</p>}
 
@@ -846,6 +1106,14 @@ export function AutoFlow({ onNavigate }: AutoFlowProps) {
           refreshSavedKeys(); // 패널을 '연결됨'으로 즉시 바꾼다
           setKeyModalOpen(false);
         }}
+      />
+
+      <ApprovalModal
+        open={!!runPending && !approvalDismissed}
+        message={runPending ? cleanResultLine(runPending.message) : ""}
+        busy={running}
+        onApprove={handleApprove}
+        onClose={() => setApprovalDismissed(true)}
       />
     </div>
   );

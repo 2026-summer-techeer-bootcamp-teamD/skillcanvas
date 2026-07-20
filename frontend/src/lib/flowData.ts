@@ -1,7 +1,7 @@
 import type { Node, Edge } from "reactflow";
 import { MarkerType } from "reactflow";
 
-export type FlowNodeKind = "trigger" | "tool" | "agent" | "output" | "approve";
+export type FlowNodeKind = "trigger" | "tool" | "agent" | "output" | "approve" | "branch";
 
 export interface FlowNodeData {
   kind: FlowNodeKind;
@@ -24,6 +24,7 @@ export const NODE_COLOR: Record<FlowNodeKind, string> = {
   agent: "var(--sc-node-agent)",
   output: "var(--sc-node-output)",
   approve: "var(--sc-node-approve)",
+  branch: "var(--sc-node-branch)",
 };
 
 /** cs-complaint-handler 예시 플로우 (자연어 추천 결과 목업) */
@@ -72,7 +73,7 @@ const EDGE_STYLE = {
   strokeDasharray: "5 5",
 };
 
-function edge(id: string, source: string, target: string): Edge {
+function edge(id: string, source: string, target: string, label?: string): Edge {
   return {
     id,
     source,
@@ -80,6 +81,9 @@ function edge(id: string, source: string, target: string): Edge {
     animated: true,
     style: EDGE_STYLE,
     markerEnd: { type: MarkerType.ArrowClosed, color: "#e8843c" },
+    // 분기 조건 라벨(assemble의 when). 있으면 빨간 라벨로 표시하고, 실행 시 toRunnerGraph가
+    // 이 label을 when으로 실어보낸다(수동 연결 onConnect와 같은 계약).
+    ...(label ? { label, labelStyle: { fill: "#d64550", fontWeight: 600 } } : {}),
   };
 }
 
@@ -105,6 +109,7 @@ const ASSEMBLE_LABEL: Record<string, string> = {
   tool: "도구",
   approve: "승인",
   output: "출력",
+  branch: "분기",
 };
 
 /**
@@ -120,7 +125,7 @@ export function assembleToFlow(
 } {
   const rfNodes: Node<FlowNodeData>[] = nodes.map((n, i) => {
     const kind = (
-      ["trigger", "tool", "agent", "approve", "output"].includes(n.type) ? n.type : "tool"
+      ["trigger", "tool", "agent", "approve", "output", "branch"].includes(n.type) ? n.type : "tool"
     ) as FlowNodeKind;
     const typeLabel = ASSEMBLE_LABEL[n.type] ?? n.type;
     // 노드 라벨·설명에 언급된 MCP를 찾아 간결한 태그로 (줄글 대신)
@@ -148,7 +153,7 @@ export function assembleToFlow(
  */
 export function assembleWorkflowToFlow(
   nodes: AssembledNode[],
-  edges: { from: string; to: string }[],
+  edges: { from: string; to: string; when?: string | null }[],
   usedMcps: string[] = [],
 ): { nodes: Node<FlowNodeData>[]; edges: Edge[] } {
   // 각 노드의 열(깊이): 루트=0, 자식=부모열+1 (longest-path 완화)
@@ -171,7 +176,7 @@ export function assembleWorkflowToFlow(
     const r = rowInCol[c] ?? 0;
     rowInCol[c] = r + 1;
     const kind = (
-      ["trigger", "tool", "agent", "approve", "output"].includes(n.type) ? n.type : "tool"
+      ["trigger", "tool", "agent", "approve", "output", "branch"].includes(n.type) ? n.type : "tool"
     ) as FlowNodeKind;
     // detail이 이 워크플로우가 쓰는 MCP 키면 → 키 연결 필요. 매칭은 이 mcpKey로(한글 title 아님).
     const isMcp = kind === "tool" && n.detail != null && usedMcps.includes(n.detail);
@@ -188,6 +193,8 @@ export function assembleWorkflowToFlow(
       },
     };
   });
-  const rfEdges: Edge[] = edges.map((e, i) => edge(`we${i}`, e.from, e.to));
+  const rfEdges: Edge[] = edges.map((e, i) =>
+    edge(`we${i}`, e.from, e.to, e.when?.trim() || undefined),
+  );
   return { nodes: rfNodes, edges: rfEdges };
 }

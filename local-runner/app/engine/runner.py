@@ -11,14 +11,51 @@ RUNS: dict[str, dict] = {}  # run_id → 실행 상태(중단/재개용)
 _seq = {"n": 0}  # run_id 생성용 카운터
 
 
+def _outgoing(edges: list[dict], node_id: str) -> list[dict]:
+    """node_id에서 나가는 엣지 목록 (from == node_id)."""
+    return [e for e in edges if e.get("from") == node_id]
+
+
+def _next_node_id(run: dict, node: dict, out: dict) -> str | None:
+    """현재 노드 실행 결과를 보고 '다음에 갈 노드 id'를 고른다. 없으면 None(끝).
+
+    - 분기 노드(out["route"] 있음): 나가는 엣지 중 when == route 인 것으로만.
+      매칭 없으면 when 없는 엣지로 폴백(느슨하게), 그것도 없으면 끝.
+    - 일반 노드: 나가는 엣지의 to 하나로. (여러 개면 첫 번째 — 선형 워크플로우 전제)
+    - 나가는 엣지 없음: 끝.
+
+    조건 없는 기존 워크플로우(엣지에 when 없음)는 topo 순서의 '다음'과 동일하게 흐른다.
+    """
+    outs = _outgoing(run["edges"], node["id"])
+    if not outs:
+        return None
+
+    route = out.get("route")
+    if route is not None:  # 분기 노드
+        matched = [e for e in outs if e.get("when") == route]
+        if not matched:  # 라벨 매칭 실패 → 조건 없는 엣지로 폴백
+            matched = [e for e in outs if e.get("when") is None]
+        return matched[0]["to"] if matched else None
+
+    # 일반 노드: 조건 없는 엣지 우선(있으면), 없으면 첫 엣지
+    plain = [e for e in outs if e.get("when") is None]
+    return (plain[0] if plain else outs[0])["to"]
+
+
 def step_run(run: dict) -> dict:
-    """run['idx']부터 실행하다 pause(승인)/stop(중복)/끝에서 멈춘다."""
-    order = run["order"]
-    while run["idx"] < len(order):
-        node = run["by_id"].get(order[run["idx"]])
-        run["idx"] += 1
-        if node is None:
-            continue
+    """run['cursor'](현재 노드 id)부터 그래프를 따라가며 실행.
+
+    pause(승인)/stop(중복)에서 멈추고 cursor를 '다음 노드'로 세팅해두므로,
+    resume_run이 cursor부터 이어서 재개할 수 있다(idx 없이 노드 id 기반).
+    엣지의 when 조건에 따라 분기 노드에서 한쪽 경로만 탄다.
+    """
+    seen: set[str] = run["seen"]  # 사이클 방어(같은 노드 재방문 차단)
+    while run["cursor"] is not None:
+        node = run["by_id"].get(run["cursor"])
+        if node is None or node["id"] in seen:
+            break
+        seen.add(node["id"])
+
         # run["results"] = 지금까지 실행된 이전 단계들 → agent가 맥락으로 참고
         out = exec_node(node, run["ctx"], run["results"])
         run["results"].append(
@@ -29,12 +66,25 @@ def step_run(run: dict) -> dict:
                 "result": out["result"],
             }
         )
+        # 다음 노드를 미리 정해 cursor에 저장 → pause 시에도 재개 지점 보존
+        run["cursor"] = _next_node_id(run, node, out)
+
         if out.get("pause"):
             pending = {"id": node["id"], "message": node.get("detail") or node.get("label", "")}
             return _stash(run, "awaiting_approval", pending)
         if out.get("stop"):
             return _stash(run, "stopped")
     return _stash(run, "done")
+
+
+def _start_node_id(nodes: list[dict], edges: list[dict]) -> str | None:
+    """시작 노드 = 들어오는 엣지가 없는 노드. 여러 개/없으면 topo 순서 첫 노드로 폴백."""
+    targets = {e.get("to") for e in edges}
+    roots = [n["id"] for n in nodes if n["id"] not in targets]
+    if len(roots) == 1:
+        return roots[0]
+    order = topo_order(nodes, edges)  # 애매하면 기존 위상정렬 첫 노드
+    return order[0] if order else None
 
 
 def start_run(nodes: list[dict], edges: list[dict], item_key: str) -> dict:
@@ -46,9 +96,10 @@ def start_run(nodes: list[dict], edges: list[dict], item_key: str) -> dict:
     _seq["n"] += 1
     run_id = f"run{_seq['n']}"
     run = {
-        "order": topo_order(nodes, edges),
+        "edges": edges,  # 그래프 순회용(다음 노드 선택)
         "by_id": {n["id"]: n for n in nodes},
-        "idx": 0,
+        "cursor": _start_node_id(nodes, edges),  # 다음 실행할 노드 id (idx 대체)
+        "seen": set(),  # 이미 실행한 노드(사이클 방어)
         "results": [],
         "ctx": {"item_key": item_key},
     }

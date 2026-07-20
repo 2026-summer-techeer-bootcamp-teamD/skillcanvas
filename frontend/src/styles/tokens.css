@@ -26,6 +26,7 @@
   --sc-node-agent: #7a4fd6;
   --sc-node-approve: #e8843c;
   --sc-node-output: #1f8a4c;
+  --sc-node-branch: #d64550; /* 분기: 갈래 나뉨 강조 */
 
   /* dot 배경 */
   --sc-dot: #ddd7c7;

@@ -29,17 +29,17 @@
 
 | 기능 | 설명 | 구분 | 우선 | 관련 데이터 |
 |------|------|:---:|:---:|------|
-| 카탈로그 조회 | 지원 MCP 목록 + 키 메타데이터 반환 | 🟦 | P1 | mcp_catalog |
-| 카탈로그 관리 | MCP 추가/수정 (운영) | 🟦 | P2 | mcp_catalog |
+| 카탈로그 조회 | 지원 MCP 목록 + 키 메타데이터 반환 | 🟦 | P1 | tool_catalog |
+| 카탈로그 관리 | MCP 추가/수정 (운영) | 🟦 | P2 | tool_catalog |
 
 ## 3. 자연어 조립 / 추천 (백엔드가 Claude API 호출)
 
 | 기능 | 설명 | 구분 | 우선 | 관련 데이터 |
 |------|------|:---:|:---:|------|
-| 자연어→워크플로우 생성 | NL → 그래프 JSON (카탈로그 안에서만·검증) | 🟦 | P1 | mcp_catalog |
-| 자연어→스킬 생성 | NL → 스킬 초안 | 🟦 | P1 | mcp_catalog |
-| MCP 추천 | "이거 하고싶어" → 붙일 MCP 제안 | 🟦 | P1 | mcp_catalog |
-| 노드 자연어 편집/매핑 | 노드를 말로 수정 → 재매핑 | 🟦 | P1 | — |
+| 자연어→워크플로우 생성 | NL → 그래프 JSON (카탈로그 안에서만·검증). **조건 분기(branch)·`when` 엣지 생성** 포함 | 🟦 | P1 | tool_catalog |
+| 자연어→스킬 생성 | NL → 스킬 초안 | 🟦 | P1 | tool_catalog |
+| MCP 추천 | "이거 하고싶어" → 붙일 MCP 제안 | 🟦 | P1 | tool_catalog |
+| 노드 자연어 편집/매핑 | 노드를 말로 수정 → 재매핑 (AutoFlow "노드 바꾸기") | 🟦 | P1 | — |
 
 ## 4. 갤러리 (공유·재사용)
 
@@ -72,24 +72,28 @@
 
 | 기능 | 설명 | 구분 | 우선 | 관련 데이터 |
 |------|------|:---:|:---:|------|
-| 워크플로우 실행 엔진 | 노드 순서대로 (중단/재개) | 🟩 | P1 | 로컬 SQLite(run_state) |
+| 워크플로우 실행 엔진 | 그래프 순회(cursor) 실행 (중단/재개) | 🟩 | P1 | in-memory run |
+| 조건 분기 (branch) | 유형 판단 → `when` 일치 갈래**만** 실행 | 🟩 | P1 | — |
 | 에이전트 실행 | Claude CLI 호출 (판단·생성) | 🟩 | P1 | — |
-| MCP 실행 | 실제 도구 호출 (Gmail·택배 등) | 🟩 | P1 | — |
+| MCP 실행 | 실제 도구 호출 (Gmail·택배·노션·슬랙 등). REST 도구(택배)는 앞 단계 메일에서 송장번호·택배사 **자동 추출** | 🟩 | P1 | — |
+| 노션 정리 | 요약을 노션 페이지로 생성(제목 [유형]+수신일, 구획 본문) | 🟩 | P1 | 로컬 SQLite(credentials) |
 | 하네스: 중복체크 | 이미 처리한 것 제외 | 🟩 | P1 | 로컬 SQLite(processed) |
 | 하네스: 검증 | 조건 확인, 안 맞으면 중단 | 🟩 | P1 | — |
-| 하네스: 🚨승인게이트 | 멈춤 → 사용자 승인 → 재개 | 🟩 | P1 | 로컬 SQLite(run_state) |
+| 하네스: 🚨승인게이트 | 멈춤 → 사용자 승인 → 재개 | 🟩 | P1 | in-memory run |
 | config 내보내기 | workflow+agent+deploy config 파일 | 🟩 | P2 | 로컬 파일 |
-| 스케줄 실행 | 매일 N시 (로컬 켜진 동안, APScheduler) | 🟩 | P2 | — |
+| 스케줄러(무인 트리거) | 새 메일 폴링(IMAP)→자동 실행, 로컬 켜진 동안 | 🟩 | P1 | 로컬 SQLite(watched_workflow) |
 
 ## 7. 로컬 실행기 인프라
 
-- **localhost API** (프론트↔로컬 실행기): `GET /graph`(시각화) · `POST /save`(동기화) · `POST /run`(실행) · `GET /run/{id}/status` · `POST /run/{id}/approve`(승인) · `POST /credential`(키 저장)
+- **localhost API** (프론트↔로컬 실행기): `GET /graph`(시각화) · `POST /save`(동기화) · `POST /run`(실행) · `GET /run/{id}/status` · `POST /run/{id}/approve`(승인) · `POST /credential`(키 저장) · `GET /credentials`(키 현황) · `POST /processed/reset`(중복이력 초기화) · `POST /watch`·`GET /watch`·`POST /watch/stop`(스케줄러 감시)
+- **백그라운드 폴링**: FastAPI lifespan + asyncio 루프. 감시 on이면 N초마다 gmail INBOX 안읽은 메일을 IMAP(stdlib, Claude 미호출)로 확인 → 새 Message-ID면 자동 `start_run` → Message-ID를 `processed`에 기록해 중복 방지.
 - **로컬 SQLite 테이블** (ERD 아님, 단순 상태 저장):
   - `processed` (item_key, processed_at) — 중복체크
-  - `run_state` (run_id, current_step, ctx_json, status) — 승인 중단/재개
   - `credentials` (tool_key, secret) — 붙여넣은 키
+  - `watched_workflow` (id, graph_json, enabled, interval_sec, updated_at) — 스케줄러가 자동 실행할 감시 워크플로우(단일 행)
+  - *실행 중단/재개(run_state)는 현재 in-memory(RUNS dict) — 재시작 시 초기화*
 
-> ❌ 로드맵(지금 안 함): run_log(실행이력), 무인 트리거, 조건분기·서브에이전트, 관측(Grafana/Prometheus/Sentry).
+> ❌ 로드맵(지금 안 함): run_log(실행이력), 서브에이전트, 관측(Grafana/Prometheus/Sentry).
 
 ---
 
@@ -99,38 +103,39 @@
 
 ```
 users
-  id (PK) · clerk_user_id (unique) · nickname · created_at
+  id (PK) · clerk_user_id (unique) · nickname (unique) · is_admin · created_at · updated_at
       │1
       ├───────────────┐N
       │N              │
 workflows            skills
   id (PK)             id (PK)
-  owner_id → users owner_id → users
-  title · description name · description
-  graph_json (jsonb)  skill_md (text)
-  is_public           frontmatter_json (jsonb)
-  import_count (int)  import_count (int)
-  created_at          created_at
+  users_id → users    users_id → users
+  name · description   name · description
+  graph_json (jsonb)   content_md (text)
+  is_public            used_mcps (jsonb)
+  import_count (int)   is_public · import_count
+  created·updated_at   created·updated_at
       │N                  │N
       │                   │
 workflow_tags(M:N)   skill_tags(M:N)
+  id PK · 2 FK · UQ쌍   id PK · 2 FK · UQ쌍
       │                   │
-      └──── tags (id PK · name) ────┘
+      └──── master_tags (id PK · name unique) ────┘
 
-mcp_catalog  (독립 — 지원 도구 레지스트리)
-  id (PK) · key · name · auth_type · auth_field · get_url · help · install_cmd · description
+tool_catalog  (독립 — 지원 도구 레지스트리)
+  id (PK) · key(unique) · name · description · key_required · key_issue_url · metadata_json(jsonb) · type · auth_owner
 ```
 
-**엔티티 7개**: `users` · `workflows` · `skills` · `tags` · `workflow_tags` · `skill_tags` · `mcp_catalog`
+**엔티티 7개**: `users` · `workflows` · `skills` · `master_tags` · `workflow_tags` · `skill_tags` · `tool_catalog`
 
 **관계 요약**:
-- users 1—N workflows / skills (소유)
-- workflows N—M tags (workflow_tags) / skills N—M tags (skill_tags)
-- mcp_catalog 독립 (참조 레지스트리)
+- users 1—N workflows / skills (소유, FK `users_id`)
+- workflows N—M master_tags (workflow_tags) / skills N—M master_tags (skill_tags) — 연결 테이블은 surrogate PK(id)+UNIQUE(쌍)
+- tool_catalog 독립 (참조 레지스트리)
 
 ## 로컬 SQLite — 참고용 (ERD 아님)
 
-`processed` · `run_state` · `credentials` — 단순 상태 저장, 관계 없음. 로컬 실행기 명세에만 기재.
+`processed` · `credentials` · `watched_workflow` — 단순 상태 저장, 관계 없음. 로컬 실행기 명세에만 기재. (실행 중단/재개 상태는 in-memory)
 
 ---
 

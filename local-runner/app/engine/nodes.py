@@ -20,6 +20,17 @@ _META_HINTS = (
     "단계의 결과물",
 )
 
+# agent 노드가 웹검색을 켤지 판단하는 키워드. label/detail에 이게 있으면 검색 허용.
+# 기본은 검색 끔 — 답변·요약·판단 노드는 검색이 필요 없는데 켜두면 모델이 괜히
+# 웹검색을 시도해 느려지거나 간헐적으로 타임아웃 난다. (뉴스 수집은 보통 web-search
+# tool 노드가 따로 하므로 agent는 검색이 거의 불필요.)
+_SEARCH_HINTS = ("검색", "뉴스", "조사", "찾아", "최신", "search", "news")
+
+
+def _needs_search(label: str, detail: str) -> bool:
+    hay = f"{label} {detail}".lower()
+    return any(h in hay for h in _SEARCH_HINTS)
+
 
 def _clean(text: str, limit: int = 1200) -> str:
     """claude 응답에서 앞쪽 메타 서두 줄만 걷어내고 본문은 그대로 살린다.
@@ -36,9 +47,29 @@ def _clean(text: str, limit: int = 1200) -> str:
     return lines[-1][:limit]  # 전부 메타 서두인 경우
 
 
-def _agent_prompt(label: str, detail: str, history: list[dict] | None) -> str:
-    """이전 단계 결과를 맥락으로 넣어, agent가 흐름을 반영해 판단/생성하게 한다."""
+def _agent_prompt(
+    label: str, detail: str, history: list[dict] | None, can_search: bool = False
+) -> str:
+    """이전 단계 결과를 맥락으로 넣어, agent가 흐름을 반영해 판단/생성하게 한다.
+
+    can_search=False면 이 노드는 WebSearch가 꺼진 상태 → "검색해서 쓰라"는 지시를
+    빼야 한다(도구 없이 검색하라고 하면 모델이 거절하거나 사실을 지어낸다).
+    """
     steps = "\n".join(f"- {h['label']}: {h['result']}" for h in history) if history else ""
+    if can_search:
+        search_rule = (
+            "- 최신 정보·뉴스·외부 사실이 필요하면 WebSearch/WebFetch로 직접 찾아서 쓴다. "
+            "절대 지어내지 말고, 못 찾으면 못 찾았다고 쓴다.\n"
+            "- 이전 단계의 '🔌 도구 실행' 줄은 실제 데이터가 아니라 실행 기록일 뿐이다. "
+            "거기서 데이터를 기대하지 말고 필요하면 직접 검색해라.\n"
+        )
+    else:
+        # 검색 없는 노드(답변·요약·판단): 앞 단계가 준 내용만으로 처리. 외부 사실을
+        # 지어내지 말고, 정보가 부족하면 부족하다고 쓴다.
+        search_rule = (
+            "- 앞 단계들이 준 내용만으로 이번 결과를 만든다. 외부 사실을 새로 지어내지 말고, "
+            "필요한 정보가 없으면 '(정보 없음)'이라고 쓴다.\n"
+        )
     return (
         "너는 업무 자동화 워크플로우의 한 단계를 수행하는 에이전트다.\n"
         f"[지금까지 진행된 단계와 결과]\n{steps or '(이전 단계 없음)'}\n\n"
@@ -47,14 +78,39 @@ def _agent_prompt(label: str, detail: str, history: list[dict] | None) -> str:
         "- 위 맥락을 반영해 '이번 단계의 최종 결과물' 자체만 출력한다.\n"
         "- 인사말·상황설명·'~단계군요'·'~하겠습니다' 같은 메타 발언 절대 금지.\n"
         "- 예를 들어 '사과문 생성'이면 사과문 문장 자체를, '긴급도 판단'이면 판단 결과를 바로 쓴다.\n"
-        "- 최신 정보·뉴스·외부 사실이 필요하면 WebSearch/WebFetch로 직접 찾아서 쓴다. "
-        "절대 지어내지 말고, 못 찾으면 못 찾았다고 쓴다.\n"
-        "- 이전 단계의 '🔌 도구 실행' 줄은 실제 데이터가 아니라 실행 기록일 뿐이다. "
-        "거기서 데이터를 기대하지 말고 필요하면 직접 검색해라.\n"
+        f"{search_rule}"
         "- 앞 단계가 항목마다 `[출처: URL]`을 줬으면 **그 링크를 요약에도 항목별로 그대로 유지**한다. "
         "URL을 새로 지어내지는 마라.\n"
         "- 한국어, 결과 텍스트만. 요약·목록이면 불릿 5개 이내, 그 외엔 3문장 이내."
     )
+
+
+def _branch_prompt(label: str, routes: list[str], history: list[dict] | None) -> str:
+    """분기 노드용 — 앞 단계 내용을 보고 정해진 라벨 중 하나만 고르게 한다."""
+    steps = "\n".join(f"- {h['label']}: {h['result']}" for h in history) if history else ""
+    opts = " / ".join(routes)
+    return (
+        f"너는 업무 자동화 워크플로우의 분기 판단 단계 '{label}'다.\n"
+        f"[지금까지 진행된 단계와 결과]\n{steps or '(이전 단계 없음)'}\n\n"
+        f"위 내용을 읽고 아래 유형 중 **정확히 하나**로 분류하라.\n"
+        f"[가능한 유형] {opts}\n\n"
+        "규칙:\n"
+        f"- 반드시 위 유형 중 하나의 라벨만 출력한다. 다른 말·설명·기호 절대 금지.\n"
+        f"- 예: 답이 '{routes[0]}'이면 오직 '{routes[0]}' 다섯 글자 이내로만 출력.\n"
+        "- 애매하면 가장 가까운 하나를 고른다. 여러 개 나열 금지."
+    )
+
+
+def _parse_route(text: str, routes: list[str]) -> str:
+    """모델 출력에서 라벨 하나를 뽑는다. 정확 일치 → 포함 → 첫 라벨 폴백."""
+    t = (text or "").strip()
+    for r in routes:  # 정확히 그 라벨을 말했나
+        if t == r:
+            return r
+    for r in routes:  # 문장 안에 라벨이 들어있나
+        if r in t:
+            return r
+    return routes[0]  # 못 고르면 첫 번째(안전 폴백)
 
 
 def _mcp_key(node: dict) -> str:
@@ -119,6 +175,19 @@ def _tool_prompt(label: str, detail: str, history: list[dict] | None, role: str 
             "'1. https://...' 처럼 개별 링크로 나열한다. 링크가 없는 항목은 번호만 두거나 생략한다. "
             "**URL을 새로 지어내지 마라 — 앞 단계가 준 것만 쓴다.**\n"
             "  이메일이면 인사–본문–맺음의 격식 있는 편지 형식으로. 내용 성격에 맞는 틀을 골라라.\n"
+            "  **노션이면** 앞 결과물을 **새 페이지로 생성**한다. 제목은 **맨 앞에 유형 태그를 "
+            "대괄호로** 붙이고(메일 제목에 이미 '[…]' 태그가 있으면 그대로 쓰고, 없으면 분류 결과로 "
+            "만든다 — 예: [제휴 제안]), 그 뒤에 메일 핵심을 한 줄로, **끝에 앞 단계 '메일 읽기'에 "
+            "나온 그 메일의 실제 수신일을 'YYYY-MM-DD' 형식으로 괄호에 넣는다**. ⚠️ 예시나 아무 날짜나 "
+            "그대로 베끼지 말고, **반드시 이 메일의 실제 수신일**을 써라(형식만 참고: '[태그] 핵심 한 줄 "
+            "(YYYY-MM-DD)'). 목록에서 열어보지 않고도 유형과 언제 온 메일인지 알 수 있게 한다. "
+            "본문은 맨 위에 실제 수신일을 '수신일: YYYY-MM-DD'로 적고, 그 아래를 "
+            "**굵은 소제목으로 구획을 나눠**(예: 제안사 / 제안 내용 / 조건 / 기대 효과 / "
+            "요청·연락처) 각 항목을 **개별 불릿**으로 정리한다. 앞 결과물의 구체 정보(숫자·조건·기간·"
+            "연락처 등)를 **한 줄에 뭉뚱그리지 말고 항목별로 그대로 살리고, 내용을 임의로 줄이지 마라**. "
+            "만들 위치는 [이번 단계]의 detail에 적힌 페이지/DB 이름으로 **먼저 검색(search)** 해서 그 "
+            "페이지를 부모로 삼고, detail이 비었으면 접근 가능한 페이지 중 적절한 곳에 만든다. "
+            "**반드시 페이지 생성 도구를 실제로 호출**하고, 텍스트만 출력한 채 끝내지 마라.\n"
             "- ⏱ 트리거 / 🚨 승인 게이트 / 🔁 중복체크 / ✅ 검증 줄은 워크플로우 내부 실행 기록이다. "
             "**절대 전송 내용으로 쓰지 마라.** 결과물 앞의 이모지 접두사(🧠 🔌)도 빼고 보낸다.\n"
             "- 끝나면 무엇을 어디로 보냈는지 한국어 1문장으로만 보고한다.\n" + _COMMON_TOOL_RULES
@@ -141,12 +210,28 @@ def exec_node(node: dict, ctx: dict, history: list[dict] | None = None) -> dict:
         return {"result": "⏱ 트리거 발동 — 실행 시작"}
 
     if t in ("agent", "ai"):  # 에이전트 = Claude 두뇌 (이전 단계 맥락 반영해 실제 호출)
-        # WebSearch/WebFetch 허용 — 이게 없으면 최신 정보가 필요한 단계에서 모델이
-        # 사실을 지어내거나 "데이터가 없다"고 거절한다(둘 다 쓸모없음).
-        r = claude_call(_agent_prompt(label, detail, history), allowed_tools="WebSearch,WebFetch")
+        # 기본은 검색 끔 — 답변·요약·판단 노드는 검색이 필요 없는데 WebSearch를 켜두면
+        # 모델이 괜히 검색을 시도해 느려지고 간헐적으로 타임아웃 난다. label/detail에
+        # 검색 관련 키워드(검색·뉴스·조사…)가 있을 때만 켠다. (뉴스 수집은 보통 web-search
+        # tool 노드가 따로 하므로 agent는 대개 검색 불필요.)
+        can_search = _needs_search(label, detail)
+        allowed = "WebSearch,WebFetch" if can_search else None
+        r = claude_call(_agent_prompt(label, detail, history, can_search), allowed_tools=allowed)
         if "error" in r:
             return {"result": "🧠 ⚠ " + r["error"]}  # 실패해도 런은 계속
         return {"result": "🧠 " + _clean(r["text"])}
+
+    if t == "branch":  # 조건 분기 — 앞 내용 보고 유형 판단 → route로 경로 선택
+        # detail에 라벨을 '|'로 정의한다. 예: "문의|제안". 엣지의 when이 이 라벨과 매칭.
+        routes = [x.strip() for x in (detail or "").split("|") if x.strip()]
+        if not routes:  # 라벨 미정의 → 분기 못 함, 그냥 통과(첫 엣지)
+            return {"result": "🔀 분기: (라벨 미정의)"}
+        r = claude_call(_branch_prompt(label, routes, history), allowed_tools=None)
+        if "error" in r:
+            # 판단 실패해도 런이 죽지 않게 첫 경로로 폴백
+            return {"result": f"🔀 ⚠ 분기 판단 실패 → {routes[0]}", "route": routes[0]}
+        route = _parse_route(r["text"], routes)
+        return {"result": f"🔀 분류: {route}", "route": route}
 
     if t == "dedup":  # 하네스: 이미 처리한 건이면 중단 (SQLite 조회)
         key = ctx.get("item_key")
@@ -172,7 +257,8 @@ def exec_node(node: dict, ctx: dict, history: list[dict] | None = None) -> dict:
         # ① MCP 서버가 없는 REST API(스마트택배 등) — 실행기가 직접 HTTP. 키는
         #    프롬프트에 안 들어가고 쿼리스트링으로만 나간다(core/api_tools.py).
         if key in api_tools.API_TOOLS:
-            r = api_tools.call_api(key, detail)
+            # detail이 비어도 앞 단계(메일 읽기)에서 송장번호·택배사를 자동 추출해 조회
+            r = api_tools.call_api(key, detail, history)
             if "error" in r:
                 return {"result": f"🔌 ⚠ {label}: {r['error']}"}
             return {"result": f"🔌 {label} — {r['text']}"}

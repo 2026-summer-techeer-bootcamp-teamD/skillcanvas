@@ -18,6 +18,15 @@ CREATE TABLE IF NOT EXISTS credentials (
     tool_key TEXT PRIMARY KEY,
     secret   TEXT
 );
+-- 스케줄러가 자동 실행할 '감시 워크플로우'. 실행기가 재시작해도 남아야 하므로 여기 저장.
+-- 단일 행(id=1)만 둔다 — 한 번에 하나의 워크플로우만 감시(데모 범위).
+CREATE TABLE IF NOT EXISTS watched_workflow (
+    id           INTEGER PRIMARY KEY CHECK (id = 1),
+    graph_json   TEXT NOT NULL,   -- {"nodes": [...], "edges": [...]}
+    enabled      INTEGER NOT NULL DEFAULT 1,
+    interval_sec INTEGER NOT NULL DEFAULT 30,
+    updated_at   TEXT
+);
 """
 
 
@@ -94,6 +103,59 @@ def get_credential(tool_key: str) -> str | None:
             "SELECT secret FROM credentials WHERE tool_key = ?", (_norm_key(tool_key),)
         ).fetchone()
         return row[0] if row else None
+    finally:
+        conn.close()
+
+
+def save_watch(graph_json: str, interval_sec: int = 30) -> None:
+    """감시 워크플로우 저장/갱신(upsert, enabled=1로 켬). 그래프는 JSON 문자열."""
+    conn = _connect()
+    try:
+        conn.execute(
+            "INSERT INTO watched_workflow(id, graph_json, enabled, interval_sec, updated_at) "
+            "VALUES (1, ?, 1, ?, ?) "
+            "ON CONFLICT(id) DO UPDATE SET "
+            "graph_json = excluded.graph_json, enabled = 1, "
+            "interval_sec = excluded.interval_sec, updated_at = excluded.updated_at",
+            (graph_json, interval_sec, datetime.now(UTC).isoformat()),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_watch() -> dict | None:
+    """저장된 감시 워크플로우 조회. 없으면 None.
+
+    반환: {"graph_json": str, "enabled": bool, "interval_sec": int, "updated_at": str}
+    """
+    conn = _connect()
+    try:
+        row = conn.execute(
+            "SELECT graph_json, enabled, interval_sec, updated_at "
+            "FROM watched_workflow WHERE id = 1"
+        ).fetchone()
+        if row is None:
+            return None
+        return {
+            "graph_json": row[0],
+            "enabled": bool(row[1]),
+            "interval_sec": row[2],
+            "updated_at": row[3],
+        }
+    finally:
+        conn.close()
+
+
+def set_watch_enabled(enabled: bool) -> None:
+    """감시 on/off 토글. 저장된 워크플로우가 없으면 아무 것도 안 함."""
+    conn = _connect()
+    try:
+        conn.execute(
+            "UPDATE watched_workflow SET enabled = ?, updated_at = ? WHERE id = 1",
+            (1 if enabled else 0, datetime.now(UTC).isoformat()),
+        )
+        conn.commit()
     finally:
         conn.close()
 
