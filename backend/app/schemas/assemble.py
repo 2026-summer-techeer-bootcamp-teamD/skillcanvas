@@ -4,7 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-NodeType = Literal["trigger", "tool", "agent", "approve"]
+NodeType = Literal["trigger", "tool", "agent", "approve", "branch"]
 
 
 # ── 요청 ──────────────────────────────────────────────
@@ -27,6 +27,9 @@ class AssembleEdge(BaseModel):
 
     from_: str = Field(alias="from")
     to: str
+    # 분기 노드에서 나가는 엣지의 조건 라벨(branch 노드 detail의 '|' 라벨과 매칭).
+    # 일반 엣지는 없음. 실행기가 이 값으로 어느 갈래를 탈지 고른다.
+    when: str | None = None
 
 
 class AssembleResponse(BaseModel):

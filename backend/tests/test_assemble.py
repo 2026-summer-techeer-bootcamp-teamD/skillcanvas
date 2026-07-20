@@ -44,7 +44,36 @@ def test_assemble_ok(client, auth, mock_claude):
     body = r.json()
     assert body["name"] == "meeting-notes-workflow"
     assert len(body["nodes"]) == 2
-    assert body["edges"][0] == {"from": "n1", "to": "n2"}
+    # 일반 엣지는 when=null (분기 엣지만 갈래 라벨을 가진다)
+    assert body["edges"][0] == {"from": "n1", "to": "n2", "when": None}
+
+
+def test_assemble_branch_node_and_when_edges(client, auth, mock_claude):
+    """분기(branch) 노드와 갈래 라벨(when)이 응답에 그대로 실려 나가는지."""
+    mock_claude(
+        return_value={
+            "name": "mail-router",
+            "nodes": [
+                {"id": "n1", "type": "tool", "label": "메일 읽기", "detail": "gmail"},
+                {"id": "n2", "type": "branch", "label": "유형 판단", "detail": "문의|제안"},
+                {"id": "n3", "type": "tool", "label": "배송 조회", "detail": "gmail"},
+                {"id": "n4", "type": "agent", "label": "제안 요약", "detail": "요약"},
+            ],
+            "edges": [
+                {"from": "n1", "to": "n2"},
+                {"from": "n2", "to": "n3", "when": "문의"},
+                {"from": "n2", "to": "n4", "when": "제안"},
+            ],
+            "used_mcps": ["gmail"],
+        }
+    )
+    r = client.post(ASSEMBLE, json={"text": "메일 유형 판단해서 나눠줘"}, headers=auth("alice"))
+    assert r.status_code == 200
+    body = r.json()
+    branch = next(n for n in body["nodes"] if n["type"] == "branch")
+    assert branch["detail"] == "문의|제안"
+    whens = {e["when"] for e in body["edges"] if e["from"] == "n2"}
+    assert whens == {"문의", "제안"}
 
 
 def test_assemble_unknown_mcp_filtered_out(client, auth, mock_claude):

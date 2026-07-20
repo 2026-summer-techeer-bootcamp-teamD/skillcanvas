@@ -344,6 +344,42 @@
 .af__publish:hover {
   filter: brightness(1.15);
 }
+/* 스케줄러 감시 토글 — 켜지면 브랜드 주황으로 '돌고 있음'을 강조 */
+.af__watch {
+  padding: 0.4375rem 1rem;
+  font-family: inherit;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--sc-ink);
+  background: var(--sc-card);
+  border: 1px solid var(--sc-line);
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+.af__watch:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.af__watch--on {
+  color: var(--sc-cream);
+  background: var(--sc-accent);
+  border-color: var(--sc-accent);
+}
+/* 자동 실행 끄기 — 저장 버튼 옆의 담백한 보조 버튼 */
+.af__watchOff {
+  padding: 0.4375rem 0.75rem;
+  font-family: inherit;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--sc-muted);
+  background: var(--sc-card);
+  border: 1px solid var(--sc-line);
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+.af__watchOff:hover {
+  color: var(--sc-ink);
+}
 .af__flow {
   flex: 1;
   min-height: 0;
@@ -445,6 +481,17 @@
 .af__fieldInput:focus {
   outline: none;
   border-color: var(--sc-accent);
+}
+
+/* 노드 자연어 수정(map-node) — 아래쪽 구분선으로 MCP 키 패널과 분리 */
+.af__mapEdit {
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px dashed var(--sc-line);
+}
+.af__recommend:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 .af__keyWarn {
   margin-top: 1.25rem;
