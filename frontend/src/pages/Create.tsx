@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PixelArt } from "../components/PixelArt";
 import { TopNav, type NavTab } from "../components/TopNav";
 import { ROBOT_BLACK, ROBOT_ORANGE } from "../lib/pixelMaps";
@@ -52,6 +52,22 @@ export function Create({ onNavigate, onCreate }: CreateProps) {
     onCreate?.(selected, text);
   };
 
+  // 입력 내용에 맞춰 textarea 높이를 자동으로 늘려준다 (Gemini 스타일).
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
+  }, [text]);
+
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      run(text);
+    }
+  };
+
   const chip = (kind: Choice, label: string) => {
     const recommended = intent === kind; // 크기 강조 대상
     const isSel = selected === kind;
@@ -93,12 +109,15 @@ export function Create({ onNavigate, onCreate }: CreateProps) {
             run(text);
           }}
         >
-          <input
+          <textarea
+            ref={inputRef}
             className="cr__input"
             placeholder="예: 매일 CS 컴플레인 오면 긴급도 보고 배송조회해서 사과·쿠폰 발송"
             value={text}
             onChange={(e) => setText(e.target.value)}
+            onKeyDown={handleInputKeyDown}
             readOnly={phase === "choose"}
+            rows={1}
           />
           {phase !== "choose" && (
             <button className="cr__make" type="submit" disabled={phase === "classifying"}>
