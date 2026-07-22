@@ -69,9 +69,9 @@ AI가 작업을 실행하는 중, 승인이 필요한 지점에서 자동으로 
 
 ## 💻 System Architecture
 
-![System Architecture](assets/architecture.png)
-
 ![System Architecture - 상세](assets/architecture-detail.jpg)
+
+![System Architecture](assets/architecture.png)
 
 ## 💾 ERD
 
@@ -137,26 +137,21 @@ SkillCanvas의 데모 핵심 기능입니다. AI가 작업을 실행하기 전, 
 
 ## 🚀 How to Start
 
-> 백엔드·DB는 **Docker로 한 번에**, 프론트엔드는 로컬에서, 로컬 실행기는 워크플로우 실행을 테스트할 때만 켜면 됩니다.
-
 ### 1. Clone & 환경 변수
 
 ```bash
 git clone https://github.com/2026-summer-techeer-bootcamp-teamD/skillcanvas.git
 cd skillcanvas
 
-cp backend/.env.example  backend/.env    # CLERK_*, ANTHROPIC_API_KEY 등 값 채우기
-cp frontend/.env.example frontend/.env   # VITE_CLERK_PUBLISHABLE_KEY 등
+cp backend/.env.example  backend/.env
+cp frontend/.env.example frontend/.env
 ```
 
-### 2. 백엔드 + DB 실행 (Docker)
+### 2. 백엔드 + DB 실행
 
 ```bash
 docker compose up
 ```
-
-→ 백엔드 API 문서 `http://localhost:8000/docs` · Postgres 자동 기동
-> DB만 띄우고 백엔드는 직접 돌리려면: `docker compose up postgres` 후 `cd backend && uvicorn app.main:app --reload`
 
 ### 3. 프론트엔드 실행
 
@@ -164,36 +159,19 @@ docker compose up
 cd frontend && npm install && npm run dev
 ```
 
-→ `http://localhost:5173`
-
-### 4. 로컬 실행기 (Local Runner) — *선택 · 워크플로우 실행용*
-
-워크플로우를 **실제로 실행**하거나 로컬 `.claude` 동기화를 테스트할 때만 필요합니다. (프론트/백엔드만 볼 거면 생략 가능)
+### 4. 로컬 실행기 실행
 
 ```bash
 cd local-runner
-python -m venv .venv && source .venv/bin/activate    # Windows: .venv\Scripts\activate
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --port 4737 --reload
 ```
 
-→ 확인 `curl http://localhost:4737/health` → `{"status":"ok"}`
-
-- **sandbox** — 기본은 `local-runner/sandbox/.claude`(샘플 스킬 `marketing-to-sheets`·`meeting-notes`)를 다뤄서 **내 실제 파일은 건드리지 않습니다.** 내 진짜 `~/.claude`로 돌리려면 `RUNNER_BASE_DIR=~`.
-- **agent 노드** — 실제 판단·생성은 로컬 `claude -p` CLI로 실행됩니다. **각자 PC에 [Claude Code CLI](https://docs.claude.com/en/docs/claude-code) 설치 + 로그인**이 필요해요. (미설치여도 러너는 안 죽고, agent 노드만 에러를 반환)
-
-### 5. 모니터링 스택 — *선택*
-
-```bash
-docker compose --profile monitoring up
-```
-
-→ Grafana `http://localhost:3000` (Prometheus · Loki · 각종 exporter 포함)
-
 ## 👥 Team Members
 
-| <img src="assets/members/hyeonyeong.jpg" width="120"/> | <img src="assets/members/yeseung.jpg" width="120"/> | <img src="assets/members/hyewon.jpg" width="120"/> | <img src="assets/members/yechan.jpg" width="120"/> |
+| <img src="assets/members/hyeonyeong.jpg" width="140" height="140"/> | <img src="assets/members/yeseung.jpg" width="140" height="140"/> | <img src="assets/members/hyewon.jpg" width="140" height="140"/> | <img src="assets/members/yechan.jpg" width="140" height="140"/> |
 | :---: | :---: | :---: | :---: |
 | **이현영** | **고예승** | **정혜원** | **조예찬** |
-| Leader · Fullstack · DevOps | Backend · DevOps | Frontend · Design | Backend |
+| Leader<br>Fullstack<br>DevOps | Backend<br>DevOps | Frontend<br>Design | Backend |
 | [@hyl1115](https://github.com/hyl1115) | [@reval04](https://github.com/reval04) | [@jungjungjungdd-ai](https://github.com/jungjungjungdd-ai) | [@yecnnz](https://github.com/yecnnz) |
