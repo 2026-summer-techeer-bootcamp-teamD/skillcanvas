@@ -168,6 +168,9 @@ pip install -r requirements.txt
 uvicorn app.main:app --port 4737 --reload
 ```
 
+- **sandbox** — 기본은 `local-runner/sandbox/.claude`(샘플 스킬)만 다뤄서 내 실제 `~/.claude`는 건드리지 않습니다. 진짜 홈으로 돌리려면 `RUNNER_BASE_DIR=~`.
+- **agent 노드** — 실제 판단·생성은 로컬 `claude -p` CLI로 실행돼서, 각자 PC에 [Claude Code CLI](https://docs.claude.com/en/docs/claude-code) 설치·로그인이 필요합니다.
+
 ## 👥 Team Members
 
 | <img src="assets/members/hyeonyeong.jpg" width="140" height="140"/> | <img src="assets/members/yeseung.jpg" width="140" height="140"/> | <img src="assets/members/hyewon.jpg" width="140" height="140"/> | <img src="assets/members/yechan.jpg" width="140" height="140"/> |
