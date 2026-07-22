@@ -176,6 +176,5 @@ uvicorn app.main:app --port 4737 --reload
 | <img src="assets/members/hyeonyeong.jpg" width="140" height="140"/> | <img src="assets/members/yeseung.jpg" width="140" height="140"/> | <img src="assets/members/hyewon.jpg" width="140" height="140"/> | <img src="assets/members/yechan.jpg" width="140" height="140"/> |
 | :---: | :---: | :---: | :---: |
 | **이현영** | **고예승** | **정혜원** | **조예찬** |
-| :---: | :---: | :---: | :---: |
 | Leader<br>Fullstack<br>DevOps | Backend<br>DevOps | Frontend<br>Design | Backend |
 | [@hyl1115](https://github.com/hyl1115) | [@reval04](https://github.com/reval04) | [@jungjungjungdd-ai](https://github.com/jungjungjungdd-ai) | [@yecnnz](https://github.com/yecnnz) |
