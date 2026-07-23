@@ -114,11 +114,7 @@ export function Login({ onSkip, onEnter, onSignup }: LoginProps) {
         <span className="auth__buddyShadow" />
       </div>
 
-      <PermissionModal
-        open={permissionOpen}
-        onLater={proceed}
-        onAllow={proceed}
-      />
+      <PermissionModal open={permissionOpen} onLater={proceed} onAllow={proceed} />
     </section>
   );
 }
