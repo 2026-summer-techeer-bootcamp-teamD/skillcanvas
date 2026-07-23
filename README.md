@@ -69,9 +69,9 @@ AI가 작업을 실행하는 중, 승인이 필요한 지점에서 자동으로 
 
 ## 💻 System Architecture
 
-![System Architecture](assets/architecture.png)
-
 ![System Architecture - 상세](assets/architecture-detail.jpg)
+
+![System Architecture](assets/architecture.png)
 
 ## 💾 ERD
 
@@ -137,56 +137,44 @@ SkillCanvas의 데모 핵심 기능입니다. AI가 작업을 실행하기 전, 
 
 ## 🚀 How to Start
 
-**1. Clone**
+### 1. Clone & 환경 변수
 
 ```bash
 git clone https://github.com/2026-summer-techeer-bootcamp-teamD/skillcanvas.git
+cd skillcanvas
+
+cp backend/.env.example  backend/.env
+cp frontend/.env.example frontend/.env
 ```
 
-**2. Postgres 실행 (Docker)**
+### 2. 백엔드 + DB 실행
 
 ```bash
 docker compose up
 ```
 
-**3. 백엔드 실행**
+### 3. 프론트엔드 실행
 
 ```bash
-cd backend
-cp .env.example .env   # DATABASE_URL, CORS_ORIGINS, CLERK_SECRET_KEY, CLERK_PUBLISHABLE_KEY, ANTHROPIC_API_KEY 등 값 채우기
-python -m venv venv && source venv/bin/activate   # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload
+cd frontend && npm install && npm run dev
 ```
 
-→ `localhost:8000/docs`
-
-**4. 프론트엔드 실행**
-
-```bash
-cd frontend
-cp .env.example .env   # VITE_API_BASE_URL, VITE_CLERK_PUBLISHABLE_KEY, VITE_RUNNER_URL
-npm install
-npm run dev
-```
-
-→ `localhost:5173`
-
-**5. 로컬 실행기(Local Runner) 실행** — 워크플로우 실행 기능을 테스트할 때만 필요 (프론트/백엔드만 개발한다면 생략 가능)
+### 4. 로컬 실행기 실행
 
 ```bash
 cd local-runner
-python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --port 4737 --reload
 ```
 
-- 확인: `curl http://localhost:4737/health` → `{"status":"ok"}`
-- agent 노드가 실제로 동작하려면 **각자 로컬 PC에 Claude Code CLI 설치 + 로그인**이 필요 (미설치여도 러너는 안 죽고, agent 노드만 에러를 반환)
+- **sandbox** — 기본은 `local-runner/sandbox/.claude`(샘플 스킬)만 다뤄서 내 실제 `~/.claude`는 건드리지 않습니다. 진짜 홈으로 돌리려면 `RUNNER_BASE_DIR=~`.
+- **agent 노드** — 실제 판단·생성은 로컬 `claude -p` CLI로 실행돼서, 각자 PC에 [Claude Code CLI](https://docs.claude.com/en/docs/claude-code) 설치·로그인이 필요합니다.
 
 ## 👥 Team Members
 
-| Name | 이현영 | 고예승 | 정혜원 | 조예찬 |
-| --- | --- | --- | --- | --- |
-| **Role** | Leader, Fullstack, DevOps | Backend, DevOps | Frontend, Design | Backend |
-| **GitHub** | [@hyl1115](https://github.com/hyl1115) | [@reval04](https://github.com/reval04) | [@jungjungjungdd-ai](https://github.com/jungjungjungdd-ai) | [@yecnnz](https://github.com/yecnnz) |
+| <img src="assets/members/hyeonyeong.jpg" width="140" height="140"/> | <img src="assets/members/yeseung.jpg" width="140" height="140"/> | <img src="assets/members/hyewon.jpg" width="140" height="140"/> | <img src="assets/members/yechan.jpg" width="140" height="140"/> |
+| :---: | :---: | :---: | :---: |
+| **이현영** | **고예승** | **정혜원** | **조예찬** |
+| Leader<br>Fullstack<br>DevOps | Backend<br>DevOps | Frontend<br>Design | Backend |
+| [@hyl1115](https://github.com/hyl1115) | [@reval04](https://github.com/reval04) | [@jungjungjungdd-ai](https://github.com/jungjungjungdd-ai) | [@yecnnz](https://github.com/yecnnz) |

@@ -52,7 +52,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    profiles: ["full"]
 
   # 모니터링 (선택). docker compose --profile monitoring up 으로 실행.
   prometheus:
