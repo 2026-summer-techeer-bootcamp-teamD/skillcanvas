@@ -7,7 +7,7 @@ import type { Intent } from "../lib/classifyIntent";
 import "./Create.css";
 
 const EXAMPLES = [
-  "매일 CS 컴플레인 오면 긴급도 보고 배송조회해서 사과·쿠폰 발송",
+  "매일 아침 8시에 오늘의 AI 뉴스를 검색해서 요약하고 텔레그램으로",
   "회의록을 3줄로 요약해서 정리",
   "받은 메일 분류해서 라벨 붙이기",
 ];
@@ -112,7 +112,7 @@ export function Create({ onNavigate, onCreate }: CreateProps) {
           <textarea
             ref={inputRef}
             className="cr__input"
-            placeholder="예: 매일 CS 컴플레인 오면 긴급도 보고 배송조회해서 사과·쿠폰 발송"
+            placeholder="예: 매일 아침 8시에 오늘의 AI 뉴스를 검색해서 요약하고 텔레그램으로"
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={handleInputKeyDown}
