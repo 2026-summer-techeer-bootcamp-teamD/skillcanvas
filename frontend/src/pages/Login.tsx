@@ -23,6 +23,10 @@ export function Login({ onSkip, onEnter, onSignup }: LoginProps) {
   const [busy, setBusy] = useState(false);
   // 로그인 성공 직후 로컬 실행기 권한 모달을 띄운다.
   const [permissionOpen, setPermissionOpen] = useState(false);
+  // 로그인은 성공했지만 아직 활성화하지 않은 세션. 모달을 닫을 때 활성화한다.
+  // (여기서 setActive를 먼저 하면 isSignedIn=true가 되어 /login 가드가 즉시 /create로
+  //  리다이렉트하고, Login이 언마운트되며 모달이 뜰 화면 자체가 사라진다.)
+  const [pendingSession, setPendingSession] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,7 +37,8 @@ export function Login({ onSkip, onEnter, onSignup }: LoginProps) {
       // 인증·세션·토큰(JWT)은 Clerk가 처리한다. 우리는 결과 상태만 본다.
       const res = await signIn.create({ identifier: email, password });
       if (res.status === "complete") {
-        await setActive({ session: res.createdSessionId });
+        // 세션을 바로 활성화하지 않고 보류 → 모달부터 띄운다.
+        setPendingSession(res.createdSessionId ?? null);
         setPermissionOpen(true);
       } else {
         setError("추가 인증이 필요한 계정이에요.");
@@ -43,6 +48,13 @@ export function Login({ onSkip, onEnter, onSignup }: LoginProps) {
     } finally {
       setBusy(false);
     }
+  };
+
+  // 모달의 두 버튼 모두 로그인을 확정(setActive)하고 Create로 진입한다.
+  // '나중에'는 실행기 설치만 미루는 것 — 로그인 자체는 완료된다.
+  const proceed = async () => {
+    if (pendingSession && setActive) await setActive({ session: pendingSession });
+    onEnter?.();
   };
 
   return (
@@ -102,11 +114,7 @@ export function Login({ onSkip, onEnter, onSignup }: LoginProps) {
         <span className="auth__buddyShadow" />
       </div>
 
-      <PermissionModal
-        open={permissionOpen}
-        onLater={() => setPermissionOpen(false)}
-        onAllow={onEnter}
-      />
+      <PermissionModal open={permissionOpen} onLater={proceed} onAllow={proceed} />
     </section>
   );
 }
